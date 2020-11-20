@@ -1,0 +1,753 @@
+
+<!DOCTYPE html>
+<html lang="en">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="AndrewWang&#39;s Blog">
+    <title>Java中普通代码块，构造代码块，静态代码块区别及代码示例 - AndrewWang&#39;s Blog</title>
+    <meta name="author" content="AndrewWang">
+    
+        <meta name="keywords" content="hexo,javascript,android,java,JS,Python,">
+    
+    
+        <link rel="icon" href="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/favicon(8).png">
+    
+    
+        <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+    
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"AndrewWang","sameAs":["https://github.com/AndrewWang1993","https://stackoverflow.com/users/4209302/andrewwang","mailto:fernando_caudill@outlook.com"],"image":"https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png"},"articleBody":"执行顺序：（优先级从高到低）静态代码块&gt;main方法&gt;构造代码块&gt;构造方法。其中静态代码块只执行一次。构造代码块在每次创建对象是都会执行。\n普通代码块123456789101112131415161718//普通代码块：在方法或语句中出现的&#123;&#125;就称为普通代码块。普通代码块和一般的语句执行顺序由他们在代码中出现的次序决定--“先出现先执行”public class CodeBlock01&#123;      public static void main(String[] args)&#123;            &#123;              int x=3;              System.out.println(\"1,普通代码块内的变量x=\"+x);                &#125;            int x=1;            System.out.println(\"主方法内的变量x=\"+x);            &#123;               int y=7;               System.out.println(\"2,普通代码块内的变量y=\"+y);                &#125;          &#125;    &#125;\n123456/*运行结果：1,普通代码块内的变量x=3     主方法内的变量x=1     2,普通代码块内的变量y=7*/\n构造代码块123456789101112131415161718192021//构造块：直接在类中定义且没有加static关键字的代码块称为&#123;&#125;构造代码块。构造代码块在创建对象时被调用，每次创建对象都会被调用，并且构造代码块的执行次序优先于类构造函数。public class CodeBlock02&#123;    &#123;      System.out.println(\"第一代码块\");        &#125;    public CodeBlock02()&#123;        System.out.println(\"构造方法\");        &#125;        &#123;          System.out.println(\"第二构造块\");        &#125;      public static void main(String[] args)&#123;          new CodeBlock02();          new CodeBlock02();          new CodeBlock02();    &#125;&#125;\n123456789101112/*执行结果：第一代码块第二构造块构造方法第一代码块第二构造块构造方法第一代码块第二构造块构造方法*/\n静态代码块1234567891011121314151617181920212223242526272829303132333435363738394041//静态代码块:在java中使用static关键字声明的代码块。静态块用于初始化类，为类的属性初始化。每个静态代码块只会执行一次。由于JVM在加载类时会执行静态代码块，所以静态代码块先于主方法执行。//如果类中包含多个静态代码块，那么将按照\"先定义的代码先执行，后定义的代码后执行\"。//注意：1 静态代码块不能存在于任何方法体内。2 静态代码块不能直接访问静态实例变量和实例方法，需要通过类的实例对象来访问。class Code&#123;    &#123;      System.out.println(\"Code的构造块\");    &#125;    static&#123;        System.out.println(\"Code的静态代码块\");        &#125;    public Code()&#123;        System.out.println(\"Code的构造方法\");        &#125;    &#125;public class CodeBlock03&#123;     &#123;      System.out.println(\"CodeBlock03的构造块\");         &#125;     static&#123;        System.out.println(\"CodeBlock03的静态代码块\");        &#125;        public CodeBlock03()&#123;             System.out.println(\"CodeBlock03的构造方法\");            &#125;      public static void main(String[] args)&#123;            System.out.println(\"CodeBlock03的主方法\");            new Code();            new Code();            new CodeBlock03();            new CodeBlock03();          &#125;    &#125;\n12345678910111213/*CodeBlock03的静态代码块CodeBlock03的主方法Code的静态代码块Code的构造块Code的构造方法Code的构造块Code的构造方法CodeBlock03的构造块CodeBlock03的构造方法CodeBlock03的构造块CodeBlock03的构造方法*/","dateCreated":"2014-04-02T16:10:00+08:00","dateModified":"2020-11-20T08:50:05+08:00","datePublished":"2014-04-02T16:10:00+08:00","description":"执行顺序：（优先级从高到低）静态代码块&gt;main方法&gt;构造代码块&gt;构造方法。其中静态代码块只执行一次。构造代码块在每次创建对象是都会执行。","headline":"Java中普通代码块，构造代码块，静态代码块区别及代码示例","image":[],"mainEntityOfPage":{"@type":"WebPage","@id":"https://xiaoo.ml/2014/04/02/Java中普通代码块，构造代码块，静态代码块区别及代码示例/"},"publisher":{"@type":"Organization","name":"AndrewWang","sameAs":["https://github.com/AndrewWang1993","https://stackoverflow.com/users/4209302/andrewwang","mailto:fernando_caudill@outlook.com"],"image":"https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png","logo":{"@type":"ImageObject","url":"https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png"}},"url":"https://xiaoo.ml/2014/04/02/Java中普通代码块，构造代码块，静态代码块区别及代码示例/"}</script>
+    <meta name="description" content="执行顺序：（优先级从高到低）静态代码块&amp;gt;main方法&amp;gt;构造代码块&amp;gt;构造方法。其中静态代码块只执行一次。构造代码块在每次创建对象是都会执行。">
+<meta name="keywords" content="hexo,javascript,android,java,JS,Python">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="Java中普通代码块，构造代码块，静态代码块区别及代码示例">
+<meta property="og:url" content="https://xiaoo.ml/2014/04/02/Java中普通代码块，构造代码块，静态代码块区别及代码示例/index.html">
+<meta property="og:site_name" content="AndrewWang&#39;s Blog">
+<meta property="og:description" content="执行顺序：（优先级从高到低）静态代码块&amp;gt;main方法&amp;gt;构造代码块&amp;gt;构造方法。其中静态代码块只执行一次。构造代码块在每次创建对象是都会执行。">
+<meta property="og:locale" content="en">
+<meta property="og:updated_time" content="2020-11-20T00:50:05.784Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Java中普通代码块，构造代码块，静态代码块区别及代码示例">
+<meta name="twitter:description" content="执行顺序：（优先级从高到低）静态代码块&amp;gt;main方法&amp;gt;构造代码块&amp;gt;构造方法。其中静态代码块只执行一次。构造代码块在每次创建对象是都会执行。">
+<meta name="twitter:creator" content="@https:&#x2F;&#x2F;twitter.com&#x2F;JamesMcMurr">
+    
+    
+        
+    
+    
+        <meta property="og:image" content="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png"/>
+    
+    
+    
+    
+    <!--STYLES-->
+    <link rel="stylesheet" href="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/css/style-c4ozcsklz4kht2pebhp44xorvyverh23toayhn7i6ubrpyedak24hv1v0hyd.min.css">
+    <!--STYLES END-->
+    
+
+    
+</head>
+
+    <body>
+        <div id="blog">
+            <!-- Define author's picture -->
+
+
+    
+        
+            
+        
+    
+
+<header id="header" data-behavior="2">
+    <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
+    <div class="header-title">
+        <a class="header-title-link" href="/ ">AndrewWang&#39;s Blog</a>
+    </div>
+    
+        
+            <a class="header-right-picture " href="#about">
+        
+        
+            <img class="header-picture" src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png" alt="Author&#39;s picture">
+        
+        </a>
+    
+</header>
+
+            <!-- Define author's picture -->
+
+
+
+        
+    
+
+<nav id="sidebar" data-behavior="2">
+    <div class="sidebar-container">
+        
+            <div class="sidebar-profile">
+                <a href="/#about">
+                    <img class="sidebar-profile-picture" src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png" alt="Author&#39;s picture">
+                </a>
+                <h4 class="sidebar-profile-name">AndrewWang</h4>
+                
+                    <h5 class="sidebar-profile-bio"><p>凡是过去，皆为序章<br>须知参差百态，乃是幸福本源<br>邮箱：<a href="mailto:fernando_caudill@outlook.com" target="_blank">fernando_caudill@outlook.com</a></p>
+</h5>
+                
+            </div>
+        
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/ " title="Home">
+                    
+                        <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Home</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/all-categories" title="Categories">
+                    
+                        <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Categories</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/all-tags" title="Tags">
+                    
+                        <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Tags</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/all-archives" title="Archives">
+                    
+                        <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Archives</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link open-algolia-search" href="#search" title="Search">
+                    
+                        <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Search</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="#about" title="About">
+                    
+                        <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">About</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="https://github.com/AndrewWang1993" target="_blank" rel="noopener" title="GitHub">
+                    
+                        <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">GitHub</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="https://stackoverflow.com/users/4209302/andrewwang" target="_blank" rel="noopener" title="Stack Overflow">
+                    
+                        <i class="sidebar-button-icon fab fa-stack-overflow" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Stack Overflow</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="mailto:fernando_caudill@outlook.com" target="_blank" rel="noopener" title="Mail">
+                    
+                        <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Mail</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/atom.xml" title="RSS">
+                    
+                        <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">RSS</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+    </div>
+</nav>
+
+            
+            <div id="main" data-behavior="2"
+                 class="
+                        hasCoverMetaIn
+                        ">
+                
+<article class="post">
+    
+    
+        <div class="post-header main-content-wrap text-left">
+    
+        <h1 class="post-title">
+            Java中普通代码块，构造代码块，静态代码块区别及代码示例
+        </h1>
+    
+    
+        <div class="post-meta">
+    <time datetime="2014-04-02T16:10:00+08:00">
+	
+		    Apr 02, 2014
+    	
+    </time>
+    
+        <span>in </span>
+        
+    <a class="category-link" href="/categories/Java/">Java</a>
+
+
+    
+</div>
+
+    
+</div>
+
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
+            <p>执行顺序：（优先级从高到低）静态代码块&gt;main方法&gt;构造代码块&gt;构造方法。其中静态代码块只执行一次。构造代码块在每次创建对象是都会执行。<br><a id="more"></a></p>
+<h3 id="普通代码块"><a href="#普通代码块" class="headerlink" title="普通代码块"></a>普通代码块</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//普通代码块：在方法或语句中出现的&#123;&#125;就称为普通代码块。普通代码块和一般的语句执行顺序由他们在代码中出现的次序决定--“先出现先执行”</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">CodeBlock01</span></span>&#123;</span><br><span class="line">      <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span></span>&#123;</span><br><span class="line"></span><br><span class="line">            &#123;</span><br><span class="line">              <span class="keyword">int</span> x=<span class="number">3</span>;</span><br><span class="line">              System.out.println(<span class="string">"1,普通代码块内的变量x="</span>+x);    </span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            <span class="keyword">int</span> x=<span class="number">1</span>;</span><br><span class="line">            System.out.println(<span class="string">"主方法内的变量x="</span>+x);</span><br><span class="line"></span><br><span class="line">            &#123;</span><br><span class="line">               <span class="keyword">int</span> y=<span class="number">7</span>;</span><br><span class="line">               System.out.println(<span class="string">"2,普通代码块内的变量y="</span>+y);    </span><br><span class="line">            &#125;</span><br><span class="line">          &#125;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">/*</span><br><span class="line">运行结果：</span><br><span class="line">1,普通代码块内的变量x=3</span><br><span class="line">     主方法内的变量x=1</span><br><span class="line">     2,普通代码块内的变量y=7</span><br><span class="line">*/</span><br></pre></td></tr></table></figure>
+<h3 id="构造代码块"><a href="#构造代码块" class="headerlink" title="构造代码块"></a>构造代码块</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//构造块：直接在类中定义且没有加static关键字的代码块称为&#123;&#125;构造代码块。构造代码块在创建对象时被调用，每次创建对象都会被调用，并且构造代码块的执行次序优先于类构造函数。</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">CodeBlock02</span></span>&#123;</span><br><span class="line">    &#123;</span><br><span class="line">      System.out.println(<span class="string">"第一代码块"</span>);    </span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="title">CodeBlock02</span><span class="params">()</span></span>&#123;</span><br><span class="line">        System.out.println(<span class="string">"构造方法"</span>);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        &#123;</span><br><span class="line">          System.out.println(<span class="string">"第二构造块"</span>);</span><br><span class="line">        &#125;</span><br><span class="line">      <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span></span>&#123;</span><br><span class="line">          <span class="keyword">new</span> CodeBlock02();</span><br><span class="line">          <span class="keyword">new</span> CodeBlock02();</span><br><span class="line">          <span class="keyword">new</span> CodeBlock02();</span><br><span class="line"></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">/*</span><br><span class="line">执行结果：</span><br><span class="line">第一代码块</span><br><span class="line">第二构造块</span><br><span class="line">构造方法</span><br><span class="line">第一代码块</span><br><span class="line">第二构造块</span><br><span class="line">构造方法</span><br><span class="line">第一代码块</span><br><span class="line">第二构造块</span><br><span class="line">构造方法</span><br><span class="line">*/</span><br></pre></td></tr></table></figure>
+<h3 id="静态代码块"><a href="#静态代码块" class="headerlink" title="静态代码块"></a>静态代码块</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//静态代码块:在java中使用static关键字声明的代码块。静态块用于初始化类，为类的属性初始化。每个静态代码块只会执行一次。由于JVM在加载类时会执行静态代码块，所以静态代码块先于主方法执行。</span></span><br><span class="line"><span class="comment">//如果类中包含多个静态代码块，那么将按照"先定义的代码先执行，后定义的代码后执行"。</span></span><br><span class="line"><span class="comment">//注意：1 静态代码块不能存在于任何方法体内。2 静态代码块不能直接访问静态实例变量和实例方法，需要通过类的实例对象来访问。</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Code</span></span>&#123;</span><br><span class="line">    &#123;</span><br><span class="line">      System.out.println(<span class="string">"Code的构造块"</span>);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">static</span>&#123;</span><br><span class="line">        System.out.println(<span class="string">"Code的静态代码块"</span>);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="title">Code</span><span class="params">()</span></span>&#123;</span><br><span class="line">        System.out.println(<span class="string">"Code的构造方法"</span>);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">CodeBlock03</span></span>&#123;</span><br><span class="line">     &#123;</span><br><span class="line">      System.out.println(<span class="string">"CodeBlock03的构造块"</span>);    </span><br><span class="line">     &#125;</span><br><span class="line"></span><br><span class="line">     <span class="keyword">static</span>&#123;</span><br><span class="line">        System.out.println(<span class="string">"CodeBlock03的静态代码块"</span>);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="function"><span class="keyword">public</span> <span class="title">CodeBlock03</span><span class="params">()</span></span>&#123;</span><br><span class="line">             System.out.println(<span class="string">"CodeBlock03的构造方法"</span>);</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">      <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span></span>&#123;</span><br><span class="line">            System.out.println(<span class="string">"CodeBlock03的主方法"</span>);</span><br><span class="line">            <span class="keyword">new</span> Code();</span><br><span class="line">            <span class="keyword">new</span> Code();</span><br><span class="line">            <span class="keyword">new</span> CodeBlock03();</span><br><span class="line">            <span class="keyword">new</span> CodeBlock03();</span><br><span class="line">          &#125;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">/*</span><br><span class="line">CodeBlock03的静态代码块</span><br><span class="line">CodeBlock03的主方法</span><br><span class="line">Code的静态代码块</span><br><span class="line">Code的构造块</span><br><span class="line">Code的构造方法</span><br><span class="line">Code的构造块</span><br><span class="line">Code的构造方法</span><br><span class="line">CodeBlock03的构造块</span><br><span class="line">CodeBlock03的构造方法</span><br><span class="line">CodeBlock03的构造块</span><br><span class="line">CodeBlock03的构造方法</span><br><span class="line">*/</span><br></pre></td></tr></table></figure>
+            
+
+        </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
+        
+        
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2014/04/14/getApplicationContext()、getBasecontext()、getApplication() 区别/" data-tooltip="getApplicationContext()、getBasecontext()、getApplication() 区别" aria-label="PREVIOUS: getApplicationContext()、getBasecontext()、getApplication() 区别">
+                
+                    <i class="fa fa-angle-left" aria-hidden="true"></i>
+                    <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2014/02/15/越是聪明人，越容易在这件事上栽跟头/" data-tooltip="越是聪明人，越容易在这件事上栽跟头zt" aria-label="NEXT: 越是聪明人，越容易在这件事上栽跟头zt">
+                
+                    <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                    <i class="fa fa-angle-right" aria-hidden="true"></i>
+                </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a class="post-action-btn btn btn--default btn-open-shareoptions" href="#btn-open-shareoptions" aria-label="Share this post">
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://xiaoo.ml/2014/04/02/Java中普通代码块，构造代码块，静态代码块区别及代码示例/" title="Share on Facebook">
+                    <i class="fab fa-facebook" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://twitter.com/intent/tweet?text=https://xiaoo.ml/2014/04/02/Java中普通代码块，构造代码块，静态代码块区别及代码示例/" title="Share on Twitter">
+                    <i class="fab fa-twitter" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://xiaoo.ml/2014/04/02/Java中普通代码块，构造代码块，静态代码块区别及代码示例/" title="Share on Weibo">
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://xiaoo.ml/2014/04/02/Java中普通代码块，构造代码块，静态代码块区别及代码示例/&amp;title=Java中普通代码块，构造代码块，静态代码块区别及代码示例" title="Share on QQ">
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#" aria-label="Back to top">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+        
+        
+            
+        
+    </div>
+</article>
+
+
+
+
+
+                
+
+                
+                <footer id="footer" class="main-content-wrap">
+    <span class="copyrights">
+		Copyrights &copy; 2020 AndrewWang. All Rights Reserved.
+    </span>
+</footer>
+
+                
+
+            </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="2">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2014/04/14/getApplicationContext()、getBasecontext()、getApplication() 区别/" data-tooltip="getApplicationContext()、getBasecontext()、getApplication() 区别" aria-label="PREVIOUS: getApplicationContext()、getBasecontext()、getApplication() 区别">
+                
+                    <i class="fa fa-angle-left" aria-hidden="true"></i>
+                    <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2014/02/15/越是聪明人，越容易在这件事上栽跟头/" data-tooltip="越是聪明人，越容易在这件事上栽跟头zt" aria-label="NEXT: 越是聪明人，越容易在这件事上栽跟头zt">
+                
+                    <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                    <i class="fa fa-angle-right" aria-hidden="true"></i>
+                </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a class="post-action-btn btn btn--default btn-open-shareoptions" href="#btn-open-shareoptions" aria-label="Share this post">
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://xiaoo.ml/2014/04/02/Java中普通代码块，构造代码块，静态代码块区别及代码示例/" title="Share on Facebook">
+                    <i class="fab fa-facebook" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://twitter.com/intent/tweet?text=https://xiaoo.ml/2014/04/02/Java中普通代码块，构造代码块，静态代码块区别及代码示例/" title="Share on Twitter">
+                    <i class="fab fa-twitter" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://xiaoo.ml/2014/04/02/Java中普通代码块，构造代码块，静态代码块区别及代码示例/" title="Share on Weibo">
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://xiaoo.ml/2014/04/02/Java中普通代码块，构造代码块，静态代码块区别及代码示例/&amp;title=Java中普通代码块，构造代码块，静态代码块区别及代码示例" title="Share on QQ">
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#" aria-label="Back to top">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                
+    <div id="share-options-bar" class="share-options-bar" data-behavior="2">
+        <i id="btn-close-shareoptions" class="fa fa-times"></i>
+        <ul class="share-options">
+            
+                
+                
+                <li class="share-option">
+                    <a class="share-option-btn" target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://xiaoo.ml/2014/04/02/Java中普通代码块，构造代码块，静态代码块区别及代码示例/">
+                        <i class="fab fa-facebook" aria-hidden="true"></i><span>Share on Facebook</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a class="share-option-btn" target="new" href="https://twitter.com/intent/tweet?text=https://xiaoo.ml/2014/04/02/Java中普通代码块，构造代码块，静态代码块区别及代码示例/">
+                        <i class="fab fa-twitter" aria-hidden="true"></i><span>Share on Twitter</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a class="share-option-btn" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://xiaoo.ml/2014/04/02/Java中普通代码块，构造代码块，静态代码块区别及代码示例/">
+                        <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a class="share-option-btn" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://xiaoo.ml/2014/04/02/Java中普通代码块，构造代码块，静态代码块区别及代码示例/&amp;title=Java中普通代码块，构造代码块，静态代码块区别及代码示例">
+                        <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
+                    </a>
+                </li>
+            
+        </ul>
+    </div>
+
+
+            
+        </div>
+        
+
+
+    
+        
+    
+
+<div id="about">
+    <div id="about-card">
+        <div id="about-btn-close">
+            <i class="fa fa-times"></i>
+        </div>
+        
+            <img id="about-card-picture" src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png" alt="Author&#39;s picture">
+        
+            <h4 id="about-card-name">AndrewWang</h4>
+        
+            <div id="about-card-bio"><p>凡是过去，皆为序章<br>须知参差百态，乃是幸福本源<br>邮箱：<a href="mailto:fernando_caudill@outlook.com" target="_blank">fernando_caudill@outlook.com</a></p>
+</div>
+        
+        
+            <div id="about-card-job">
+                <i class="fa fa-briefcase"></i>
+                <br>
+                <p>Android+Python</p>
+
+            </div>
+        
+        
+            <div id="about-card-location">
+                <i class="fa fa-map-marker-alt"></i>
+                <br>
+                Zhangzhou Fujian
+            </div>
+        
+    </div>
+</div>
+
+        
+            <div id="algolia-search-modal" class="modal-container">
+    <div class="modal">
+        <div class="modal-header">
+            <span class="close-button"><i class="fa fa-times"></i></span>
+            <a href="https://algolia.com" target="_blank" rel="noopener" class="searchby-algolia text-color-light link-unstyled">
+                <span class="searchby-algolia-text text-color-light text-small">by</span>
+                <img class="searchby-algolia-logo" src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/others/algolia-light.svg">
+            </a>
+            <i class="search-icon fa fa-search"></i>
+            <form id="algolia-search-form">
+                <input type="text" id="algolia-search-input" name="search" class="form-control input--large search-input" placeholder="Search ">
+            </form>
+        </div>
+        <div class="modal-body">
+            <div class="no-result text-color-light text-center">no post found</div>
+            <div class="results">
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2013/01/22/Cloneable和clone的使用，以及深复制与浅复制的区别/">
+                            <h3 class="media-heading">Cloneable和clone的使用，以及深复制与浅复制的区别</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Jan 22, 2013
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><ni>深浅复制总结下</ni></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2013/02/04/Ubuntu Problem/">
+                            <h3 class="media-heading">Ubuntu Problem</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Feb 4, 2013
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><ni>记录最近几年使用Ubuntu有用的Tips</ni></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2013/08/18/婚后，你一定会遇到更喜欢的人/">
+                            <h3 class="media-heading">婚后，你一定会遇到更喜欢的人</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Aug 18, 2013
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p>结婚后，你一定会遇到更喜欢的人。这件事几乎是肯定的。倒不是说先前结婚的人有多糟糕，也不是说后来出现的人有多美好。而是，你更了解自己了。</p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2013/11/09/ImageLoader must be init with configuration before using 错误解决方法/">
+                            <h3 class="media-heading">ImageLoader must be init with configuration before using 错误解决方法</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Nov 9, 2013
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p>最近开发过程中用到了开源项目Android-Universal-Image-Loader。<br></p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2013/12/14/把WordPress放在根目录而地址显示子目录的方法/">
+                            <h3 class="media-heading">把WordPress放在根目录而地址显示子目录的方法</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Dec 14, 2013
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p> 今天在狗爹（GoDaddy）随便买了个域名，想建个个人博客耍耍。<br></p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2014/02/15/越是聪明人，越容易在这件事上栽跟头/">
+                            <h3 class="media-heading">越是聪明人，越容易在这件事上栽跟头zt</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Feb 15, 2014
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p>一篇名为《李开复：聪明人创业为何容易失败》的商业报道里写道，记者问李开复，如何在短时间内对一个创业者或项目进行判断，有哪些指标或者投资方法论？<br></p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2014/04/02/Java中普通代码块，构造代码块，静态代码块区别及代码示例/">
+                            <h3 class="media-heading">Java中普通代码块，构造代码块，静态代码块区别及代码示例</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Apr 2, 2014
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p>执行顺序：（优先级从高到低）静态代码块&gt;main方法&gt;构造代码块&gt;构造方法。其中静态代码块只执行一次。构造代码块在每次创建对象是都会执行。<br></p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2014/04/14/getApplicationContext()、getBasecontext()、getApplication() 区别/">
+                            <h3 class="media-heading">getApplicationContext()、getBasecontext()、getApplication() 区别</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Apr 14, 2014
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><ni>搞清区别联系很重要，虽然好多情况下能通用的。</ni></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2014/04/24/使用注解来统计算法时间/">
+                            <h3 class="media-heading">使用注解统计算法运行时间</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Apr 24, 2014
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p>一直以为注解并没有什么卵用，后来用了butterknift和spring组件后才知道自定义组件可以完成很多任务。<br></p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2014/05/22/git merge和rebase的区别/">
+                            <h3 class="media-heading">git merge和rebase的区别</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    May 22, 2014
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><ni>一直以来都以为rebase是合并冲突的一种手段，和merge一样的，用哪个都行。</ni></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+            </div>
+        </div>
+        <div class="modal-footer">
+            <p class="results-count text-medium" data-message-zero="no post found" data-message-one="1 post found" data-message-other="{n} posts found">
+                80 posts found
+            </p>
+        </div>
+    </div>
+</div>
+
+        
+        
+<div id="cover" style="background-image:url('https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/cover.jpg');"></div>
+        <!--SCRIPTS-->
+<script src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/js/script-dbd16rvloemmuxdzniplmnxxvwoz24eya9wol0b7vvmlokgqsjivmb8dnscy.min.js"></script>
+<!--SCRIPTS END-->
+
+    
+
+
+    <script src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/js/moment-with-locales.min.js"></script>
+    <script src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/js/algoliasearch.min.js"></script>
+    <script>
+        var algoliaClient = algoliasearch('NPCJXUJXHV', '519d0ecd5f05b733ac031d89154c7bbb');
+        var algoliaIndex = algoliaClient.initIndex('my-hexo-blog');
+    </script>
+
+
+    </body>
+</html>

@@ -1,0 +1,785 @@
+
+<!DOCTYPE html>
+<html lang="en">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="AndrewWang&#39;s Blog">
+    <title>Docker小结 - AndrewWang&#39;s Blog</title>
+    <meta name="author" content="AndrewWang">
+    
+        <meta name="keywords" content="hexo,javascript,android,java,JS,Python,">
+    
+    
+        <link rel="icon" href="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/favicon(8).png">
+    
+    
+        <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+    
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"AndrewWang","sameAs":["https://github.com/AndrewWang1993","https://stackoverflow.com/users/4209302/andrewwang","mailto:fernando_caudill@outlook.com"],"image":"https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png"},"articleBody":"Docker小结，已经用了好久,我觉得有必要总结总结了。\n\n\n四种Subject的选取\nAsyncSubject简单的说使用AsyncSubject无论输入多少参数，永远只输出最后一个参数。\n1234567891011121314151617181920212223242526// 无论订阅的时候AsyncSubject是否Completed，均可以收到最后一个值的回调AsyncSubject as = AsyncSubject.create();as.onNext(1);as.onNext(2);as.onNext(3);// 这里订阅收到3as.onCompleted();// 结束后，这里订阅也能收到3as.subscribe(                new Action1&lt;Integer&gt;() &#123;                        @Override                        public void call(Integer o) &#123;                                LogHelper.e(\"S:\" + o);// 这里只会输出3                        &#125;                &#125;);// 不要这样使用SubjectAsyncSubject.just(1, 2, 3).subscribe(                new Action1&lt;Integer&gt;() &#123;                        @Override                        public void call(Integer o) &#123;                                // 这里会输出1， 2， 3                                LogHelper.e(\"S:\" + o);                        &#125;                &#125;);\n\nBehaviorSubjectBehaviorSubject会发送离订阅最近的上一个值然后继续发射，没有上一个值的时候会发送默认值\n1234567891011121314151617// 注意订阅时机，以下这个例子收不到回调BehaviorSubject bs = BehaviorSubject.create(-1);// 这里订阅回调-1, 1, 2, 3bs.onNext(1);// 这里订阅回调1, 2, 3bs.onNext(2);// 这里订阅回调2, 3bs.onNext(3);// 这里订阅回调3bs.onCompleted();// 这里订阅没回调bs.subscribe(                new Action1&lt;Integer&gt;() &#123;                        @Override                        public void call(Integer o) &#123;                                LogHelper.e(\"S:\" + o);                        &#125;\n\npublishSubject可以说是最正常的Subject，从那里订阅就从那里开始发送数据。\n123456789101112131415PublishSubject bs = PublishSubject.create();// 这里订阅接收1， 2， 3bs.onNext(1);// 这里订阅接收2， 3bs.onNext(2);// 这里订阅接收3bs.onNext(3);bs.onCompleted();// 这里订阅无接收bs.subscribe(                new Action1&lt;Integer&gt;() &#123;                        @Override                        public void call(Integer o) &#123;                                LogHelper.e(&quot;S:&quot; + o);                        &#125;\n\nReplaySubject无论何时订阅，都会将所有历史订阅内容全部发出。\n12345678910111213ReplaySubject bs = ReplaySubject.create();// 无论何时订阅都会收到1，2，3bs.onNext(1);bs.onNext(2);bs.onNext(3);bs.onCompleted();bs.subscribe(                new Action1&lt;Integer&gt;() &#123;                        @Override                        public void call(Integer o) &#123;                                LogHelper.e(\"S:\" + o);                        &#125;                &#125;);\n\n\n标准用法1234567891011121314151617181920212223242526272829303132333435363738    PublishSubject&lt;String&gt; subject = PublishSubject.create();    subject.map(String::length)        .subscribe(System.out::println);    ...    // 在某个Ready的时机    subject.onNext(\"Puppy\");    ...    // 当某个时刻subjcet已经完成了使命    subject.onCompleted();```  ## 可能导致错过事件一句话，由于主线程子线程不同步，可能主线程跑完了，子线程没跑完，导致事件监听不到,下面这个例子在JavaSE环境下运行除了onComplete啥也收不到。```Java    PublishSubject&lt;String&gt; operation = PublishSubject.create();    operation    .subscribeOn(Schedulers.io())    .subscribe(new Subscriber&lt;String&gt;() &#123;        @Override        public void onCompleted() &#123;        System.out.println(\"completed\");        &#125;        @Override        public void onError(Throwable e) &#123;        &#125;        @Override        public void onNext(String s) &#123;        System.out.println(s);        &#125;    &#125;);    operation.onNext(\"Foo\");    operation.onNext(\"Bar\");    operation.onCompleted();    sleep(2000);\nSubjcet 不是线程安全的（最好封装为如下）12SerializedSubject&lt;Integer,Integer&gt; subject =    PublishSubject.&lt;Integer&gt;create().toSerialized();\nSubject 使事件的发送变得不可预知对待Subject的原因就是它 让事件的发送变得不可预知。由于Observable.create使用的例子上面已经给出，再看另外两个工厂方法Observable.just和Observable.from的例子：12Observable&lt;String&gt; values = Observable.just(\"Foo\", \"Bar\");Observable myObservable = Observable.from(new String[]&#123;\"Foo\",\"Bar\"&#125;);\n无论是Observable.create, Observable.from 还是 Observable.just , 这些 Cold Observable 都有一个显著的优点就是数据的来源可预知，我知道将会发送哪些数据，这些数据是什么类型。但是Subject就不一样，我如果创建一个Subject，那么代码任何地方只要能 Get 到这个引用，就可以随意使用它发射元素，滥用的后果导致代码越来越难以维护，我不知道其他人是否在某个我不知道的地方发射了我不知道的元素\n也许看到这里你会想，说了半天好像又回到起点了，Subject带给编程的灵活性不推荐用，为了这些理由又要重新用那三个不灵活的工厂方法，确实不能满足需求啊。我们回顾一下之前提到过的编程中经常遇到的实际情况：\n\n用户与 UI 交互的事件\n移动设备网络类型的改变（ WIFI 与蜂窝网络的切换）\n服务器推送消息的到达\n\n其实这些事件往往都是以注册监听器的接口提供给程序员的，我们完全可以使用Observable.create这个工厂方法来创建Observable：\n1234567891011121314151617181920212223242526final class ViewClickOnSubscribe implements Observable.OnSubscribe&lt;Void&gt; &#123;    final View view;    ViewClickOnSubscribe(View view) &#123;        this.view = view;    &#125;    @Override public void call(final Subscriber&lt;? super Void&gt; subscriber) &#123;        verifyMainThread();        View.OnClickListener listener = new View.OnClickListener() &#123;            @Override public void onClick(View v) &#123;                if (!subscriber.isUnsubscribed()) &#123;                    subscriber.onNext(null);                &#125;            &#125;        &#125;;        view.setOnClickListener(listener);        subscriber.add(new MainThreadSubscription() &#123;            @Override protected void onUnsubscribe() &#123;                view.setOnClickListener(null);            &#125;        &#125;);    &#125;&#125;\n对比一下使用Subject的“简单”写法1234567PublishSubject&lt;String&gt; subject = PublishSubject.create();View.OnClickListener listener = new View.OnClickListener() &#123;@Override public void onClick(View v) &#123;    subject.onNext(null);&#125;&#125;;view.setOnClickListener(listener);\n潜在的风险就是我们刚刚讨论的 可能会错过事件、 线程不安全、 事件来源不可预知。\n","dateCreated":"2016-12-25T02:14:00+08:00","dateModified":"2020-11-20T08:50:05+08:00","datePublished":"2016-12-25T02:14:00+08:00","description":"Docker小结，已经用了好久,我觉得有必要总结总结了。","headline":"Docker小结","image":[],"mainEntityOfPage":{"@type":"WebPage","@id":"https://xiaoo.ml/2016/12/25/Docker小结/"},"publisher":{"@type":"Organization","name":"AndrewWang","sameAs":["https://github.com/AndrewWang1993","https://stackoverflow.com/users/4209302/andrewwang","mailto:fernando_caudill@outlook.com"],"image":"https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png","logo":{"@type":"ImageObject","url":"https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png"}},"url":"https://xiaoo.ml/2016/12/25/Docker小结/","keywords":"RxJava"}</script>
+    <meta name="description" content="Docker小结，已经用了好久,我觉得有必要总结总结了。">
+<meta name="keywords" content="RxJava">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="Docker小结">
+<meta property="og:url" content="https://xiaoo.ml/2016/12/25/Docker小结/index.html">
+<meta property="og:site_name" content="AndrewWang&#39;s Blog">
+<meta property="og:description" content="Docker小结，已经用了好久,我觉得有必要总结总结了。">
+<meta property="og:locale" content="en">
+<meta property="og:updated_time" content="2020-11-20T00:50:05.781Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Docker小结">
+<meta name="twitter:description" content="Docker小结，已经用了好久,我觉得有必要总结总结了。">
+<meta name="twitter:creator" content="@https:&#x2F;&#x2F;twitter.com&#x2F;JamesMcMurr">
+    
+    
+        
+    
+    
+        <meta property="og:image" content="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png"/>
+    
+    
+    
+    
+    <!--STYLES-->
+    <link rel="stylesheet" href="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/css/style-c4ozcsklz4kht2pebhp44xorvyverh23toayhn7i6ubrpyedak24hv1v0hyd.min.css">
+    <!--STYLES END-->
+    
+
+    
+</head>
+
+    <body>
+        <div id="blog">
+            <!-- Define author's picture -->
+
+
+    
+        
+            
+        
+    
+
+<header id="header" data-behavior="2">
+    <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
+    <div class="header-title">
+        <a class="header-title-link" href="/ ">AndrewWang&#39;s Blog</a>
+    </div>
+    
+        
+            <a class="header-right-picture " href="#about">
+        
+        
+            <img class="header-picture" src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png" alt="Author&#39;s picture">
+        
+        </a>
+    
+</header>
+
+            <!-- Define author's picture -->
+
+
+
+        
+    
+
+<nav id="sidebar" data-behavior="2">
+    <div class="sidebar-container">
+        
+            <div class="sidebar-profile">
+                <a href="/#about">
+                    <img class="sidebar-profile-picture" src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png" alt="Author&#39;s picture">
+                </a>
+                <h4 class="sidebar-profile-name">AndrewWang</h4>
+                
+                    <h5 class="sidebar-profile-bio"><p>凡是过去，皆为序章<br>须知参差百态，乃是幸福本源<br>邮箱：<a href="mailto:fernando_caudill@outlook.com" target="_blank">fernando_caudill@outlook.com</a></p>
+</h5>
+                
+            </div>
+        
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/ " title="Home">
+                    
+                        <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Home</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/all-categories" title="Categories">
+                    
+                        <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Categories</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/all-tags" title="Tags">
+                    
+                        <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Tags</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/all-archives" title="Archives">
+                    
+                        <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Archives</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link open-algolia-search" href="#search" title="Search">
+                    
+                        <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Search</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="#about" title="About">
+                    
+                        <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">About</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="https://github.com/AndrewWang1993" target="_blank" rel="noopener" title="GitHub">
+                    
+                        <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">GitHub</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="https://stackoverflow.com/users/4209302/andrewwang" target="_blank" rel="noopener" title="Stack Overflow">
+                    
+                        <i class="sidebar-button-icon fab fa-stack-overflow" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Stack Overflow</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="mailto:fernando_caudill@outlook.com" target="_blank" rel="noopener" title="Mail">
+                    
+                        <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Mail</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/atom.xml" title="RSS">
+                    
+                        <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">RSS</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+    </div>
+</nav>
+
+            
+            <div id="main" data-behavior="2"
+                 class="
+                        hasCoverMetaIn
+                        ">
+                
+<article class="post">
+    
+    
+        <div class="post-header main-content-wrap text-left">
+    
+        <h1 class="post-title">
+            Docker小结
+        </h1>
+    
+    
+        <div class="post-meta">
+    <time datetime="2016-12-25T02:14:00+08:00">
+	
+		    Dec 25, 2016
+    	
+    </time>
+    
+        <span>in </span>
+        
+    <a class="category-link" href="/categories/Android/">Android</a>
+
+
+    
+</div>
+
+    
+</div>
+
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
+            <ni>Docker小结，已经用了好久,我觉得有必要总结总结了。</ni>
+
+<a id="more"></a>
+<h2 id="四种Subject的选取"><a href="#四种Subject的选取" class="headerlink" title="四种Subject的选取"></a>四种Subject的选取</h2><ul>
+<li><h3 id="AsyncSubject"><a href="#AsyncSubject" class="headerlink" title="AsyncSubject"></a>AsyncSubject</h3><p>简单的说使用AsyncSubject无论输入多少参数，永远只输出最后一个参数。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 无论订阅的时候AsyncSubject是否Completed，均可以收到最后一个值的回调</span></span><br><span class="line">AsyncSubject as = AsyncSubject.create();</span><br><span class="line">as.onNext(<span class="number">1</span>);</span><br><span class="line">as.onNext(<span class="number">2</span>);</span><br><span class="line">as.onNext(<span class="number">3</span>);</span><br><span class="line"><span class="comment">// 这里订阅收到3</span></span><br><span class="line">as.onCompleted();</span><br><span class="line"><span class="comment">// 结束后，这里订阅也能收到3</span></span><br><span class="line">as.subscribe(</span><br><span class="line">                <span class="keyword">new</span> Action1&lt;Integer&gt;() &#123;</span><br><span class="line">                        <span class="meta">@Override</span></span><br><span class="line">                        <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">call</span><span class="params">(Integer o)</span> </span>&#123;</span><br><span class="line">                                LogHelper.e(<span class="string">"S:"</span> + o);<span class="comment">// 这里只会输出3</span></span><br><span class="line">                        &#125;</span><br><span class="line">                &#125;);</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="comment">// 不要这样使用Subject</span></span><br><span class="line">AsyncSubject.just(<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>).subscribe(</span><br><span class="line">                <span class="keyword">new</span> Action1&lt;Integer&gt;() &#123;</span><br><span class="line">                        <span class="meta">@Override</span></span><br><span class="line">                        <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">call</span><span class="params">(Integer o)</span> </span>&#123;</span><br><span class="line">                                <span class="comment">// 这里会输出1， 2， 3</span></span><br><span class="line">                                LogHelper.e(<span class="string">"S:"</span> + o);</span><br><span class="line">                        &#125;</span><br><span class="line">                &#125;);</span><br></pre></td></tr></table></figure>
+</li>
+<li><h3 id="BehaviorSubject"><a href="#BehaviorSubject" class="headerlink" title="BehaviorSubject"></a>BehaviorSubject</h3><p>BehaviorSubject会发送离订阅最近的上一个值然后继续发射，没有上一个值的时候会发送默认值</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 注意订阅时机，以下这个例子收不到回调</span></span><br><span class="line">BehaviorSubject bs = BehaviorSubject.create(-<span class="number">1</span>);</span><br><span class="line"><span class="comment">// 这里订阅回调-1, 1, 2, 3</span></span><br><span class="line">bs.onNext(<span class="number">1</span>);</span><br><span class="line"><span class="comment">// 这里订阅回调1, 2, 3</span></span><br><span class="line">bs.onNext(<span class="number">2</span>);</span><br><span class="line"><span class="comment">// 这里订阅回调2, 3</span></span><br><span class="line">bs.onNext(<span class="number">3</span>);</span><br><span class="line"><span class="comment">// 这里订阅回调3</span></span><br><span class="line">bs.onCompleted();</span><br><span class="line"><span class="comment">// 这里订阅没回调</span></span><br><span class="line">bs.subscribe(</span><br><span class="line">                <span class="keyword">new</span> Action1&lt;Integer&gt;() &#123;</span><br><span class="line">                        <span class="meta">@Override</span></span><br><span class="line">                        <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">call</span><span class="params">(Integer o)</span> </span>&#123;</span><br><span class="line">                                LogHelper.e(<span class="string">"S:"</span> + o);</span><br><span class="line">                        &#125;</span><br></pre></td></tr></table></figure>
+</li>
+<li><h3 id="publishSubject"><a href="#publishSubject" class="headerlink" title="publishSubject"></a>publishSubject</h3><p>可以说是最正常的Subject，从那里订阅就从那里开始发送数据。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">PublishSubject bs = PublishSubject.create();</span><br><span class="line">// 这里订阅接收1， 2， 3</span><br><span class="line">bs.onNext(1);</span><br><span class="line">// 这里订阅接收2， 3</span><br><span class="line">bs.onNext(2);</span><br><span class="line">// 这里订阅接收3</span><br><span class="line">bs.onNext(3);</span><br><span class="line">bs.onCompleted();</span><br><span class="line">// 这里订阅无接收</span><br><span class="line">bs.subscribe(</span><br><span class="line">                new Action1&lt;Integer&gt;() &#123;</span><br><span class="line">                        @Override</span><br><span class="line">                        public void call(Integer o) &#123;</span><br><span class="line">                                LogHelper.e(&quot;S:&quot; + o);</span><br><span class="line">                        &#125;</span><br></pre></td></tr></table></figure>
+</li>
+<li><h3 id="ReplaySubject"><a href="#ReplaySubject" class="headerlink" title="ReplaySubject"></a>ReplaySubject</h3><p>无论何时订阅，都会将所有历史订阅内容全部发出。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">ReplaySubject bs = ReplaySubject.create();</span><br><span class="line"><span class="comment">// 无论何时订阅都会收到1，2，3</span></span><br><span class="line">bs.onNext(<span class="number">1</span>);</span><br><span class="line">bs.onNext(<span class="number">2</span>);</span><br><span class="line">bs.onNext(<span class="number">3</span>);</span><br><span class="line">bs.onCompleted();</span><br><span class="line">bs.subscribe(</span><br><span class="line">                <span class="keyword">new</span> Action1&lt;Integer&gt;() &#123;</span><br><span class="line">                        <span class="meta">@Override</span></span><br><span class="line">                        <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">call</span><span class="params">(Integer o)</span> </span>&#123;</span><br><span class="line">                                LogHelper.e(<span class="string">"S:"</span> + o);</span><br><span class="line">                        &#125;</span><br><span class="line">                &#125;);</span><br></pre></td></tr></table></figure>
+</li>
+</ul>
+<h2 id="标准用法"><a href="#标准用法" class="headerlink" title="标准用法"></a>标准用法</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br></pre></td><td class="code"><pre><span class="line">    PublishSubject&lt;String&gt; subject = PublishSubject.create();</span><br><span class="line"></span><br><span class="line">    subject.map(String::length)</span><br><span class="line">        .subscribe(System.out::println);</span><br><span class="line">    ...</span><br><span class="line">    <span class="comment">// 在某个Ready的时机</span></span><br><span class="line">    subject.onNext(<span class="string">"Puppy"</span>);</span><br><span class="line"></span><br><span class="line">    ...</span><br><span class="line">    <span class="comment">// 当某个时刻subjcet已经完成了使命</span></span><br><span class="line">    subject.onCompleted();</span><br><span class="line">```  </span><br><span class="line">## 可能导致错过事件</span><br><span class="line">一句话，由于主线程子线程不同步，可能主线程跑完了，子线程没跑完，导致事件监听不到,下面这个例子在JavaSE环境下运行除了onComplete啥也收不到。</span><br><span class="line">```Java</span><br><span class="line">    PublishSubject&lt;String&gt; operation = PublishSubject.create();</span><br><span class="line">    operation</span><br><span class="line">    .subscribeOn(Schedulers.io())</span><br><span class="line">    .subscribe(<span class="keyword">new</span> Subscriber&lt;String&gt;() &#123;</span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">onCompleted</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        System.out.println(<span class="string">"completed"</span>);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">onError</span><span class="params">(Throwable e)</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">onNext</span><span class="params">(String s)</span> </span>&#123;</span><br><span class="line">        System.out.println(s);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;);</span><br><span class="line">    operation.onNext(<span class="string">"Foo"</span>);</span><br><span class="line">    operation.onNext(<span class="string">"Bar"</span>);</span><br><span class="line">    operation.onCompleted();</span><br><span class="line">    sleep(<span class="number">2000</span>);</span><br></pre></td></tr></table></figure>
+<h2 id="Subjcet-不是线程安全的（最好封装为如下）"><a href="#Subjcet-不是线程安全的（最好封装为如下）" class="headerlink" title="Subjcet 不是线程安全的（最好封装为如下）"></a>Subjcet 不是线程安全的（最好封装为如下）</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">SerializedSubject&lt;Integer,Integer&gt; subject =</span><br><span class="line">    PublishSubject.&lt;Integer&gt;create().toSerialized();</span><br></pre></td></tr></table></figure>
+<h2 id="Subject-使事件的发送变得不可预知"><a href="#Subject-使事件的发送变得不可预知" class="headerlink" title="Subject 使事件的发送变得不可预知"></a>Subject 使事件的发送变得不可预知</h2><p>对待Subject的原因就是它 让事件的发送变得不可预知。由于Observable.create使用的例子上面已经给出，再看另外两个工厂方法Observable.just和Observable.from的例子：<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">Observable&lt;String&gt; values = Observable.just(<span class="string">"Foo"</span>, <span class="string">"Bar"</span>);</span><br><span class="line">Observable myObservable = Observable.from(<span class="keyword">new</span> String[]&#123;<span class="string">"Foo"</span>,<span class="string">"Bar"</span>&#125;);</span><br></pre></td></tr></table></figure></p>
+<p>无论是Observable.create, Observable.from 还是 Observable.just , 这些 Cold Observable 都有一个显著的优点就是数据的来源可预知，我知道将会发送哪些数据，这些数据是什么类型。但是Subject就不一样，我如果创建一个Subject，那么代码任何地方只要能 Get 到这个引用，就可以随意使用它发射元素，滥用的后果导致代码越来越难以维护，我不知道其他人是否在某个我不知道的地方发射了我不知道的元素</p>
+<p>也许看到这里你会想，说了半天好像又回到起点了，Subject带给编程的灵活性不推荐用，为了这些理由又要重新用那三个不灵活的工厂方法，确实不能满足需求啊。我们回顾一下之前提到过的编程中经常遇到的实际情况：</p>
+<ul>
+<li>用户与 UI 交互的事件</li>
+<li>移动设备网络类型的改变（ WIFI 与蜂窝网络的切换）</li>
+<li>服务器推送消息的到达</li>
+</ul>
+<p>其实这些事件往往都是以注册监听器的接口提供给程序员的，我们完全可以使用Observable.create这个工厂方法来创建Observable：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">final</span> <span class="class"><span class="keyword">class</span> <span class="title">ViewClickOnSubscribe</span> <span class="keyword">implements</span> <span class="title">Observable</span>.<span class="title">OnSubscribe</span>&lt;<span class="title">Void</span>&gt; </span>&#123;</span><br><span class="line">    <span class="keyword">final</span> View view;</span><br><span class="line"></span><br><span class="line">    ViewClickOnSubscribe(View view) &#123;</span><br><span class="line">        <span class="keyword">this</span>.view = view;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Override</span> <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">call</span><span class="params">(<span class="keyword">final</span> Subscriber&lt;? <span class="keyword">super</span> Void&gt; subscriber)</span> </span>&#123;</span><br><span class="line">        verifyMainThread();</span><br><span class="line"></span><br><span class="line">        View.OnClickListener listener = <span class="keyword">new</span> View.OnClickListener() &#123;</span><br><span class="line">            <span class="meta">@Override</span> <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">onClick</span><span class="params">(View v)</span> </span>&#123;</span><br><span class="line">                <span class="keyword">if</span> (!subscriber.isUnsubscribed()) &#123;</span><br><span class="line">                    subscriber.onNext(<span class="keyword">null</span>);</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;;</span><br><span class="line">        view.setOnClickListener(listener);</span><br><span class="line"></span><br><span class="line">        subscriber.add(<span class="keyword">new</span> MainThreadSubscription() &#123;</span><br><span class="line">            <span class="meta">@Override</span> <span class="function"><span class="keyword">protected</span> <span class="keyword">void</span> <span class="title">onUnsubscribe</span><span class="params">()</span> </span>&#123;</span><br><span class="line">                view.setOnClickListener(<span class="keyword">null</span>);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>对比一下使用Subject的“简单”写法<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">PublishSubject&lt;String&gt; subject = PublishSubject.create();</span><br><span class="line">View.OnClickListener listener = <span class="keyword">new</span> View.OnClickListener() &#123;</span><br><span class="line"><span class="meta">@Override</span> <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">onClick</span><span class="params">(View v)</span> </span>&#123;</span><br><span class="line">    subject.onNext(<span class="keyword">null</span>);</span><br><span class="line">&#125;</span><br><span class="line">&#125;;</span><br><span class="line">view.setOnClickListener(listener);</span><br></pre></td></tr></table></figure></p>
+<p>潜在的风险就是我们刚刚讨论的 可能会<strong>错过事件</strong>、 <strong>线程不安全</strong>、 <strong>事件来源不可预知</strong>。</p>
+
+            
+
+        </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
+        
+            <div class="post-footer-tags">
+                <span class="text-color-light text-small">TAGGED IN</span><br>
+                
+    <a class="tag tag--primary tag--small t-link" href="/tags/RxJava/">RxJava</a>
+
+            </div>
+        
+        
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2017/01/11/最好的告别读后感/" data-tooltip="最好的告别读后感" aria-label="PREVIOUS: 最好的告别读后感">
+                
+                    <i class="fa fa-angle-left" aria-hidden="true"></i>
+                    <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2016/08/04/有没有安全的工作？/" data-tooltip="有没有安全的工作？" aria-label="NEXT: 有没有安全的工作？">
+                
+                    <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                    <i class="fa fa-angle-right" aria-hidden="true"></i>
+                </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a class="post-action-btn btn btn--default btn-open-shareoptions" href="#btn-open-shareoptions" aria-label="Share this post">
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://xiaoo.ml/2016/12/25/Docker小结/" title="Share on Facebook">
+                    <i class="fab fa-facebook" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://twitter.com/intent/tweet?text=https://xiaoo.ml/2016/12/25/Docker小结/" title="Share on Twitter">
+                    <i class="fab fa-twitter" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://xiaoo.ml/2016/12/25/Docker小结/" title="Share on Weibo">
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://xiaoo.ml/2016/12/25/Docker小结/&amp;title=Docker小结" title="Share on QQ">
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#" aria-label="Back to top">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+        
+        
+            
+        
+    </div>
+</article>
+
+
+
+
+
+                
+
+                
+                <footer id="footer" class="main-content-wrap">
+    <span class="copyrights">
+		Copyrights &copy; 2020 AndrewWang. All Rights Reserved.
+    </span>
+</footer>
+
+                
+
+            </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="2">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2017/01/11/最好的告别读后感/" data-tooltip="最好的告别读后感" aria-label="PREVIOUS: 最好的告别读后感">
+                
+                    <i class="fa fa-angle-left" aria-hidden="true"></i>
+                    <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2016/08/04/有没有安全的工作？/" data-tooltip="有没有安全的工作？" aria-label="NEXT: 有没有安全的工作？">
+                
+                    <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                    <i class="fa fa-angle-right" aria-hidden="true"></i>
+                </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a class="post-action-btn btn btn--default btn-open-shareoptions" href="#btn-open-shareoptions" aria-label="Share this post">
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://xiaoo.ml/2016/12/25/Docker小结/" title="Share on Facebook">
+                    <i class="fab fa-facebook" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://twitter.com/intent/tweet?text=https://xiaoo.ml/2016/12/25/Docker小结/" title="Share on Twitter">
+                    <i class="fab fa-twitter" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://xiaoo.ml/2016/12/25/Docker小结/" title="Share on Weibo">
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://xiaoo.ml/2016/12/25/Docker小结/&amp;title=Docker小结" title="Share on QQ">
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#" aria-label="Back to top">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                
+    <div id="share-options-bar" class="share-options-bar" data-behavior="2">
+        <i id="btn-close-shareoptions" class="fa fa-times"></i>
+        <ul class="share-options">
+            
+                
+                
+                <li class="share-option">
+                    <a class="share-option-btn" target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://xiaoo.ml/2016/12/25/Docker小结/">
+                        <i class="fab fa-facebook" aria-hidden="true"></i><span>Share on Facebook</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a class="share-option-btn" target="new" href="https://twitter.com/intent/tweet?text=https://xiaoo.ml/2016/12/25/Docker小结/">
+                        <i class="fab fa-twitter" aria-hidden="true"></i><span>Share on Twitter</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a class="share-option-btn" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://xiaoo.ml/2016/12/25/Docker小结/">
+                        <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a class="share-option-btn" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://xiaoo.ml/2016/12/25/Docker小结/&amp;title=Docker小结">
+                        <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
+                    </a>
+                </li>
+            
+        </ul>
+    </div>
+
+
+            
+        </div>
+        
+
+
+    
+        
+    
+
+<div id="about">
+    <div id="about-card">
+        <div id="about-btn-close">
+            <i class="fa fa-times"></i>
+        </div>
+        
+            <img id="about-card-picture" src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png" alt="Author&#39;s picture">
+        
+            <h4 id="about-card-name">AndrewWang</h4>
+        
+            <div id="about-card-bio"><p>凡是过去，皆为序章<br>须知参差百态，乃是幸福本源<br>邮箱：<a href="mailto:fernando_caudill@outlook.com" target="_blank">fernando_caudill@outlook.com</a></p>
+</div>
+        
+        
+            <div id="about-card-job">
+                <i class="fa fa-briefcase"></i>
+                <br>
+                <p>Android+Python</p>
+
+            </div>
+        
+        
+            <div id="about-card-location">
+                <i class="fa fa-map-marker-alt"></i>
+                <br>
+                Zhangzhou Fujian
+            </div>
+        
+    </div>
+</div>
+
+        
+            <div id="algolia-search-modal" class="modal-container">
+    <div class="modal">
+        <div class="modal-header">
+            <span class="close-button"><i class="fa fa-times"></i></span>
+            <a href="https://algolia.com" target="_blank" rel="noopener" class="searchby-algolia text-color-light link-unstyled">
+                <span class="searchby-algolia-text text-color-light text-small">by</span>
+                <img class="searchby-algolia-logo" src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/others/algolia-light.svg">
+            </a>
+            <i class="search-icon fa fa-search"></i>
+            <form id="algolia-search-form">
+                <input type="text" id="algolia-search-input" name="search" class="form-control input--large search-input" placeholder="Search ">
+            </form>
+        </div>
+        <div class="modal-body">
+            <div class="no-result text-color-light text-center">no post found</div>
+            <div class="results">
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2013/01/22/Cloneable和clone的使用，以及深复制与浅复制的区别/">
+                            <h3 class="media-heading">Cloneable和clone的使用，以及深复制与浅复制的区别</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Jan 22, 2013
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><ni>深浅复制总结下</ni></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2013/02/04/Ubuntu Problem/">
+                            <h3 class="media-heading">Ubuntu Problem</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Feb 4, 2013
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><ni>记录最近几年使用Ubuntu有用的Tips</ni></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2013/08/18/婚后，你一定会遇到更喜欢的人/">
+                            <h3 class="media-heading">婚后，你一定会遇到更喜欢的人</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Aug 18, 2013
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p>结婚后，你一定会遇到更喜欢的人。这件事几乎是肯定的。倒不是说先前结婚的人有多糟糕，也不是说后来出现的人有多美好。而是，你更了解自己了。</p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2013/11/09/ImageLoader must be init with configuration before using 错误解决方法/">
+                            <h3 class="media-heading">ImageLoader must be init with configuration before using 错误解决方法</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Nov 9, 2013
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p>最近开发过程中用到了开源项目Android-Universal-Image-Loader。<br></p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2013/12/14/把WordPress放在根目录而地址显示子目录的方法/">
+                            <h3 class="media-heading">把WordPress放在根目录而地址显示子目录的方法</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Dec 14, 2013
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p> 今天在狗爹（GoDaddy）随便买了个域名，想建个个人博客耍耍。<br></p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2014/02/15/越是聪明人，越容易在这件事上栽跟头/">
+                            <h3 class="media-heading">越是聪明人，越容易在这件事上栽跟头zt</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Feb 15, 2014
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p>一篇名为《李开复：聪明人创业为何容易失败》的商业报道里写道，记者问李开复，如何在短时间内对一个创业者或项目进行判断，有哪些指标或者投资方法论？<br></p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2014/04/02/Java中普通代码块，构造代码块，静态代码块区别及代码示例/">
+                            <h3 class="media-heading">Java中普通代码块，构造代码块，静态代码块区别及代码示例</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Apr 2, 2014
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p>执行顺序：（优先级从高到低）静态代码块&gt;main方法&gt;构造代码块&gt;构造方法。其中静态代码块只执行一次。构造代码块在每次创建对象是都会执行。<br></p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2014/04/14/getApplicationContext()、getBasecontext()、getApplication() 区别/">
+                            <h3 class="media-heading">getApplicationContext()、getBasecontext()、getApplication() 区别</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Apr 14, 2014
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><ni>搞清区别联系很重要，虽然好多情况下能通用的。</ni></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2014/04/24/使用注解来统计算法时间/">
+                            <h3 class="media-heading">使用注解统计算法运行时间</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Apr 24, 2014
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p>一直以为注解并没有什么卵用，后来用了butterknift和spring组件后才知道自定义组件可以完成很多任务。<br></p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2014/05/22/git merge和rebase的区别/">
+                            <h3 class="media-heading">git merge和rebase的区别</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    May 22, 2014
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><ni>一直以来都以为rebase是合并冲突的一种手段，和merge一样的，用哪个都行。</ni></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+            </div>
+        </div>
+        <div class="modal-footer">
+            <p class="results-count text-medium" data-message-zero="no post found" data-message-one="1 post found" data-message-other="{n} posts found">
+                80 posts found
+            </p>
+        </div>
+    </div>
+</div>
+
+        
+        
+<div id="cover" style="background-image:url('https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/cover.jpg');"></div>
+        <!--SCRIPTS-->
+<script src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/js/script-dbd16rvloemmuxdzniplmnxxvwoz24eya9wol0b7vvmlokgqsjivmb8dnscy.min.js"></script>
+<!--SCRIPTS END-->
+
+    
+
+
+    <script src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/js/moment-with-locales.min.js"></script>
+    <script src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/js/algoliasearch.min.js"></script>
+    <script>
+        var algoliaClient = algoliasearch('NPCJXUJXHV', '519d0ecd5f05b733ac031d89154c7bbb');
+        var algoliaIndex = algoliaClient.initIndex('my-hexo-blog');
+    </script>
+
+
+    </body>
+</html>

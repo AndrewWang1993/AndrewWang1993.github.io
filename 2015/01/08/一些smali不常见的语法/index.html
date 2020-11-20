@@ -1,0 +1,780 @@
+
+<!DOCTYPE html>
+<html lang="en">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="AndrewWang&#39;s Blog">
+    <title>一些smali不常见的语法 - AndrewWang&#39;s Blog</title>
+    <meta name="author" content="AndrewWang">
+    
+        <meta name="keywords" content="hexo,javascript,android,java,JS,Python,">
+    
+    
+        <link rel="icon" href="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/favicon(8).png">
+    
+    
+        <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+    
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"AndrewWang","sameAs":["https://github.com/AndrewWang1993","https://stackoverflow.com/users/4209302/andrewwang","mailto:fernando_caudill@outlook.com"],"image":"https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png"},"articleBody":"总结一下，以后备用。\n\n\n1.内部类：一个包含简单的匿名内部类的代码：12345678910111213141516171819202122232425public class EventQs extends Activity&#123;@Overridepublic void onCreate(Bundle savedInstanceState)&#123;super.onCreate(savedInstanceState);setContentView(R.layout.main);// 获取应用程序中的bn按钮Button bn = (Button) findViewById(R.id.bn);// 为按钮绑定事件监听器。bn.setOnClickListener(new MyClickListener()); // ①&#125;// 定义一个单击事件的监听器class MyClickListener implements View.OnClickListener&#123;// 实现监听器类必须实现的方法，该方法将会作为事件处理器@Overridepublic void onClick(View v)&#123;EditText txt = (EditText) findViewById(R.id.txt);txt.setText(\"bn按钮被单击了！\");&#125;&#125;&#125;\n在EventQs  的smali的代码中 会包含这样的注释：123456# annotations.annotation system Ldalvik/annotation/MemberClasses;    value = &#123;        Lorg/crazyit/event/EventQs$MyClickListener;    &#125;.end annotation\nMemberClasses 为内部类，他代表这该类中内部类的列表，其中value中就包含了一个内部类MyClickListener \n而内部类的反编译代码中包含的注释也说明自身是一个内部类。EventQs$MyClickListener.smali：123456789# annotations.annotation system Ldalvik/annotation/EnclosingClass;    value = Lorg/crazyit/event/EventQs;.end annotation.annotation system Ldalvik/annotation/InnerClass;    accessFlags = 0x0    name = \"MyClickListener\".end annotation\nEnclosingClass注解表明MainActivity$SNChecker作用于一个类，注解的value表明这个类是MainActivity。在EnclosingClass注解的下面是InnerClass，它表明自身是一个内部类，其中的accessFlags访问标志是一个枚举值\n123456789101112public class ViewSwitcherTest extends Activity&#123;        public static class DataItem         &#123;          // 应用程序名称          public String dataName;          // 应用程序图标          public Drawable drawable;         &#125;        ArrayList&lt;DataItem&gt; items = new ArrayList&lt;DataItem&gt;();&#125;;\n在ViewSwitcherTest 中内部类对应的代码 使用注释类来表达123456# annotations.annotation system Ldalvik/annotation/MemberClasses;    value = &#123;        Lorg/crazyit/ui/ViewSwitcherTest$DataItem;    &#125;.end annotation\nMemberClasses注解是一个系统注解，作用是为父类提供一个内部类列表\n而在ViewSwitcherTest$DataItem中自身的类申明为：12345678# annotations.annotation system Ldalvik/annotation/EnclosingClass;    value = Lorg/crazyit/ui/ViewSwitcherTest;.end annotation.annotation system Ldalvik/annotation/InnerClass;    accessFlags = 0x9    name = \"DataItem\".end annotation\nEnclosingClas表示DataItem作用于ViewSwitcherTest。下面的InnerClass表明他是一个子类，该子类的名字为DataItem。\n利用内部类 创建的ArrayList对象：ArrayList items = new ArrayList();12345678910.field private items:Ljava/util/ArrayList;    .annotation system Ldalvik/annotation/Signature;        value = &#123;            \"Ljava/util/ArrayList\",            \"&lt;\",            \"Lorg/crazyit/ui/ViewSwitcherTest$DataItem;\",            \"&gt;;\"        &#125;    .end annotation.end field\n2.泛型Class&lt;?&gt;[] claszzs={PreferenceActivityTest.class,ExpandableListActivityTest.class};其代码为：实例字段，其中?变成了*12345678910# instance fields.field claszzs:[Ljava/lang/Class;    .annotation system Ldalvik/annotation/Signature;        value = &#123;            \"[\",            \"Ljava/lang/Class\",            \"&lt;*&gt;;\"        &#125;    .end annotation.end field\n3. 判断是否为指定类的实例if (!(activity instanceof Callbacks))其反编译代码：instance-of v0, p1, Lcom/example/fargmenttest2/BookListFragment$Callbacks;判断p1是否是其后的类的实例（也可以是接口）如果是返回非0值给v0 否则返回0\n4.异常throw new IllegalStateException(“BookListFargment所在的activity必须实现callbacks接口！”);反编译代码：1234new-instance v0, Ljava/lang/IllegalStateException;const-string v1, \"BookListFargment\\u6240\\u5728\\u7684activity\\u5fc5\\u987b\\u5b9e\\u73b0callbacks\\u63a5\\u53e3\\uff01\"invoke-direct &#123;v0, v1&#125;, Ljava/lang/IllegalStateException;-&gt;&lt;init&gt;(Ljava/lang/String;)Vthrow v0\n5.返回值123protected ArrayList&lt;Map&lt;String,String&gt;&gt; converCurrsorTolist(Cursor cursor)&#123;&#125;\n反编译代码：12345678910111213141516171819.method protected converCurrsorTolist(Landroid/database/Cursor;)Ljava/util/ArrayList;    .locals 4    .parameter \"cursor\"    .annotation system Ldalvik/annotation/Signature;        value = &#123;            \"(\",            \"Landroid/database/Cursor;\",            \")\",            \"Ljava/util/ArrayList\",            \"&lt;\",            \"Ljava/util/Map\",            \"&lt;\",            \"Ljava/lang/String;\",            \"Ljava/lang/String;\",            \"&gt;;&gt;;\"        &#125;    .end annotation  .prologue.end method\n6.getMethod的 Class…&lt;?&gt; parameterTypes参数函数原型：public Method getMethod (String name, Class…&lt;?&gt; parameterTypes)parameterTypes参数实际上是Class []类型。源代码如下：1Method method = Class.forName( \"android.os.ServiceManager\").getMethod(\"getService\", String.class);\n反编译代码：123456789101112131415161718   const-string v4, \"android.os.ServiceManager\"    .line 63    invoke-static &#123;v4&#125;, Ljava/lang/Class;-&gt;forName(Ljava/lang/String;)Ljava/lang/Class;    move-result-object v4    .line 65    const-string v5, \"getService\"    const/4 v6, 0x1    new-array v6, v6, [Ljava/lang/Class;    const/4 v7, 0x0    const-class v8, Ljava/lang/String;    aput-object v8, v6, v7\t@代码中是new Class[]&#123;String.class&#125;,其效果等于源代码中的String.class     .line 64    invoke-virtual &#123;v4, v5, v6&#125;, Ljava/lang/Class;-&gt;getMethod(Ljava/lang/String;[Ljava/lang/Class;)Ljava/lang/reflect/Method;    move-result-object v2    .line 67    .local v2, method:Ljava/lang/reflect/Method;\n7.静态方法中没有this指针，也就是p0不再是this指针，而是第一个参数123456789101112131415161718192021222324252627.method public static hookMethod(Ljava/lang/Class;Ljava/lang/reflect/Constructor;Lcom/saurik/substrate/MS$MethodAlteration;)V    .locals 0    .parameter \"clazz\"  //P0    .parameter \"member\"   //P1    .parameter   //P2    .annotation system Ldalvik/annotation/Signature;        value = &#123;            \"&lt;T:\",            \"Ljava/lang/Object;\",            \"R:\",            \"Ljava/lang/Object;\",            \"&gt;(\",            \"Ljava/lang/Class;\",            \"Ljava/lang/reflect/Constructor;\",            \"Lcom/saurik/substrate/MS$MethodAlteration\",            \"&lt;TT;TR;&gt;;)V\"        &#125;    .end annotation    .prologue    .line 112    .local p2, alteration:Lcom/saurik/substrate/MS$MethodAlteration;,\"Lcom/saurik/substrate/MS$MethodAlteration&lt;TT;TR;&gt;;\"    invoke-static &#123;p0, p1, p2&#125;, Lcom/saurik/substrate/MS;-&gt;hookMethod_(Ljava/lang/Class;Ljava/lang/reflect/Member;Lcom/saurik/substrate/MS$MethodAlteration;)V    .line 113    return-void.end method\n对应代码为：1234public static &lt;T, R&gt; void hookMethod(Class paramClass, Constructor paramConstructor, MethodAlteration&lt;T, R&gt; paramMethodAlteration)  &#123;    hookMethod_(paramClass, paramConstructor, paramMethodAlteration);  &#125;\n8. finally语句块finally 语句块作用：执行一些必要代码。即不管出现异常与否，在finally中的代码都会被执行执行时机：针对所有catch语句之后，退出方法之前将被执行（即先执行catch里面的代码，但在throw之前将转向finally）。finally中返回的结果将可以覆盖catch中返回的结果对应的smail代码如下： :12345678910111213try_start_0   new-instance v2, Ljava/net/ServerSocket;   const/16 v3, 0x2710   invoke-direct &#123;v2, v3&#125;, Ljava/net/ServerSocket;-&gt;&lt;init&gt;(I)V   .line 21   .local v2, serverSocket:Ljava/net/ServerSocket;   invoke-virtual &#123;v2&#125;, Ljava/net/ServerSocket;-&gt;accept()Ljava/net/Socket;   :try_end_0   .catchall &#123;:try_start_0 .. :try_end_0&#125; :catchall_0  //处理start_0对应的异常块是catchall_0   也就是finally   .catch Ljava/io/IOException; &#123;:try_start_0 .. :try_end_0&#125; :catch_0//处理start_0对应的异常块是catch_0，catch_0异常块先执行，之后再执行catchall_0\n源代码为：123456789101112try &#123;            ServerSocket serverSocket= new ServerSocket(10000);            Socket socket=serverSocket.accept();        &#125; catch (IOException e) &#123;            // TODO Auto-generated catch block            e.printStackTrace();        &#125;finally&#123;                        int abc=5;                Toast.makeText(this, \"sssss \", Toast.LENGTH_SHORT).show();            &#125;\n想对应的代码为：1234567891011121314151617181920212223242526272829303132333435363738394041424344454647484950515253545556575859606162636465666768const/4 v5, 0x0  .line 17  invoke-super &#123;p0, p1&#125;, Landroid/app/Activity;-&gt;onCreate(Landroid/os/Bundle;)V  .line 18  const/high16 v3, 0x7f03  invoke-virtual &#123;p0, v3&#125;, Lcom/example/finallytest/MainActivity;-&gt;setContentView(I)V  .line 20  :try_start_0  new-instance v2, Ljava/net/ServerSocket;  const/16 v3, 0x2710  invoke-direct &#123;v2, v3&#125;, Ljava/net/ServerSocket;-&gt;&lt;init&gt;(I)V  .line 21  .local v2, serverSocket:Ljava/net/ServerSocket;  invoke-virtual &#123;v2&#125;, Ljava/net/ServerSocket;-&gt;accept()Ljava/net/Socket;  :try_end_0  .catchall &#123;:try_start_0 .. :try_end_0&#125; :catchall_0  .catch Ljava/io/IOException; &#123;:try_start_0 .. :try_end_0&#125; :catch_0  .line 27  const/4 v0, 0x5     @正常流程 即未发生异常  .line 28  .local v0, abc:I  const-string v3, \"sssss \"  invoke-static &#123;p0, v3, v5&#125;, Landroid/widget/Toast;-&gt;makeText(Landroid/content/Context;Ljava/lang/CharSequence;I)Landroid/widget/Toast;  move-result-object v3  invoke-virtual &#123;v3&#125;, Landroid/widget/Toast;-&gt;show()V  .line 32  .end local v2           #serverSocket:Ljava/net/ServerSocket;  :goto_0  return-void  .line 22  .end local v0           #abc:I  :catch_0    @当发生异常时执行  move-exception v1  .line 24  .local v1, e:Ljava/io/IOException;  :try_start_1  invoke-virtual &#123;v1&#125;, Ljava/io/IOException;-&gt;printStackTrace()V  :try_end_1  .catchall &#123;:try_start_1 .. :try_end_1&#125; :catchall_0  @异常部分执行完毕，转而执行finally  .line 27  const/4 v0, 0x5  .line 28  .restart local v0       #abc:I  const-string v3, \"sssss \"  invoke-static &#123;p0, v3, v5&#125;, Landroid/widget/Toast;-&gt;makeText(Landroid/content/Context;Ljava/lang/CharSequence;I)Landroid/widget/Toast;  move-result-object v3  invoke-virtual &#123;v3&#125;, Landroid/widget/Toast;-&gt;show()V  goto :goto_0  .line 25  .end local v0           #abc:I  .end local v1           #e:Ljava/io/IOException;   @finally代码定义部分  :catchall_0  move-exception v3  .line 27  const/4 v0, 0x5  .line 28  .restart local v0       #abc:I  const-string v4, \"sssss \"  invoke-static &#123;p0, v4, v5&#125;, Landroid/widget/Toast;-&gt;makeText(Landroid/content/Context;Ljava/lang/CharSequence;I)Landroid/widget/Toast;  move-result-object v4  invoke-virtual &#123;v4&#125;, Landroid/widget/Toast;-&gt;show()V  .line 30  throw v3\n","dateCreated":"2015-01-08T16:10:00+08:00","dateModified":"2020-11-20T08:50:05+08:00","datePublished":"2015-01-08T16:10:00+08:00","description":"总结一下，以后备用。","headline":"一些smali不常见的语法","image":[],"mainEntityOfPage":{"@type":"WebPage","@id":"https://xiaoo.ml/2015/01/08/一些smali不常见的语法/"},"publisher":{"@type":"Organization","name":"AndrewWang","sameAs":["https://github.com/AndrewWang1993","https://stackoverflow.com/users/4209302/andrewwang","mailto:fernando_caudill@outlook.com"],"image":"https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png","logo":{"@type":"ImageObject","url":"https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png"}},"url":"https://xiaoo.ml/2015/01/08/一些smali不常见的语法/","keywords":"smali"}</script>
+    <meta name="description" content="总结一下，以后备用。">
+<meta name="keywords" content="smali">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="一些smali不常见的语法">
+<meta property="og:url" content="https://xiaoo.ml/2015/01/08/一些smali不常见的语法/index.html">
+<meta property="og:site_name" content="AndrewWang&#39;s Blog">
+<meta property="og:description" content="总结一下，以后备用。">
+<meta property="og:locale" content="en">
+<meta property="og:updated_time" content="2020-11-20T00:50:05.791Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="一些smali不常见的语法">
+<meta name="twitter:description" content="总结一下，以后备用。">
+<meta name="twitter:creator" content="@https:&#x2F;&#x2F;twitter.com&#x2F;JamesMcMurr">
+    
+    
+        
+    
+    
+        <meta property="og:image" content="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png"/>
+    
+    
+    
+    
+    <!--STYLES-->
+    <link rel="stylesheet" href="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/css/style-c4ozcsklz4kht2pebhp44xorvyverh23toayhn7i6ubrpyedak24hv1v0hyd.min.css">
+    <!--STYLES END-->
+    
+
+    
+</head>
+
+    <body>
+        <div id="blog">
+            <!-- Define author's picture -->
+
+
+    
+        
+            
+        
+    
+
+<header id="header" data-behavior="2">
+    <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
+    <div class="header-title">
+        <a class="header-title-link" href="/ ">AndrewWang&#39;s Blog</a>
+    </div>
+    
+        
+            <a class="header-right-picture " href="#about">
+        
+        
+            <img class="header-picture" src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png" alt="Author&#39;s picture">
+        
+        </a>
+    
+</header>
+
+            <!-- Define author's picture -->
+
+
+
+        
+    
+
+<nav id="sidebar" data-behavior="2">
+    <div class="sidebar-container">
+        
+            <div class="sidebar-profile">
+                <a href="/#about">
+                    <img class="sidebar-profile-picture" src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png" alt="Author&#39;s picture">
+                </a>
+                <h4 class="sidebar-profile-name">AndrewWang</h4>
+                
+                    <h5 class="sidebar-profile-bio"><p>凡是过去，皆为序章<br>须知参差百态，乃是幸福本源<br>邮箱：<a href="mailto:fernando_caudill@outlook.com" target="_blank">fernando_caudill@outlook.com</a></p>
+</h5>
+                
+            </div>
+        
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/ " title="Home">
+                    
+                        <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Home</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/all-categories" title="Categories">
+                    
+                        <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Categories</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/all-tags" title="Tags">
+                    
+                        <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Tags</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/all-archives" title="Archives">
+                    
+                        <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Archives</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link open-algolia-search" href="#search" title="Search">
+                    
+                        <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Search</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="#about" title="About">
+                    
+                        <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">About</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="https://github.com/AndrewWang1993" target="_blank" rel="noopener" title="GitHub">
+                    
+                        <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">GitHub</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="https://stackoverflow.com/users/4209302/andrewwang" target="_blank" rel="noopener" title="Stack Overflow">
+                    
+                        <i class="sidebar-button-icon fab fa-stack-overflow" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Stack Overflow</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="mailto:fernando_caudill@outlook.com" target="_blank" rel="noopener" title="Mail">
+                    
+                        <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Mail</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/atom.xml" title="RSS">
+                    
+                        <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">RSS</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+    </div>
+</nav>
+
+            
+            <div id="main" data-behavior="2"
+                 class="
+                        hasCoverMetaIn
+                        ">
+                
+<article class="post">
+    
+    
+        <div class="post-header main-content-wrap text-left">
+    
+        <h1 class="post-title">
+            一些smali不常见的语法
+        </h1>
+    
+    
+        <div class="post-meta">
+    <time datetime="2015-01-08T16:10:00+08:00">
+	
+		    Jan 08, 2015
+    	
+    </time>
+    
+        <span>in </span>
+        
+    <a class="category-link" href="/categories/Android/">Android</a>
+
+
+    
+</div>
+
+    
+</div>
+
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
+            <ni>总结一下，以后备用。</ni>
+
+<a id="more"></a>
+<h3 id="1-内部类：一个包含简单的匿名内部类的代码："><a href="#1-内部类：一个包含简单的匿名内部类的代码：" class="headerlink" title="1.内部类：一个包含简单的匿名内部类的代码："></a>1.内部类：一个包含简单的匿名内部类的代码：</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">EventQs</span> <span class="keyword">extends</span> <span class="title">Activity</span></span></span><br><span class="line"><span class="class"></span>&#123;</span><br><span class="line"><span class="meta">@Override</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">onCreate</span><span class="params">(Bundle savedInstanceState)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line"><span class="keyword">super</span>.onCreate(savedInstanceState);</span><br><span class="line">setContentView(R.layout.main);</span><br><span class="line"><span class="comment">// 获取应用程序中的bn按钮</span></span><br><span class="line">Button bn = (Button) findViewById(R.id.bn);</span><br><span class="line"><span class="comment">// 为按钮绑定事件监听器。</span></span><br><span class="line">bn.setOnClickListener(<span class="keyword">new</span> MyClickListener()); <span class="comment">// ①</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 定义一个单击事件的监听器</span></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">MyClickListener</span> <span class="keyword">implements</span> <span class="title">View</span>.<span class="title">OnClickListener</span></span></span><br><span class="line"><span class="class"></span>&#123;</span><br><span class="line"><span class="comment">// 实现监听器类必须实现的方法，该方法将会作为事件处理器</span></span><br><span class="line"><span class="meta">@Override</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">onClick</span><span class="params">(View v)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">EditText txt = (EditText) findViewById(R.id.txt);</span><br><span class="line">txt.setText(<span class="string">"bn按钮被单击了！"</span>);</span><br><span class="line">&#125;</span><br><span class="line">&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>在EventQs  的smali的代码中 会包含这样的注释：<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"># annotations</span><br><span class="line">.annotation system Ldalvik/annotation/MemberClasses;</span><br><span class="line">    value = &#123;</span><br><span class="line">        Lorg/crazyit/event/EventQs$MyClickListener;</span><br><span class="line">    &#125;</span><br><span class="line">.end annotation</span><br></pre></td></tr></table></figure></p>
+<p>MemberClasses 为内部类，他代表这该类中内部类的列表，其中value中就包含了一个内部类MyClickListener </p>
+<p>而内部类的反编译代码中包含的注释也说明自身是一个内部类。<br>EventQs$MyClickListener.smali：<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"># annotations</span><br><span class="line">.annotation system Ldalvik/annotation/EnclosingClass;</span><br><span class="line">    value = Lorg/crazyit/event/EventQs;</span><br><span class="line">.end annotation</span><br><span class="line"></span><br><span class="line">.annotation system Ldalvik/annotation/InnerClass;</span><br><span class="line">    accessFlags = <span class="number">0x0</span></span><br><span class="line">    name = <span class="string">"MyClickListener"</span></span><br><span class="line">.end annotation</span><br></pre></td></tr></table></figure></p>
+<p>EnclosingClass注解表明MainActivity$SNChecker作用于一个类，注解的value表明这个类是MainActivity。在EnclosingClass注解的下面是InnerClass，它表明自身是一个内部类，其中的accessFlags访问标志是一个枚举值</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">ViewSwitcherTest</span> <span class="keyword">extends</span> <span class="title">Activity</span></span></span><br><span class="line"><span class="class"></span>&#123;</span><br><span class="line">        <span class="keyword">public</span> <span class="keyword">static</span> <span class="class"><span class="keyword">class</span> <span class="title">DataItem</span></span></span><br><span class="line"><span class="class">         </span>&#123;</span><br><span class="line">          <span class="comment">// 应用程序名称</span></span><br><span class="line">          <span class="keyword">public</span> String dataName;</span><br><span class="line">          <span class="comment">// 应用程序图标</span></span><br><span class="line">          <span class="keyword">public</span> Drawable drawable;</span><br><span class="line">         &#125;</span><br><span class="line"></span><br><span class="line">        ArrayList&lt;DataItem&gt; items = <span class="keyword">new</span> ArrayList&lt;DataItem&gt;();</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+<p>在ViewSwitcherTest 中内部类对应的代码 使用注释类来表达<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"># annotations</span><br><span class="line">.annotation system Ldalvik/annotation/MemberClasses;</span><br><span class="line">    value = &#123;</span><br><span class="line">        Lorg/crazyit/ui/ViewSwitcherTest$DataItem;</span><br><span class="line">    &#125;</span><br><span class="line">.end annotation</span><br></pre></td></tr></table></figure></p>
+<p>MemberClasses注解是一个系统注解，作用是为父类提供一个内部类列表</p>
+<p>而在ViewSwitcherTest$DataItem中自身的类申明为：<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"># annotations</span><br><span class="line">.annotation system Ldalvik/annotation/EnclosingClass;</span><br><span class="line">    value = Lorg/crazyit/ui/ViewSwitcherTest;</span><br><span class="line">.end annotation</span><br><span class="line">.annotation system Ldalvik/annotation/InnerClass;</span><br><span class="line">    accessFlags = <span class="number">0x9</span></span><br><span class="line">    name = <span class="string">"DataItem"</span></span><br><span class="line">.end annotation</span><br></pre></td></tr></table></figure></p>
+<p>EnclosingClas表示DataItem作用于ViewSwitcherTest。下面的InnerClass表明他是一个子类，该子类的名字为DataItem。</p>
+<p>利用内部类 创建的ArrayList对象：ArrayList<dataitem> items = new ArrayList<dataitem>();<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">.field <span class="keyword">private</span> items:Ljava/util/ArrayList;</span><br><span class="line">    .annotation system Ldalvik/annotation/Signature;</span><br><span class="line">        value = &#123;</span><br><span class="line">            <span class="string">"Ljava/util/ArrayList"</span>,</span><br><span class="line">            <span class="string">"&lt;"</span>,</span><br><span class="line">            <span class="string">"Lorg/crazyit/ui/ViewSwitcherTest$DataItem;"</span>,</span><br><span class="line">            <span class="string">"&gt;;"</span></span><br><span class="line">        &#125;</span><br><span class="line">    .end annotation</span><br><span class="line">.end field</span><br></pre></td></tr></table></figure></dataitem></dataitem></p>
+<h3 id="2-泛型"><a href="#2-泛型" class="headerlink" title="2.泛型"></a>2.泛型</h3><p>Class&lt;?&gt;[] claszzs={PreferenceActivityTest.class,ExpandableListActivityTest.class};其代码为：实例字段，其中?变成了*<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"># instance fields</span><br><span class="line">.field claszzs:[Ljava/lang/Class;</span><br><span class="line">    .annotation system Ldalvik/annotation/Signature;</span><br><span class="line">        value = &#123;</span><br><span class="line">            <span class="string">"["</span>,</span><br><span class="line">            <span class="string">"Ljava/lang/Class"</span>,</span><br><span class="line">            <span class="string">"&lt;*&gt;;"</span></span><br><span class="line">        &#125;</span><br><span class="line">    .end annotation</span><br><span class="line">.end field</span><br></pre></td></tr></table></figure></p>
+<h3 id="3-判断是否为指定类的实例if-activity-instanceof-Callbacks"><a href="#3-判断是否为指定类的实例if-activity-instanceof-Callbacks" class="headerlink" title="3. 判断是否为指定类的实例if (!(activity instanceof Callbacks))"></a>3. 判断是否为指定类的实例if (!(activity instanceof Callbacks))</h3><p>其反编译代码：<br>instance-of v0, p1, Lcom/example/fargmenttest2/BookListFragment$Callbacks;<br>判断p1是否是其后的类的实例（也可以是接口）如果是返回非0值给v0 否则返回0</p>
+<h3 id="4-异常"><a href="#4-异常" class="headerlink" title="4.异常"></a>4.异常</h3><p>throw new IllegalStateException(“BookListFargment所在的activity必须实现callbacks接口！”);<br>反编译代码：<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">new</span>-instance v0, Ljava/lang/IllegalStateException;</span><br><span class="line"><span class="keyword">const</span>-string v1, <span class="string">"BookListFargment\u6240\u5728\u7684activity\u5fc5\u987b\u5b9e\u73b0callbacks\u63a5\u53e3\uff01"</span></span><br><span class="line">invoke-direct &#123;v0, v1&#125;, Ljava/lang/IllegalStateException;-&gt;&lt;init&gt;(Ljava/lang/String;)V</span><br><span class="line"><span class="keyword">throw</span> v0</span><br></pre></td></tr></table></figure></p>
+<h3 id="5-返回值"><a href="#5-返回值" class="headerlink" title="5.返回值"></a>5.返回值</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">protected</span> ArrayList&lt;Map&lt;String,String&gt;&gt; converCurrsorTolist(Cursor cursor)</span><br><span class="line">&#123;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>反编译代码：<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">.<span class="function">method <span class="keyword">protected</span> <span class="title">converCurrsorTolist</span><span class="params">(Landroid/database/Cursor;)</span>Ljava/util/ArrayList</span>;</span><br><span class="line">    .locals <span class="number">4</span></span><br><span class="line">    .parameter <span class="string">"cursor"</span></span><br><span class="line">    .annotation system Ldalvik/annotation/Signature;</span><br><span class="line">        value = &#123;</span><br><span class="line">            <span class="string">"("</span>,</span><br><span class="line">            <span class="string">"Landroid/database/Cursor;"</span>,</span><br><span class="line">            <span class="string">")"</span>,</span><br><span class="line">            <span class="string">"Ljava/util/ArrayList"</span>,</span><br><span class="line">            <span class="string">"&lt;"</span>,</span><br><span class="line">            <span class="string">"Ljava/util/Map"</span>,</span><br><span class="line">            <span class="string">"&lt;"</span>,</span><br><span class="line">            <span class="string">"Ljava/lang/String;"</span>,</span><br><span class="line">            <span class="string">"Ljava/lang/String;"</span>,</span><br><span class="line">            <span class="string">"&gt;;&gt;;"</span></span><br><span class="line">        &#125;</span><br><span class="line">    .end annotation</span><br><span class="line">  .prologue</span><br><span class="line">.end method</span><br></pre></td></tr></table></figure></p>
+<h3 id="6-getMethod的-Class…-lt-gt-parameterTypes参数"><a href="#6-getMethod的-Class…-lt-gt-parameterTypes参数" class="headerlink" title="6.getMethod的 Class…&lt;?&gt; parameterTypes参数"></a>6.getMethod的 Class…&lt;?&gt; parameterTypes参数</h3><p>函数原型：public Method getMethod (String name, Class…&lt;?&gt; parameterTypes)<br>parameterTypes参数实际上是Class []类型。<br>源代码如下：<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">Method method = Class.forName( <span class="string">"android.os.ServiceManager"</span>).getMethod(<span class="string">"getService"</span>, String.class);</span><br></pre></td></tr></table></figure></p>
+<p>反编译代码：<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">   <span class="keyword">const</span>-string v4, <span class="string">"android.os.ServiceManager"</span></span><br><span class="line">    .line <span class="number">63</span></span><br><span class="line">    invoke-<span class="keyword">static</span> &#123;v4&#125;, Ljava/lang/Class;-&gt;forName(Ljava/lang/String;)Ljava/lang/Class;</span><br><span class="line">    move-result-object v4</span><br><span class="line">    .line <span class="number">65</span></span><br><span class="line">    <span class="keyword">const</span>-string v5, <span class="string">"getService"</span></span><br><span class="line">    <span class="keyword">const</span>/<span class="number">4</span> v6, <span class="number">0x1</span></span><br><span class="line">    <span class="keyword">new</span>-array v6, v6, [Ljava/lang/Class;</span><br><span class="line">    <span class="keyword">const</span>/<span class="number">4</span> v7, <span class="number">0x0</span></span><br><span class="line">    <span class="keyword">const</span>-<span class="class"><span class="keyword">class</span> <span class="title">v8</span>, <span class="title">Ljava</span>/<span class="title">lang</span>/<span class="title">String</span></span>;</span><br><span class="line">    aput-object v8, v6, v7</span><br><span class="line">	</span><br><span class="line">@代码中是<span class="keyword">new</span> Class[]&#123;String.class&#125;,其效果等于源代码中的String.class </span><br><span class="line">    .line <span class="number">64</span></span><br><span class="line">    invoke-virtual &#123;v4, v5, v6&#125;, Ljava/lang/Class;-&gt;getMethod(Ljava/lang/String;[Ljava/lang/Class;)Ljava/lang/reflect/Method;</span><br><span class="line">    move-result-object v2</span><br><span class="line">    .line <span class="number">67</span></span><br><span class="line">    .local v2, method:Ljava/lang/reflect/Method;</span><br></pre></td></tr></table></figure></p>
+<h3 id="7-静态方法中没有this指针，也就是p0不再是this指针，而是第一个参数"><a href="#7-静态方法中没有this指针，也就是p0不再是this指针，而是第一个参数" class="headerlink" title="7.静态方法中没有this指针，也就是p0不再是this指针，而是第一个参数"></a>7.静态方法中没有this指针，也就是p0不再是this指针，而是第一个参数</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line">.<span class="function">method <span class="keyword">public</span> <span class="keyword">static</span> <span class="title">hookMethod</span><span class="params">(Ljava/lang/Class;Ljava/lang/reflect/Constructor;Lcom/saurik/substrate/MS$MethodAlteration;)</span>V</span></span><br><span class="line"><span class="function">    .locals 0</span></span><br><span class="line"><span class="function">    .parameter "clazz"  <span class="comment">//P0</span></span></span><br><span class="line"><span class="function">    .parameter "member"   <span class="comment">//P1</span></span></span><br><span class="line"><span class="function">    .parameter   <span class="comment">//P2</span></span></span><br><span class="line"><span class="function">    .annotation system Ldalvik/annotation/Signature</span>;</span><br><span class="line">        value = &#123;</span><br><span class="line">            <span class="string">"&lt;T:"</span>,</span><br><span class="line">            <span class="string">"Ljava/lang/Object;"</span>,</span><br><span class="line">            <span class="string">"R:"</span>,</span><br><span class="line">            <span class="string">"Ljava/lang/Object;"</span>,</span><br><span class="line">            <span class="string">"&gt;("</span>,</span><br><span class="line">            <span class="string">"Ljava/lang/Class;"</span>,</span><br><span class="line">            <span class="string">"Ljava/lang/reflect/Constructor;"</span>,</span><br><span class="line">            <span class="string">"Lcom/saurik/substrate/MS$MethodAlteration"</span>,</span><br><span class="line">            <span class="string">"&lt;TT;TR;&gt;;)V"</span></span><br><span class="line">        &#125;</span><br><span class="line">    .end annotation</span><br><span class="line"></span><br><span class="line">    .prologue</span><br><span class="line">    .line <span class="number">112</span></span><br><span class="line">    .local p2, alteration:Lcom/saurik/substrate/MS$MethodAlteration;,<span class="string">"Lcom/saurik/substrate/MS$MethodAlteration&lt;TT;TR;&gt;;"</span></span><br><span class="line">    invoke-<span class="keyword">static</span> &#123;p0, p1, p2&#125;, Lcom/saurik/substrate/MS;-&gt;hookMethod_(Ljava/lang/Class;Ljava/lang/reflect/Member;Lcom/saurik/substrate/MS$MethodAlteration;)V</span><br><span class="line"></span><br><span class="line">    .line <span class="number">113</span></span><br><span class="line">    <span class="keyword">return</span>-<span class="keyword">void</span></span><br><span class="line">.end method</span><br></pre></td></tr></table></figure>
+<p>对应代码为：<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">static</span> &lt;T, R&gt; <span class="function"><span class="keyword">void</span> <span class="title">hookMethod</span><span class="params">(Class paramClass, Constructor paramConstructor, MethodAlteration&lt;T, R&gt; paramMethodAlteration)</span></span></span><br><span class="line"><span class="function">  </span>&#123;</span><br><span class="line">    hookMethod_(paramClass, paramConstructor, paramMethodAlteration);</span><br><span class="line">  &#125;</span><br></pre></td></tr></table></figure></p>
+<h3 id="8-finally语句块"><a href="#8-finally语句块" class="headerlink" title="8. finally语句块"></a>8. finally语句块</h3><p>finally 语句块作用：执行一些必要代码。即不管出现异常与否，在finally中的代码都会被执行<br>执行时机：针对所有catch语句之后，退出方法之前将被执行（即先执行catch里面的代码，但在throw之前将转向finally）。finally中返回的结果将可以覆盖catch中返回的结果<br>对应的smail代码如下： :<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">try_start_0</span><br><span class="line">   <span class="keyword">new</span>-instance v2, Ljava/net/ServerSocket;</span><br><span class="line"></span><br><span class="line">   <span class="keyword">const</span>/<span class="number">16</span> v3, <span class="number">0x2710</span></span><br><span class="line"></span><br><span class="line">   invoke-direct &#123;v2, v3&#125;, Ljava/net/ServerSocket;-&gt;&lt;init&gt;(I)V</span><br><span class="line"></span><br><span class="line">   .line <span class="number">21</span></span><br><span class="line">   .local v2, serverSocket:Ljava/net/ServerSocket;</span><br><span class="line">   invoke-virtual &#123;v2&#125;, Ljava/net/ServerSocket;-&gt;accept()Ljava/net/Socket;</span><br><span class="line">   :try_end_0</span><br><span class="line">   .catchall &#123;:try_start_0 .. :try_end_0&#125; :catchall_0  <span class="comment">//处理start_0对应的异常块是catchall_0   也就是finally</span></span><br><span class="line">   .<span class="keyword">catch</span> Ljava/io/IOException; &#123;:try_start_0 .. :try_end_0&#125; :catch_0<span class="comment">//处理start_0对应的异常块是catch_0，catch_0异常块先执行，之后再执行catchall_0</span></span><br></pre></td></tr></table></figure></p>
+<p>源代码为：<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">try</span> &#123;</span><br><span class="line">            ServerSocket serverSocket= <span class="keyword">new</span> ServerSocket(<span class="number">10000</span>);</span><br><span class="line">            Socket socket=serverSocket.accept();</span><br><span class="line">        &#125; <span class="keyword">catch</span> (IOException e) &#123;</span><br><span class="line">            <span class="comment">// TODO Auto-generated catch block</span></span><br><span class="line">            e.printStackTrace();</span><br><span class="line">        &#125;<span class="keyword">finally</span>&#123;</span><br><span class="line">        </span><br><span class="line">                <span class="keyword">int</span> abc=<span class="number">5</span>;</span><br><span class="line">                Toast.makeText(<span class="keyword">this</span>, <span class="string">"sssss "</span>, Toast.LENGTH_SHORT).show();</span><br><span class="line">        </span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure></p>
+<p>想对应的代码为：<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">const</span>/<span class="number">4</span> v5, <span class="number">0x0</span></span><br><span class="line">  .line <span class="number">17</span></span><br><span class="line">  invoke-<span class="keyword">super</span> &#123;p0, p1&#125;, Landroid/app/Activity;-&gt;onCreate(Landroid/os/Bundle;)V</span><br><span class="line">  .line <span class="number">18</span></span><br><span class="line">  <span class="keyword">const</span>/high16 v3, <span class="number">0x7f03</span></span><br><span class="line">  invoke-virtual &#123;p0, v3&#125;, Lcom/example/finallytest/MainActivity;-&gt;setContentView(I)V</span><br><span class="line">  .line <span class="number">20</span></span><br><span class="line">  :try_start_0</span><br><span class="line">  <span class="keyword">new</span>-instance v2, Ljava/net/ServerSocket;</span><br><span class="line">  <span class="keyword">const</span>/<span class="number">16</span> v3, <span class="number">0x2710</span></span><br><span class="line">  invoke-direct &#123;v2, v3&#125;, Ljava/net/ServerSocket;-&gt;&lt;init&gt;(I)V</span><br><span class="line">  .line <span class="number">21</span></span><br><span class="line">  .local v2, serverSocket:Ljava/net/ServerSocket;</span><br><span class="line">  invoke-virtual &#123;v2&#125;, Ljava/net/ServerSocket;-&gt;accept()Ljava/net/Socket;</span><br><span class="line">  :try_end_0</span><br><span class="line">  .catchall &#123;:try_start_0 .. :try_end_0&#125; :catchall_0</span><br><span class="line">  .<span class="keyword">catch</span> Ljava/io/IOException; &#123;:try_start_0 .. :try_end_0&#125; :catch_0</span><br><span class="line">  .line <span class="number">27</span></span><br><span class="line">  <span class="keyword">const</span>/<span class="number">4</span> v0, <span class="number">0x5</span> </span><br><span class="line">    @正常流程 即未发生异常</span><br><span class="line">  .line <span class="number">28</span></span><br><span class="line">  .local v0, abc:I</span><br><span class="line">  <span class="keyword">const</span>-string v3, <span class="string">"sssss "</span></span><br><span class="line">  invoke-<span class="keyword">static</span> &#123;p0, v3, v5&#125;, Landroid/widget/Toast;-&gt;makeText(Landroid/content/Context;Ljava/lang/CharSequence;I)Landroid/widget/Toast;</span><br><span class="line">  move-result-object v3</span><br><span class="line">  invoke-virtual &#123;v3&#125;, Landroid/widget/Toast;-&gt;show()V</span><br><span class="line">  .line <span class="number">32</span></span><br><span class="line">  .end local v2           #serverSocket:Ljava/net/ServerSocket;</span><br><span class="line">  :goto_0</span><br><span class="line">  <span class="keyword">return</span>-<span class="keyword">void</span></span><br><span class="line">  .line <span class="number">22</span></span><br><span class="line">  .end local v0           #abc:I</span><br><span class="line">  :catch_0 </span><br><span class="line">   @当发生异常时执行</span><br><span class="line">  move-exception v1</span><br><span class="line">  .line <span class="number">24</span></span><br><span class="line">  .local v1, e:Ljava/io/IOException;</span><br><span class="line">  :try_start_1</span><br><span class="line">  invoke-virtual &#123;v1&#125;, Ljava/io/IOException;-&gt;printStackTrace()V</span><br><span class="line">  :try_end_1</span><br><span class="line">  .catchall &#123;:try_start_1 .. :try_end_1&#125; :catchall_0</span><br><span class="line">  @异常部分执行完毕，转而执行<span class="keyword">finally</span></span><br><span class="line">  .line <span class="number">27</span></span><br><span class="line">  <span class="keyword">const</span>/<span class="number">4</span> v0, <span class="number">0x5</span></span><br><span class="line">  .line <span class="number">28</span></span><br><span class="line">  .restart local v0       #abc:I</span><br><span class="line">  <span class="keyword">const</span>-string v3, <span class="string">"sssss "</span></span><br><span class="line">  invoke-<span class="keyword">static</span> &#123;p0, v3, v5&#125;, Landroid/widget/Toast;-&gt;makeText(Landroid/content/Context;Ljava/lang/CharSequence;I)Landroid/widget/Toast;</span><br><span class="line">  move-result-object v3</span><br><span class="line">  invoke-virtual &#123;v3&#125;, Landroid/widget/Toast;-&gt;show()V</span><br><span class="line">  goto :goto_0</span><br><span class="line">  .line <span class="number">25</span></span><br><span class="line">  .end local v0           #abc:I</span><br><span class="line">  .end local v1           #e:Ljava/io/IOException;</span><br><span class="line">  </span><br><span class="line"> <span class="meta">@finally</span>代码定义部分</span><br><span class="line">  :catchall_0</span><br><span class="line">  move-exception v3</span><br><span class="line">  .line <span class="number">27</span></span><br><span class="line">  <span class="keyword">const</span>/<span class="number">4</span> v0, <span class="number">0x5</span></span><br><span class="line">  .line <span class="number">28</span></span><br><span class="line">  .restart local v0       #abc:I</span><br><span class="line">  <span class="keyword">const</span>-string v4, <span class="string">"sssss "</span></span><br><span class="line">  invoke-<span class="keyword">static</span> &#123;p0, v4, v5&#125;, Landroid/widget/Toast;-&gt;makeText(Landroid/content/Context;Ljava/lang/CharSequence;I)Landroid/widget/Toast;</span><br><span class="line">  move-result-object v4</span><br><span class="line">  invoke-virtual &#123;v4&#125;, Landroid/widget/Toast;-&gt;show()V</span><br><span class="line">  .line <span class="number">30</span></span><br><span class="line">  <span class="keyword">throw</span> v3</span><br></pre></td></tr></table></figure></p>
+
+            
+
+        </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
+        
+            <div class="post-footer-tags">
+                <span class="text-color-light text-small">TAGGED IN</span><br>
+                
+    <a class="tag tag--primary tag--small t-link" href="/tags/smali/">smali</a>
+
+            </div>
+        
+        
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2015/01/09/用TextSwitcher实现文字切换动画/" data-tooltip="用TextSwitcher实现文字切换动画" aria-label="PREVIOUS: 用TextSwitcher实现文字切换动画">
+                
+                    <i class="fa fa-angle-left" aria-hidden="true"></i>
+                    <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2014/12/24/调整DrawerLayout中抽屉组件的打开速度/" data-tooltip="调整DrawerLayout中抽屉组件的打开速度" aria-label="NEXT: 调整DrawerLayout中抽屉组件的打开速度">
+                
+                    <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                    <i class="fa fa-angle-right" aria-hidden="true"></i>
+                </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a class="post-action-btn btn btn--default btn-open-shareoptions" href="#btn-open-shareoptions" aria-label="Share this post">
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://xiaoo.ml/2015/01/08/一些smali不常见的语法/" title="Share on Facebook">
+                    <i class="fab fa-facebook" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://twitter.com/intent/tweet?text=https://xiaoo.ml/2015/01/08/一些smali不常见的语法/" title="Share on Twitter">
+                    <i class="fab fa-twitter" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://xiaoo.ml/2015/01/08/一些smali不常见的语法/" title="Share on Weibo">
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://xiaoo.ml/2015/01/08/一些smali不常见的语法/&amp;title=一些smali不常见的语法" title="Share on QQ">
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#" aria-label="Back to top">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+        
+        
+            
+        
+    </div>
+</article>
+
+
+
+
+
+                
+
+                
+                <footer id="footer" class="main-content-wrap">
+    <span class="copyrights">
+		Copyrights &copy; 2020 AndrewWang. All Rights Reserved.
+    </span>
+</footer>
+
+                
+
+            </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="2">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2015/01/09/用TextSwitcher实现文字切换动画/" data-tooltip="用TextSwitcher实现文字切换动画" aria-label="PREVIOUS: 用TextSwitcher实现文字切换动画">
+                
+                    <i class="fa fa-angle-left" aria-hidden="true"></i>
+                    <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2014/12/24/调整DrawerLayout中抽屉组件的打开速度/" data-tooltip="调整DrawerLayout中抽屉组件的打开速度" aria-label="NEXT: 调整DrawerLayout中抽屉组件的打开速度">
+                
+                    <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                    <i class="fa fa-angle-right" aria-hidden="true"></i>
+                </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a class="post-action-btn btn btn--default btn-open-shareoptions" href="#btn-open-shareoptions" aria-label="Share this post">
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://xiaoo.ml/2015/01/08/一些smali不常见的语法/" title="Share on Facebook">
+                    <i class="fab fa-facebook" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://twitter.com/intent/tweet?text=https://xiaoo.ml/2015/01/08/一些smali不常见的语法/" title="Share on Twitter">
+                    <i class="fab fa-twitter" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://xiaoo.ml/2015/01/08/一些smali不常见的语法/" title="Share on Weibo">
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://xiaoo.ml/2015/01/08/一些smali不常见的语法/&amp;title=一些smali不常见的语法" title="Share on QQ">
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#" aria-label="Back to top">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                
+    <div id="share-options-bar" class="share-options-bar" data-behavior="2">
+        <i id="btn-close-shareoptions" class="fa fa-times"></i>
+        <ul class="share-options">
+            
+                
+                
+                <li class="share-option">
+                    <a class="share-option-btn" target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://xiaoo.ml/2015/01/08/一些smali不常见的语法/">
+                        <i class="fab fa-facebook" aria-hidden="true"></i><span>Share on Facebook</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a class="share-option-btn" target="new" href="https://twitter.com/intent/tweet?text=https://xiaoo.ml/2015/01/08/一些smali不常见的语法/">
+                        <i class="fab fa-twitter" aria-hidden="true"></i><span>Share on Twitter</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a class="share-option-btn" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://xiaoo.ml/2015/01/08/一些smali不常见的语法/">
+                        <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a class="share-option-btn" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://xiaoo.ml/2015/01/08/一些smali不常见的语法/&amp;title=一些smali不常见的语法">
+                        <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
+                    </a>
+                </li>
+            
+        </ul>
+    </div>
+
+
+            
+        </div>
+        
+
+
+    
+        
+    
+
+<div id="about">
+    <div id="about-card">
+        <div id="about-btn-close">
+            <i class="fa fa-times"></i>
+        </div>
+        
+            <img id="about-card-picture" src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png" alt="Author&#39;s picture">
+        
+            <h4 id="about-card-name">AndrewWang</h4>
+        
+            <div id="about-card-bio"><p>凡是过去，皆为序章<br>须知参差百态，乃是幸福本源<br>邮箱：<a href="mailto:fernando_caudill@outlook.com" target="_blank">fernando_caudill@outlook.com</a></p>
+</div>
+        
+        
+            <div id="about-card-job">
+                <i class="fa fa-briefcase"></i>
+                <br>
+                <p>Android+Python</p>
+
+            </div>
+        
+        
+            <div id="about-card-location">
+                <i class="fa fa-map-marker-alt"></i>
+                <br>
+                Zhangzhou Fujian
+            </div>
+        
+    </div>
+</div>
+
+        
+            <div id="algolia-search-modal" class="modal-container">
+    <div class="modal">
+        <div class="modal-header">
+            <span class="close-button"><i class="fa fa-times"></i></span>
+            <a href="https://algolia.com" target="_blank" rel="noopener" class="searchby-algolia text-color-light link-unstyled">
+                <span class="searchby-algolia-text text-color-light text-small">by</span>
+                <img class="searchby-algolia-logo" src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/others/algolia-light.svg">
+            </a>
+            <i class="search-icon fa fa-search"></i>
+            <form id="algolia-search-form">
+                <input type="text" id="algolia-search-input" name="search" class="form-control input--large search-input" placeholder="Search ">
+            </form>
+        </div>
+        <div class="modal-body">
+            <div class="no-result text-color-light text-center">no post found</div>
+            <div class="results">
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2013/01/22/Cloneable和clone的使用，以及深复制与浅复制的区别/">
+                            <h3 class="media-heading">Cloneable和clone的使用，以及深复制与浅复制的区别</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Jan 22, 2013
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><ni>深浅复制总结下</ni></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2013/02/04/Ubuntu Problem/">
+                            <h3 class="media-heading">Ubuntu Problem</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Feb 4, 2013
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><ni>记录最近几年使用Ubuntu有用的Tips</ni></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2013/08/18/婚后，你一定会遇到更喜欢的人/">
+                            <h3 class="media-heading">婚后，你一定会遇到更喜欢的人</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Aug 18, 2013
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p>结婚后，你一定会遇到更喜欢的人。这件事几乎是肯定的。倒不是说先前结婚的人有多糟糕，也不是说后来出现的人有多美好。而是，你更了解自己了。</p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2013/11/09/ImageLoader must be init with configuration before using 错误解决方法/">
+                            <h3 class="media-heading">ImageLoader must be init with configuration before using 错误解决方法</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Nov 9, 2013
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p>最近开发过程中用到了开源项目Android-Universal-Image-Loader。<br></p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2013/12/14/把WordPress放在根目录而地址显示子目录的方法/">
+                            <h3 class="media-heading">把WordPress放在根目录而地址显示子目录的方法</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Dec 14, 2013
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p> 今天在狗爹（GoDaddy）随便买了个域名，想建个个人博客耍耍。<br></p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2014/02/15/越是聪明人，越容易在这件事上栽跟头/">
+                            <h3 class="media-heading">越是聪明人，越容易在这件事上栽跟头zt</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Feb 15, 2014
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p>一篇名为《李开复：聪明人创业为何容易失败》的商业报道里写道，记者问李开复，如何在短时间内对一个创业者或项目进行判断，有哪些指标或者投资方法论？<br></p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2014/04/02/Java中普通代码块，构造代码块，静态代码块区别及代码示例/">
+                            <h3 class="media-heading">Java中普通代码块，构造代码块，静态代码块区别及代码示例</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Apr 2, 2014
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p>执行顺序：（优先级从高到低）静态代码块&gt;main方法&gt;构造代码块&gt;构造方法。其中静态代码块只执行一次。构造代码块在每次创建对象是都会执行。<br></p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2014/04/14/getApplicationContext()、getBasecontext()、getApplication() 区别/">
+                            <h3 class="media-heading">getApplicationContext()、getBasecontext()、getApplication() 区别</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Apr 14, 2014
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><ni>搞清区别联系很重要，虽然好多情况下能通用的。</ni></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2014/04/24/使用注解来统计算法时间/">
+                            <h3 class="media-heading">使用注解统计算法运行时间</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Apr 24, 2014
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p>一直以为注解并没有什么卵用，后来用了butterknift和spring组件后才知道自定义组件可以完成很多任务。<br></p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2014/05/22/git merge和rebase的区别/">
+                            <h3 class="media-heading">git merge和rebase的区别</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    May 22, 2014
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><ni>一直以来都以为rebase是合并冲突的一种手段，和merge一样的，用哪个都行。</ni></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+            </div>
+        </div>
+        <div class="modal-footer">
+            <p class="results-count text-medium" data-message-zero="no post found" data-message-one="1 post found" data-message-other="{n} posts found">
+                80 posts found
+            </p>
+        </div>
+    </div>
+</div>
+
+        
+        
+<div id="cover" style="background-image:url('https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/cover.jpg');"></div>
+        <!--SCRIPTS-->
+<script src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/js/script-dbd16rvloemmuxdzniplmnxxvwoz24eya9wol0b7vvmlokgqsjivmb8dnscy.min.js"></script>
+<!--SCRIPTS END-->
+
+    
+
+
+    <script src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/js/moment-with-locales.min.js"></script>
+    <script src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/js/algoliasearch.min.js"></script>
+    <script>
+        var algoliaClient = algoliasearch('NPCJXUJXHV', '519d0ecd5f05b733ac031d89154c7bbb');
+        var algoliaIndex = algoliaClient.initIndex('my-hexo-blog');
+    </script>
+
+
+    </body>
+</html>

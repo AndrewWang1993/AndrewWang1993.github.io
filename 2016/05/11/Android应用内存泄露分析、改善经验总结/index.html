@@ -1,0 +1,791 @@
+
+<!DOCTYPE html>
+<html lang="en">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="AndrewWang&#39;s Blog">
+    <title>Android应用内存泄露分析、改善经验总结 - AndrewWang&#39;s Blog</title>
+    <meta name="author" content="AndrewWang">
+    
+        <meta name="keywords" content="hexo,javascript,android,java,JS,Python,">
+    
+    
+        <link rel="icon" href="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/favicon(8).png">
+    
+    
+        <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+    
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"AndrewWang","sameAs":["https://github.com/AndrewWang1993","https://stackoverflow.com/users/4209302/andrewwang","mailto:fernando_caudill@outlook.com"],"image":"https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png"},"articleBody":"通过这几天对好几个应用的内存泄露检测和改善，效果明显\n前言\n完全退出应用时，手动触发GC，从原来占有内存100多M降到低于20M；\n手动触发GC后，通过adb shell dumpsys meminfo packagename -d查看Activity和View的数量也趋近于0了（没有做到归零是因为SDK中存在内存泄露，需要中间层去处理）；\n发现了一个SDK中的内存泄露（Android InputMethodManager 导致的内存泄露及解决方案）；\n发现一个MTK Webview的内存泄露(org.chromium.android_webview.AwPasswordHandler.java中private static AwPasswordHandler sInstance = null导致的内存泄露)。\n\n从结果来看我分析和改善内存泄露的方法是对的，这个过程并不复杂，所以可以梳理总结出来作为分享。\n原则对于性能问题，分析和改善有必要遵循以下原则：\n\n一切看数据说话，不能跟着感觉走，感觉哪有问题就去改，很有可能会适得其反；\n性能优化是一个持续的过程，需要不断地改善，不要想着一气呵成；\n对于性能问题，不一定必须要改善，受限于架构或者其它原因某些问题可能会很难改善，必须要先保证能用，再才考虑好用。\n改善后一定要验证，任何一个地方的改动都需要验证，避免因为改善性能问题导致其它的问题。\n\n步骤下面是我在针对内存泄露这个性能问题上的解决步骤：\n优先处理常见的内存泄露问题首先解决常见的内存泄露问题，这个过程可以借助Android Studio的Analyze-Inspect Code对代码做静态分析，常见的内存泄露问题有：\n\n非静态内部类导致的内存泄露，比如Handler，解决方法是将内部类写成静态内部类，在静态内部类中使用软引用/弱引用持有外部类的实例，eg：\n\n12345678910111213141516171819202122static class ExerciseHandler extends Handler&#123;       private SoftReference&lt;ExerciseActivity&gt; exerciseActivitySoftReference = null;        public ExerciseHandler(ExerciseActivity exerciseActivity)&#123;           exerciseActivitySoftReference = new SoftReference&lt;ExerciseActivity&gt;(exerciseActivity);       &#125;        @Override       public void handleMessage(Message msg) &#123;           ExerciseActivity exerciseActivity = exerciseActivitySoftReference.get();           if(null != exerciseActivity)&#123;               super.handleMessage(msg);               switch (msg.what) &#123;                   case MSG_XX:                       exerciseActivity.***;                       break；                   default:                       break;               &#125;           &#125;       &#125;   &#125;\n\nIO操作后，没有关闭文件导致的内存泄露，比如Cursor、FileInputStream、FileOutputStream使用完后没有关闭，这种问题在Android Studio 2.0中能够通过静态代码分析检查出来，直接改善就可以了；\n自定义View中使用TypedArray后，没有recycle，这种问题也可以在Android Studio 2.0中能够通过静态代码分析检查出来，直接改善就可以了；\n某些地方使用了四大组件的context，在离开这些组件后仍然持有其context导致的内存泄露，这种问题属于共识，在编写代码的过程中就应该按照规则来，使用Application的Context就可以解决这类内存泄露的问题了，至于什么情况下应该使用四大组件的Context\n还有一种不属于内存泄露，但在分析内存泄露的问题时应该一并解决：同一个APP，将图片放在不同的drawable文件夹下，在相同的设备上占用的内存情况不一样，具体可以参见：关于Android中图片大小、内存占用与drawable文件夹关系的研究与分析。解决这个问题遵循以下原则就可以了：\n\n\nUI只提供一套高分辨率的图，图片建议放在drawable-xxhdpi文件夹下（放在xxxhdpi或者更高分辨率的文件夹下没有必要，权衡利弊，照顾主流设备即可），这样在低分辨率设备中图片的大小只是压缩，不会存在内存增大的情况；\n涉及到桌面插件或者不需要缩放的图片，放在drawable-nodpi文件夹下，这个文件夹下的图片在任何设备上都是不会缩放的。\n\n通过工具检查程序运行后的内存泄露通过上面的步骤，应用中的大部分内存泄露问题都能够得到解决，还有一些内存泄露，需要运行程序，分析运行后的内存快照来解决，比如注册之后没有反注册、类中的静态成员变量导致的内存泄露、SDK中的内存泄露等。解决这类问题可以分两步进行：\n通过内存泄露检测工具先定位是哪有问题，内存泄露的检测有两种比较便捷的方式：\n\n一种是使用开源项目Leakcanary，需要添加到代码中，运行后生成分析结果；\n另一种方式是使用adb shell dumpsys meminfo packagename -d命令，在进入一个界面之前查看一遍Activity和View的数量，在退出这个界面之后再查看一遍Activity和View的数量，对比进入前和进入后Activity和View数量的变化情况，如果有差异，则说明存在内存泄露（在使用命令查看Activity和View的数量之前，记得手动触发GC）。\n然后通过MAT取程序运行时的内存快照做详细分析，对于MAT的使用，网上有很多优质的文章，比如：Android 性能优化之使用MAT分析内存泄露问题，在使用MAT前，有必要知道这几点：\n\n\n不要指望MAT明确告诉你哪里存在内存泄露，这需要你根据上一步骤首先定位到可能存在内存泄露的类，然后借助MAT确认是否真的存在内存泄露，具体哪个地方存在内存泄露；\n借助Retained Size分析某一个类及与之相关的实例所消耗的内存，如果这个类的Retained Size比较大，优先分析；\n检查某个类是否存在内存泄露时，排除其软/弱/虚引用，右键某个类→Merge Shortest Paths to GC Roots→exclude all phantom/weak/soft etc.references。\n\n验证改善效果根据个人经验，我一般是这样验证改善效果的，运行程序，各个功能跑一遍，确保没有改出问题，完全退出程序，手动触发GC，然后通过adb shell dumpsys meminfo packagename -d查看Activivites和Views的数量是否趋近于0；如果不是0，通过Leakcanary检查可能存在内存泄露的地方，继续通过MAT分析，周而复始，改善到自己满意为止。\n","dateCreated":"2016-05-11T16:10:00+08:00","dateModified":"2020-11-20T08:50:05+08:00","datePublished":"2016-05-11T16:10:00+08:00","description":"通过这几天对好几个应用的内存泄露检测和改善，效果明显","headline":"Android应用内存泄露分析、改善经验总结","image":[],"mainEntityOfPage":{"@type":"WebPage","@id":"https://xiaoo.ml/2016/05/11/Android应用内存泄露分析、改善经验总结/"},"publisher":{"@type":"Organization","name":"AndrewWang","sameAs":["https://github.com/AndrewWang1993","https://stackoverflow.com/users/4209302/andrewwang","mailto:fernando_caudill@outlook.com"],"image":"https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png","logo":{"@type":"ImageObject","url":"https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png"}},"url":"https://xiaoo.ml/2016/05/11/Android应用内存泄露分析、改善经验总结/"}</script>
+    <meta name="description" content="通过这几天对好几个应用的内存泄露检测和改善，效果明显">
+<meta name="keywords" content="hexo,javascript,android,java,JS,Python">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="Android应用内存泄露分析、改善经验总结">
+<meta property="og:url" content="https://xiaoo.ml/2016/05/11/Android应用内存泄露分析、改善经验总结/index.html">
+<meta property="og:site_name" content="AndrewWang&#39;s Blog">
+<meta property="og:description" content="通过这几天对好几个应用的内存泄露检测和改善，效果明显">
+<meta property="og:locale" content="en">
+<meta property="og:updated_time" content="2020-11-20T00:50:05.780Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Android应用内存泄露分析、改善经验总结">
+<meta name="twitter:description" content="通过这几天对好几个应用的内存泄露检测和改善，效果明显">
+<meta name="twitter:creator" content="@https:&#x2F;&#x2F;twitter.com&#x2F;JamesMcMurr">
+    
+    
+        
+    
+    
+        <meta property="og:image" content="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png"/>
+    
+    
+    
+    
+    <!--STYLES-->
+    <link rel="stylesheet" href="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/css/style-c4ozcsklz4kht2pebhp44xorvyverh23toayhn7i6ubrpyedak24hv1v0hyd.min.css">
+    <!--STYLES END-->
+    
+
+    
+</head>
+
+    <body>
+        <div id="blog">
+            <!-- Define author's picture -->
+
+
+    
+        
+            
+        
+    
+
+<header id="header" data-behavior="2">
+    <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
+    <div class="header-title">
+        <a class="header-title-link" href="/ ">AndrewWang&#39;s Blog</a>
+    </div>
+    
+        
+            <a class="header-right-picture " href="#about">
+        
+        
+            <img class="header-picture" src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png" alt="Author&#39;s picture">
+        
+        </a>
+    
+</header>
+
+            <!-- Define author's picture -->
+
+
+
+        
+    
+
+<nav id="sidebar" data-behavior="2">
+    <div class="sidebar-container">
+        
+            <div class="sidebar-profile">
+                <a href="/#about">
+                    <img class="sidebar-profile-picture" src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png" alt="Author&#39;s picture">
+                </a>
+                <h4 class="sidebar-profile-name">AndrewWang</h4>
+                
+                    <h5 class="sidebar-profile-bio"><p>凡是过去，皆为序章<br>须知参差百态，乃是幸福本源<br>邮箱：<a href="mailto:fernando_caudill@outlook.com" target="_blank">fernando_caudill@outlook.com</a></p>
+</h5>
+                
+            </div>
+        
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/ " title="Home">
+                    
+                        <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Home</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/all-categories" title="Categories">
+                    
+                        <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Categories</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/all-tags" title="Tags">
+                    
+                        <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Tags</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/all-archives" title="Archives">
+                    
+                        <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Archives</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link open-algolia-search" href="#search" title="Search">
+                    
+                        <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Search</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="#about" title="About">
+                    
+                        <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">About</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="https://github.com/AndrewWang1993" target="_blank" rel="noopener" title="GitHub">
+                    
+                        <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">GitHub</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="https://stackoverflow.com/users/4209302/andrewwang" target="_blank" rel="noopener" title="Stack Overflow">
+                    
+                        <i class="sidebar-button-icon fab fa-stack-overflow" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Stack Overflow</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="mailto:fernando_caudill@outlook.com" target="_blank" rel="noopener" title="Mail">
+                    
+                        <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Mail</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/atom.xml" title="RSS">
+                    
+                        <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">RSS</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+    </div>
+</nav>
+
+            
+            <div id="main" data-behavior="2"
+                 class="
+                        hasCoverMetaIn
+                        ">
+                
+<article class="post">
+    
+    
+        <div class="post-header main-content-wrap text-left">
+    
+        <h1 class="post-title">
+            Android应用内存泄露分析、改善经验总结
+        </h1>
+    
+    
+        <div class="post-meta">
+    <time datetime="2016-05-11T16:10:00+08:00">
+	
+		    May 11, 2016
+    	
+    </time>
+    
+        <span>in </span>
+        
+    <a class="category-link" href="/categories/Android/">Android</a>
+
+
+    
+</div>
+
+    
+</div>
+
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
+            <p>通过这几天对好几个应用的内存泄露检测和改善，效果明显<br><a id="more"></a></p>
+<h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><ul>
+<li>完全退出应用时，手动触发GC，从原来占有内存100多M降到低于20M；</li>
+<li>手动触发GC后，通过adb shell dumpsys meminfo packagename -d查看Activity和View的数量也趋近于0了（没有做到归零是因为SDK中存在内存泄露，需要中间层去处理）；</li>
+<li>发现了一个SDK中的内存泄露（Android InputMethodManager 导致的内存泄露及解决方案）；</li>
+<li>发现一个MTK Webview的内存泄露(org.chromium.android_webview.AwPasswordHandler.java中private static AwPasswordHandler sInstance = null导致的内存泄露)。</li>
+</ul>
+<p>从结果来看我分析和改善内存泄露的方法是对的，这个过程并不复杂，所以可以梳理总结出来作为分享。</p>
+<h2 id="原则"><a href="#原则" class="headerlink" title="原则"></a>原则</h2><p>对于性能问题，分析和改善有必要遵循以下原则：</p>
+<ul>
+<li>一切看数据说话，不能跟着感觉走，感觉哪有问题就去改，很有可能会适得其反；</li>
+<li>性能优化是一个持续的过程，需要不断地改善，不要想着一气呵成；</li>
+<li>对于性能问题，不一定必须要改善，受限于架构或者其它原因某些问题可能会很难改善，必须要先保证能用，再才考虑好用。</li>
+<li>改善后一定要验证，任何一个地方的改动都需要验证，避免因为改善性能问题导致其它的问题。</li>
+</ul>
+<h2 id="步骤"><a href="#步骤" class="headerlink" title="步骤"></a>步骤</h2><p>下面是我在针对内存泄露这个性能问题上的解决步骤：</p>
+<h3 id="优先处理常见的内存泄露问题"><a href="#优先处理常见的内存泄露问题" class="headerlink" title="优先处理常见的内存泄露问题"></a>优先处理常见的内存泄露问题</h3><p>首先解决常见的内存泄露问题，这个过程可以借助Android Studio的Analyze-Inspect Code对代码做静态分析，常见的内存泄露问题有：</p>
+<ul>
+<li>非静态内部类导致的内存泄露，比如Handler，解决方法是将内部类写成静态内部类，在静态内部类中使用软引用/弱引用持有外部类的实例，eg：</li>
+</ul>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">static</span> <span class="class"><span class="keyword">class</span> <span class="title">ExerciseHandler</span> <span class="keyword">extends</span> <span class="title">Handler</span></span>&#123; </span><br><span class="line">      <span class="keyword">private</span> SoftReference&lt;ExerciseActivity&gt; exerciseActivitySoftReference = <span class="keyword">null</span>; </span><br><span class="line"> </span><br><span class="line">      <span class="function"><span class="keyword">public</span> <span class="title">ExerciseHandler</span><span class="params">(ExerciseActivity exerciseActivity)</span></span>&#123; </span><br><span class="line">          exerciseActivitySoftReference = <span class="keyword">new</span> SoftReference&lt;ExerciseActivity&gt;(exerciseActivity); </span><br><span class="line">      &#125; </span><br><span class="line"> </span><br><span class="line">      <span class="meta">@Override</span> </span><br><span class="line">      <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">handleMessage</span><span class="params">(Message msg)</span> </span>&#123; </span><br><span class="line">          ExerciseActivity exerciseActivity = exerciseActivitySoftReference.get(); </span><br><span class="line">          <span class="keyword">if</span>(<span class="keyword">null</span> != exerciseActivity)&#123; </span><br><span class="line">              <span class="keyword">super</span>.handleMessage(msg); </span><br><span class="line">              <span class="keyword">switch</span> (msg.what) &#123; </span><br><span class="line">                  <span class="keyword">case</span> MSG_XX: </span><br><span class="line">                      exerciseActivity.***; </span><br><span class="line">                      <span class="keyword">break</span>； </span><br><span class="line">                  <span class="keyword">default</span>: </span><br><span class="line">                      <span class="keyword">break</span>; </span><br><span class="line">              &#125; </span><br><span class="line">          &#125; </span><br><span class="line">      &#125; </span><br><span class="line">  &#125;</span><br></pre></td></tr></table></figure>
+<ul>
+<li>IO操作后，没有关闭文件导致的内存泄露，比如Cursor、FileInputStream、FileOutputStream使用完后没有关闭，这种问题在Android Studio 2.0中能够通过静态代码分析检查出来，直接改善就可以了；</li>
+<li>自定义View中使用TypedArray后，没有recycle，这种问题也可以在Android Studio 2.0中能够通过静态代码分析检查出来，直接改善就可以了；</li>
+<li>某些地方使用了四大组件的context，在离开这些组件后仍然持有其context导致的内存泄露，这种问题属于共识，在编写代码的过程中就应该按照规则来，使用Application的Context就可以解决这类内存泄露的问题了，至于什么情况下应该使用四大组件的Context</li>
+<li>还有一种不属于内存泄露，但在分析内存泄露的问题时应该一并解决：同一个APP，将图片放在不同的drawable文件夹下，在相同的设备上占用的内存情况不一样，具体可以参见：关于Android中图片大小、内存占用与drawable文件夹关系的研究与分析。解决这个问题遵循以下原则就可以了：</li>
+</ul>
+<ol>
+<li>UI只提供一套高分辨率的图，图片建议放在drawable-xxhdpi文件夹下（放在xxxhdpi或者更高分辨率的文件夹下没有必要，权衡利弊，照顾主流设备即可），这样在低分辨率设备中图片的大小只是压缩，不会存在内存增大的情况；</li>
+<li>涉及到桌面插件或者不需要缩放的图片，放在drawable-nodpi文件夹下，这个文件夹下的图片在任何设备上都是不会缩放的。</li>
+</ol>
+<h2 id="通过工具检查程序运行后的内存泄露"><a href="#通过工具检查程序运行后的内存泄露" class="headerlink" title="通过工具检查程序运行后的内存泄露"></a>通过工具检查程序运行后的内存泄露</h2><p>通过上面的步骤，应用中的大部分内存泄露问题都能够得到解决，还有一些内存泄露，需要运行程序，分析运行后的内存快照来解决，比如注册之后没有反注册、类中的静态成员变量导致的内存泄露、SDK中的内存泄露等。解决这类问题可以分两步进行：</p>
+<p>通过内存泄露检测工具先定位是哪有问题，内存泄露的检测有两种比较便捷的方式：</p>
+<ul>
+<li>一种是使用开源项目Leakcanary，需要添加到代码中，运行后生成分析结果；</li>
+<li>另一种方式是使用adb shell dumpsys meminfo packagename -d命令，在进入一个界面之前查看一遍Activity和View的数量，在退出这个界面之后再查看一遍Activity和View的数量，对比进入前和进入后Activity和View数量的变化情况，如果有差异，则说明存在内存泄露（在使用命令查看Activity和View的数量之前，记得手动触发GC）。</li>
+<li>然后通过MAT取程序运行时的内存快照做详细分析，对于MAT的使用，网上有很多优质的文章，比如：Android 性能优化之使用MAT分析内存泄露问题，在使用MAT前，有必要知道这几点：</li>
+</ul>
+<ol>
+<li>不要指望MAT明确告诉你哪里存在内存泄露，这需要你根据上一步骤首先定位到可能存在内存泄露的类，然后借助MAT确认是否真的存在内存泄露，具体哪个地方存在内存泄露；</li>
+<li>借助Retained Size分析某一个类及与之相关的实例所消耗的内存，如果这个类的Retained Size比较大，优先分析；</li>
+<li>检查某个类是否存在内存泄露时，排除其软/弱/虚引用，右键某个类→Merge Shortest Paths to GC Roots→exclude all phantom/weak/soft etc.references。</li>
+</ol>
+<h2 id="验证改善效果"><a href="#验证改善效果" class="headerlink" title="验证改善效果"></a>验证改善效果</h2><p>根据个人经验，我一般是这样验证改善效果的，运行程序，各个功能跑一遍，确保没有改出问题，完全退出程序，手动触发GC，然后通过adb shell dumpsys meminfo packagename -d查看Activivites和Views的数量是否趋近于0；如果不是0，通过Leakcanary检查可能存在内存泄露的地方，继续通过MAT分析，周而复始，改善到自己满意为止。</p>
+
+            
+
+        </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
+        
+        
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2016/08/04/有没有安全的工作？/" data-tooltip="有没有安全的工作？" aria-label="PREVIOUS: 有没有安全的工作？">
+                
+                    <i class="fa fa-angle-left" aria-hidden="true"></i>
+                    <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2016/04/04/Looper,Handler,HandlerThread/" data-tooltip="Looper,Handler,HandlerThread" aria-label="NEXT: Looper,Handler,HandlerThread">
+                
+                    <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                    <i class="fa fa-angle-right" aria-hidden="true"></i>
+                </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a class="post-action-btn btn btn--default btn-open-shareoptions" href="#btn-open-shareoptions" aria-label="Share this post">
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://xiaoo.ml/2016/05/11/Android应用内存泄露分析、改善经验总结/" title="Share on Facebook">
+                    <i class="fab fa-facebook" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://twitter.com/intent/tweet?text=https://xiaoo.ml/2016/05/11/Android应用内存泄露分析、改善经验总结/" title="Share on Twitter">
+                    <i class="fab fa-twitter" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://xiaoo.ml/2016/05/11/Android应用内存泄露分析、改善经验总结/" title="Share on Weibo">
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://xiaoo.ml/2016/05/11/Android应用内存泄露分析、改善经验总结/&amp;title=Android应用内存泄露分析、改善经验总结" title="Share on QQ">
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#" aria-label="Back to top">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+        
+        
+            
+        
+    </div>
+</article>
+
+
+
+
+
+                
+
+                
+                <footer id="footer" class="main-content-wrap">
+    <span class="copyrights">
+		Copyrights &copy; 2020 AndrewWang. All Rights Reserved.
+    </span>
+</footer>
+
+                
+
+            </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="2">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2016/08/04/有没有安全的工作？/" data-tooltip="有没有安全的工作？" aria-label="PREVIOUS: 有没有安全的工作？">
+                
+                    <i class="fa fa-angle-left" aria-hidden="true"></i>
+                    <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2016/04/04/Looper,Handler,HandlerThread/" data-tooltip="Looper,Handler,HandlerThread" aria-label="NEXT: Looper,Handler,HandlerThread">
+                
+                    <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                    <i class="fa fa-angle-right" aria-hidden="true"></i>
+                </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a class="post-action-btn btn btn--default btn-open-shareoptions" href="#btn-open-shareoptions" aria-label="Share this post">
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://xiaoo.ml/2016/05/11/Android应用内存泄露分析、改善经验总结/" title="Share on Facebook">
+                    <i class="fab fa-facebook" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://twitter.com/intent/tweet?text=https://xiaoo.ml/2016/05/11/Android应用内存泄露分析、改善经验总结/" title="Share on Twitter">
+                    <i class="fab fa-twitter" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://xiaoo.ml/2016/05/11/Android应用内存泄露分析、改善经验总结/" title="Share on Weibo">
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://xiaoo.ml/2016/05/11/Android应用内存泄露分析、改善经验总结/&amp;title=Android应用内存泄露分析、改善经验总结" title="Share on QQ">
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#" aria-label="Back to top">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                
+    <div id="share-options-bar" class="share-options-bar" data-behavior="2">
+        <i id="btn-close-shareoptions" class="fa fa-times"></i>
+        <ul class="share-options">
+            
+                
+                
+                <li class="share-option">
+                    <a class="share-option-btn" target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://xiaoo.ml/2016/05/11/Android应用内存泄露分析、改善经验总结/">
+                        <i class="fab fa-facebook" aria-hidden="true"></i><span>Share on Facebook</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a class="share-option-btn" target="new" href="https://twitter.com/intent/tweet?text=https://xiaoo.ml/2016/05/11/Android应用内存泄露分析、改善经验总结/">
+                        <i class="fab fa-twitter" aria-hidden="true"></i><span>Share on Twitter</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a class="share-option-btn" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://xiaoo.ml/2016/05/11/Android应用内存泄露分析、改善经验总结/">
+                        <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a class="share-option-btn" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://xiaoo.ml/2016/05/11/Android应用内存泄露分析、改善经验总结/&amp;title=Android应用内存泄露分析、改善经验总结">
+                        <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
+                    </a>
+                </li>
+            
+        </ul>
+    </div>
+
+
+            
+        </div>
+        
+
+
+    
+        
+    
+
+<div id="about">
+    <div id="about-card">
+        <div id="about-btn-close">
+            <i class="fa fa-times"></i>
+        </div>
+        
+            <img id="about-card-picture" src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png" alt="Author&#39;s picture">
+        
+            <h4 id="about-card-name">AndrewWang</h4>
+        
+            <div id="about-card-bio"><p>凡是过去，皆为序章<br>须知参差百态，乃是幸福本源<br>邮箱：<a href="mailto:fernando_caudill@outlook.com" target="_blank">fernando_caudill@outlook.com</a></p>
+</div>
+        
+        
+            <div id="about-card-job">
+                <i class="fa fa-briefcase"></i>
+                <br>
+                <p>Android+Python</p>
+
+            </div>
+        
+        
+            <div id="about-card-location">
+                <i class="fa fa-map-marker-alt"></i>
+                <br>
+                Zhangzhou Fujian
+            </div>
+        
+    </div>
+</div>
+
+        
+            <div id="algolia-search-modal" class="modal-container">
+    <div class="modal">
+        <div class="modal-header">
+            <span class="close-button"><i class="fa fa-times"></i></span>
+            <a href="https://algolia.com" target="_blank" rel="noopener" class="searchby-algolia text-color-light link-unstyled">
+                <span class="searchby-algolia-text text-color-light text-small">by</span>
+                <img class="searchby-algolia-logo" src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/others/algolia-light.svg">
+            </a>
+            <i class="search-icon fa fa-search"></i>
+            <form id="algolia-search-form">
+                <input type="text" id="algolia-search-input" name="search" class="form-control input--large search-input" placeholder="Search ">
+            </form>
+        </div>
+        <div class="modal-body">
+            <div class="no-result text-color-light text-center">no post found</div>
+            <div class="results">
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2013/01/22/Cloneable和clone的使用，以及深复制与浅复制的区别/">
+                            <h3 class="media-heading">Cloneable和clone的使用，以及深复制与浅复制的区别</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Jan 22, 2013
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><ni>深浅复制总结下</ni></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2013/02/04/Ubuntu Problem/">
+                            <h3 class="media-heading">Ubuntu Problem</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Feb 4, 2013
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><ni>记录最近几年使用Ubuntu有用的Tips</ni></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2013/08/18/婚后，你一定会遇到更喜欢的人/">
+                            <h3 class="media-heading">婚后，你一定会遇到更喜欢的人</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Aug 18, 2013
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p>结婚后，你一定会遇到更喜欢的人。这件事几乎是肯定的。倒不是说先前结婚的人有多糟糕，也不是说后来出现的人有多美好。而是，你更了解自己了。</p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2013/11/09/ImageLoader must be init with configuration before using 错误解决方法/">
+                            <h3 class="media-heading">ImageLoader must be init with configuration before using 错误解决方法</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Nov 9, 2013
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p>最近开发过程中用到了开源项目Android-Universal-Image-Loader。<br></p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2013/12/14/把WordPress放在根目录而地址显示子目录的方法/">
+                            <h3 class="media-heading">把WordPress放在根目录而地址显示子目录的方法</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Dec 14, 2013
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p> 今天在狗爹（GoDaddy）随便买了个域名，想建个个人博客耍耍。<br></p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2014/02/15/越是聪明人，越容易在这件事上栽跟头/">
+                            <h3 class="media-heading">越是聪明人，越容易在这件事上栽跟头zt</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Feb 15, 2014
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p>一篇名为《李开复：聪明人创业为何容易失败》的商业报道里写道，记者问李开复，如何在短时间内对一个创业者或项目进行判断，有哪些指标或者投资方法论？<br></p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2014/04/02/Java中普通代码块，构造代码块，静态代码块区别及代码示例/">
+                            <h3 class="media-heading">Java中普通代码块，构造代码块，静态代码块区别及代码示例</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Apr 2, 2014
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p>执行顺序：（优先级从高到低）静态代码块&gt;main方法&gt;构造代码块&gt;构造方法。其中静态代码块只执行一次。构造代码块在每次创建对象是都会执行。<br></p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2014/04/14/getApplicationContext()、getBasecontext()、getApplication() 区别/">
+                            <h3 class="media-heading">getApplicationContext()、getBasecontext()、getApplication() 区别</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Apr 14, 2014
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><ni>搞清区别联系很重要，虽然好多情况下能通用的。</ni></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2014/04/24/使用注解来统计算法时间/">
+                            <h3 class="media-heading">使用注解统计算法运行时间</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Apr 24, 2014
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p>一直以为注解并没有什么卵用，后来用了butterknift和spring组件后才知道自定义组件可以完成很多任务。<br></p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2014/05/22/git merge和rebase的区别/">
+                            <h3 class="media-heading">git merge和rebase的区别</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    May 22, 2014
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><ni>一直以来都以为rebase是合并冲突的一种手段，和merge一样的，用哪个都行。</ni></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+            </div>
+        </div>
+        <div class="modal-footer">
+            <p class="results-count text-medium" data-message-zero="no post found" data-message-one="1 post found" data-message-other="{n} posts found">
+                80 posts found
+            </p>
+        </div>
+    </div>
+</div>
+
+        
+        
+<div id="cover" style="background-image:url('https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/cover.jpg');"></div>
+        <!--SCRIPTS-->
+<script src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/js/script-dbd16rvloemmuxdzniplmnxxvwoz24eya9wol0b7vvmlokgqsjivmb8dnscy.min.js"></script>
+<!--SCRIPTS END-->
+
+    
+
+
+    <script src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/js/moment-with-locales.min.js"></script>
+    <script src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/js/algoliasearch.min.js"></script>
+    <script>
+        var algoliaClient = algoliasearch('NPCJXUJXHV', '519d0ecd5f05b733ac031d89154c7bbb');
+        var algoliaIndex = algoliaClient.initIndex('my-hexo-blog');
+    </script>
+
+
+    </body>
+</html>

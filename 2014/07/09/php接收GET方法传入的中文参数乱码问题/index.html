@@ -1,0 +1,780 @@
+
+<!DOCTYPE html>
+<html lang="en">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="AndrewWang&#39;s Blog">
+    <title>php接收GET方法传入的中文参数乱码问题 - AndrewWang&#39;s Blog</title>
+    <meta name="author" content="AndrewWang">
+    
+        <meta name="keywords" content="hexo,javascript,android,java,JS,Python,">
+    
+    
+        <link rel="icon" href="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/favicon(8).png">
+    
+    
+        <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+    
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"AndrewWang","sameAs":["https://github.com/AndrewWang1993","https://stackoverflow.com/users/4209302/andrewwang","mailto:fernando_caudill@outlook.com"],"image":"https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png"},"articleBody":"PHP中文编码问题多\n\n\n最近做PHP的webService服务器，发现用Get方法获取参数时获取到的参数时乱码。一番折腾后发现时浏览器本地语言的问题。\n首先先来看下简单的测试代码：12345&lt;?php  header(\"Content-Type:text/html;charset=UTF-8\");  $name = $_GET['name'];  var_dump($name);  ?&gt;\n测试结果如下：\n\n代码中声明了响应内容的编码为utf-8，显示的内容确实乱码。在这里请注意var_dump出变量的长度只有4 ，很显然，两个中文字的长度在utf-8编码下肯定不止4个字节，然后我们再看一下Firefox的访问这个页面url\n\nFireFox会自动将中文url编码，所以我们可以看到测试变成了%B2%E2%CA%D4，很明显，这里一个字是两个字节，是gb2313、gbk等中文编码格式，而不是utf-8编码。如果我们把页面的编码切换为gbk，中文参数就会显示正常，参见下图\n接下来我们做另外一个测试，代码如下：\n12345678910&lt;?php  header(\"Content-Type:text/html;charset=UTF-8\");  $name = $_GET['name'];  var_dump($name);  ?&gt;   &lt;form method=\"GET\"&gt;  &lt;input name=\"name\" /&gt;  &lt;input type=\"submit\" value=\"输入中文提交\" /&gt;  &lt;/form&gt;\n测试结果，正常显示：\n\n那么，是什么导致这个问题的发生呢？答案是浏览器默认编码在作怪，我们都用的是中文系统，浏览器默认的编码自然也会设置为本地化，例如我自己电脑上的IE和FireFox的默认编码都是gb系列的。浏览器在请求用户输入的url 时会默认把url中的中文以默认的编码格式发送而不是以页面的编码格式发送，这就是为什么页面中带有中文的链接正常而我们手动输入的链接会乱码的原因。同理，如果我们把浏览器的默认编码调整为utf-8，那么输入url中的中文则会按照utf-8编码。\n除了上面的之外，还有以下情况会出现这种情况：\n如果gbk编码的页面生成的地址链接到utf-8的页面，gbk页面的中文是按照gbk的格式编码传送给下个页面，那么utf-8编码接收后肯定会出现乱码。IIS的url重写模块，重写后的中文编码也是gbk，如果你的页面是utf-8编码，那么重写参数将会失效。像这些情况，我们就需要使用php内置的转码函数来处理编码问题了：\n方案1：\n1$name = iconv(\"gbk\",\"utf-8\",$name);\n方案2:\n1mb_convert_encoding($name, \"utf-8\", \"gbk\");\nPS：实测IE浏览器默认GET编码方式采用最少空间占用模式，即采用GBK码，php页面添加该转换函数才能正常使用。而Firefox和Chrom默认UTF-8无需该转换函数。","dateCreated":"2014-07-09T16:10:00+08:00","dateModified":"2020-11-20T08:50:05+08:00","datePublished":"2014-07-09T16:10:00+08:00","description":"PHP中文编码问题多","headline":"php接收GET方法传入的中文参数乱码问题","image":[],"mainEntityOfPage":{"@type":"WebPage","@id":"https://xiaoo.ml/2014/07/09/php接收GET方法传入的中文参数乱码问题/"},"publisher":{"@type":"Organization","name":"AndrewWang","sameAs":["https://github.com/AndrewWang1993","https://stackoverflow.com/users/4209302/andrewwang","mailto:fernando_caudill@outlook.com"],"image":"https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png","logo":{"@type":"ImageObject","url":"https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png"}},"url":"https://xiaoo.ml/2014/07/09/php接收GET方法传入的中文参数乱码问题/","keywords":"Tips"}</script>
+    <meta name="description" content="PHP中文编码问题多">
+<meta name="keywords" content="Tips">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="php接收GET方法传入的中文参数乱码问题">
+<meta property="og:url" content="https://xiaoo.ml/2014/07/09/php接收GET方法传入的中文参数乱码问题/index.html">
+<meta property="og:site_name" content="AndrewWang&#39;s Blog">
+<meta property="og:description" content="PHP中文编码问题多">
+<meta property="og:locale" content="en">
+<meta property="og:image" content="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/php1.png">
+<meta property="og:image" content="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/php2.png">
+<meta property="og:image" content="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/php3.png">
+<meta property="og:image" content="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/php4.png">
+<meta property="og:updated_time" content="2020-11-20T00:50:05.790Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="php接收GET方法传入的中文参数乱码问题">
+<meta name="twitter:description" content="PHP中文编码问题多">
+<meta name="twitter:image" content="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/php1.png">
+<meta name="twitter:creator" content="@https:&#x2F;&#x2F;twitter.com&#x2F;JamesMcMurr">
+    
+    
+        
+    
+    
+        <meta property="og:image" content="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png"/>
+    
+    
+    
+    
+    <!--STYLES-->
+    <link rel="stylesheet" href="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/css/style-c4ozcsklz4kht2pebhp44xorvyverh23toayhn7i6ubrpyedak24hv1v0hyd.min.css">
+    <!--STYLES END-->
+    
+
+    
+</head>
+
+    <body>
+        <div id="blog">
+            <!-- Define author's picture -->
+
+
+    
+        
+            
+        
+    
+
+<header id="header" data-behavior="2">
+    <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
+    <div class="header-title">
+        <a class="header-title-link" href="/ ">AndrewWang&#39;s Blog</a>
+    </div>
+    
+        
+            <a class="header-right-picture " href="#about">
+        
+        
+            <img class="header-picture" src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png" alt="Author&#39;s picture">
+        
+        </a>
+    
+</header>
+
+            <!-- Define author's picture -->
+
+
+
+        
+    
+
+<nav id="sidebar" data-behavior="2">
+    <div class="sidebar-container">
+        
+            <div class="sidebar-profile">
+                <a href="/#about">
+                    <img class="sidebar-profile-picture" src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png" alt="Author&#39;s picture">
+                </a>
+                <h4 class="sidebar-profile-name">AndrewWang</h4>
+                
+                    <h5 class="sidebar-profile-bio"><p>凡是过去，皆为序章<br>须知参差百态，乃是幸福本源<br>邮箱：<a href="mailto:fernando_caudill@outlook.com" target="_blank">fernando_caudill@outlook.com</a></p>
+</h5>
+                
+            </div>
+        
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/ " title="Home">
+                    
+                        <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Home</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/all-categories" title="Categories">
+                    
+                        <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Categories</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/all-tags" title="Tags">
+                    
+                        <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Tags</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/all-archives" title="Archives">
+                    
+                        <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Archives</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link open-algolia-search" href="#search" title="Search">
+                    
+                        <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Search</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="#about" title="About">
+                    
+                        <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">About</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="https://github.com/AndrewWang1993" target="_blank" rel="noopener" title="GitHub">
+                    
+                        <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">GitHub</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="https://stackoverflow.com/users/4209302/andrewwang" target="_blank" rel="noopener" title="Stack Overflow">
+                    
+                        <i class="sidebar-button-icon fab fa-stack-overflow" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Stack Overflow</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="mailto:fernando_caudill@outlook.com" target="_blank" rel="noopener" title="Mail">
+                    
+                        <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Mail</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/atom.xml" title="RSS">
+                    
+                        <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">RSS</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+    </div>
+</nav>
+
+            
+            <div id="main" data-behavior="2"
+                 class="
+                        hasCoverMetaIn
+                        ">
+                
+<article class="post">
+    
+    
+        <div class="post-header main-content-wrap text-left">
+    
+        <h1 class="post-title">
+            php接收GET方法传入的中文参数乱码问题
+        </h1>
+    
+    
+        <div class="post-meta">
+    <time datetime="2014-07-09T16:10:00+08:00">
+	
+		    Jul 09, 2014
+    	
+    </time>
+    
+        <span>in </span>
+        
+    <a class="category-link" href="/categories/PHP/">PHP</a>
+
+
+    
+</div>
+
+    
+</div>
+
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
+            <ni>PHP中文编码问题多</ni>
+
+<a id="more"></a>
+<p>最近做PHP的webService服务器，发现用Get方法获取参数时获取到的参数时乱码。一番折腾后发现时浏览器本地语言的问题。</p>
+<p>首先先来看下简单的测试代码：<br><figure class="highlight php"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">&lt;?php</span>  </span><br><span class="line">header(<span class="string">"Content-Type:text/html;charset=UTF-8"</span>);  </span><br><span class="line">$name = $_GET[<span class="string">'name'</span>];  </span><br><span class="line">var_dump($name);  </span><br><span class="line"><span class="meta">?&gt;</span></span><br></pre></td></tr></table></figure></p>
+<p>测试结果如下：</p>
+<p><img src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/php1.png" alt=""></p>
+<p>代码中声明了响应内容的编码为utf-8，显示的内容确实乱码。在这里请注意var_dump出变量的长度只有4 ，很显然，两个中文字的长度在utf-8编码下肯定不止4个字节，然后我们再看一下Firefox的访问这个页面url</p>
+<p><img src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/php2.png" alt=""></p>
+<p>FireFox会自动将中文url编码，所以我们可以看到测试变成了%B2%E2%CA%D4，很明显，这里一个字是两个字节，是gb2313、gbk等中文编码格式，而不是utf-8编码。如果我们把页面的编码切换为gbk，中文参数就会显示正常，参见下图<br><img src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/php3.png" alt=""></p>
+<p>接下来我们做另外一个测试，代码如下：</p>
+<figure class="highlight php"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">&lt;?php</span>  </span><br><span class="line">header(<span class="string">"Content-Type:text/html;charset=UTF-8"</span>);  </span><br><span class="line">$name = $_GET[<span class="string">'name'</span>];  </span><br><span class="line">var_dump($name);  </span><br><span class="line"><span class="meta">?&gt;</span>  </span><br><span class="line"> </span><br><span class="line">&lt;form method=<span class="string">"GET"</span>&gt;  </span><br><span class="line">&lt;input name=<span class="string">"name"</span> /&gt;  </span><br><span class="line">&lt;input type=<span class="string">"submit"</span> value=<span class="string">"输入中文提交"</span> /&gt;  </span><br><span class="line">&lt;/form&gt;</span><br></pre></td></tr></table></figure>
+<p>测试结果，正常显示：</p>
+<p><img src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/php4.png" alt=""></p>
+<p>那么，是什么导致这个问题的发生呢？答案是浏览器默认编码在作怪，我们都用的是中文系统，浏览器默认的编码自然也会设置为本地化，例如我自己电脑上的IE和FireFox的默认编码都是gb系列的。浏览器在请求用户输入的url 时会默认把url中的中文以默认的编码格式发送而不是以页面的编码格式发送，这就是为什么页面中带有中文的链接正常而我们手动输入的链接会乱码的原因。同理，如果我们把浏览器的默认编码调整为utf-8，那么输入url中的中文则会按照utf-8编码。</p>
+<p>除了上面的之外，还有以下情况会出现这种情况：</p>
+<p>如果gbk编码的页面生成的地址链接到utf-8的页面，gbk页面的中文是按照gbk的格式编码传送给下个页面，那么utf-8编码接收后肯定会出现乱码。IIS的url重写模块，重写后的中文编码也是gbk，如果你的页面是utf-8编码，那么重写参数将会失效。像这些情况，我们就需要使用php内置的转码函数来处理编码问题了：</p>
+<p>方案1：</p>
+<figure class="highlight php"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$name = iconv(<span class="string">"gbk"</span>,<span class="string">"utf-8"</span>,$name);</span><br></pre></td></tr></table></figure>
+<p>方案2:</p>
+<figure class="highlight php"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mb_convert_encoding($name, <span class="string">"utf-8"</span>, <span class="string">"gbk"</span>);</span><br></pre></td></tr></table></figure>
+<ni>PS：实测IE浏览器默认GET编码方式采用最少空间占用模式，即采用GBK码，php页面添加该转换函数才能正常使用。而Firefox和Chrom默认UTF-8无需该转换函数。</ni>
+            
+
+        </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
+        
+            <div class="post-footer-tags">
+                <span class="text-color-light text-small">TAGGED IN</span><br>
+                
+    <a class="tag tag--primary tag--small t-link" href="/tags/Tips/">Tips</a>
+
+            </div>
+        
+        
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2014/08/02/Andoird Studio 错误非法字符ufeff解决方案/" data-tooltip="Andoird Studio 错误非法字符&#39;\ufeff&#39; 解决方案。" aria-label="PREVIOUS: Andoird Studio 错误非法字符&#39;\ufeff&#39; 解决方案。">
+                
+                    <i class="fa fa-angle-left" aria-hidden="true"></i>
+                    <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2014/07/08/正则表达式-贪婪与非贪婪匹配/" data-tooltip="正则表达式-贪婪与非贪婪匹配" aria-label="NEXT: 正则表达式-贪婪与非贪婪匹配">
+                
+                    <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                    <i class="fa fa-angle-right" aria-hidden="true"></i>
+                </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a class="post-action-btn btn btn--default btn-open-shareoptions" href="#btn-open-shareoptions" aria-label="Share this post">
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://xiaoo.ml/2014/07/09/php接收GET方法传入的中文参数乱码问题/" title="Share on Facebook">
+                    <i class="fab fa-facebook" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://twitter.com/intent/tweet?text=https://xiaoo.ml/2014/07/09/php接收GET方法传入的中文参数乱码问题/" title="Share on Twitter">
+                    <i class="fab fa-twitter" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://xiaoo.ml/2014/07/09/php接收GET方法传入的中文参数乱码问题/" title="Share on Weibo">
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://xiaoo.ml/2014/07/09/php接收GET方法传入的中文参数乱码问题/&amp;title=php接收GET方法传入的中文参数乱码问题" title="Share on QQ">
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#" aria-label="Back to top">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+        
+        
+            
+        
+    </div>
+</article>
+
+
+
+
+
+                
+
+                
+                <footer id="footer" class="main-content-wrap">
+    <span class="copyrights">
+		Copyrights &copy; 2020 AndrewWang. All Rights Reserved.
+    </span>
+</footer>
+
+                
+
+            </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="2">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2014/08/02/Andoird Studio 错误非法字符ufeff解决方案/" data-tooltip="Andoird Studio 错误非法字符&#39;\ufeff&#39; 解决方案。" aria-label="PREVIOUS: Andoird Studio 错误非法字符&#39;\ufeff&#39; 解决方案。">
+                
+                    <i class="fa fa-angle-left" aria-hidden="true"></i>
+                    <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2014/07/08/正则表达式-贪婪与非贪婪匹配/" data-tooltip="正则表达式-贪婪与非贪婪匹配" aria-label="NEXT: 正则表达式-贪婪与非贪婪匹配">
+                
+                    <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                    <i class="fa fa-angle-right" aria-hidden="true"></i>
+                </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a class="post-action-btn btn btn--default btn-open-shareoptions" href="#btn-open-shareoptions" aria-label="Share this post">
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://xiaoo.ml/2014/07/09/php接收GET方法传入的中文参数乱码问题/" title="Share on Facebook">
+                    <i class="fab fa-facebook" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://twitter.com/intent/tweet?text=https://xiaoo.ml/2014/07/09/php接收GET方法传入的中文参数乱码问题/" title="Share on Twitter">
+                    <i class="fab fa-twitter" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://xiaoo.ml/2014/07/09/php接收GET方法传入的中文参数乱码问题/" title="Share on Weibo">
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://xiaoo.ml/2014/07/09/php接收GET方法传入的中文参数乱码问题/&amp;title=php接收GET方法传入的中文参数乱码问题" title="Share on QQ">
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#" aria-label="Back to top">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                
+    <div id="share-options-bar" class="share-options-bar" data-behavior="2">
+        <i id="btn-close-shareoptions" class="fa fa-times"></i>
+        <ul class="share-options">
+            
+                
+                
+                <li class="share-option">
+                    <a class="share-option-btn" target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://xiaoo.ml/2014/07/09/php接收GET方法传入的中文参数乱码问题/">
+                        <i class="fab fa-facebook" aria-hidden="true"></i><span>Share on Facebook</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a class="share-option-btn" target="new" href="https://twitter.com/intent/tweet?text=https://xiaoo.ml/2014/07/09/php接收GET方法传入的中文参数乱码问题/">
+                        <i class="fab fa-twitter" aria-hidden="true"></i><span>Share on Twitter</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a class="share-option-btn" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://xiaoo.ml/2014/07/09/php接收GET方法传入的中文参数乱码问题/">
+                        <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a class="share-option-btn" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://xiaoo.ml/2014/07/09/php接收GET方法传入的中文参数乱码问题/&amp;title=php接收GET方法传入的中文参数乱码问题">
+                        <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
+                    </a>
+                </li>
+            
+        </ul>
+    </div>
+
+
+            
+        </div>
+        
+
+
+    
+        
+    
+
+<div id="about">
+    <div id="about-card">
+        <div id="about-btn-close">
+            <i class="fa fa-times"></i>
+        </div>
+        
+            <img id="about-card-picture" src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png" alt="Author&#39;s picture">
+        
+            <h4 id="about-card-name">AndrewWang</h4>
+        
+            <div id="about-card-bio"><p>凡是过去，皆为序章<br>须知参差百态，乃是幸福本源<br>邮箱：<a href="mailto:fernando_caudill@outlook.com" target="_blank">fernando_caudill@outlook.com</a></p>
+</div>
+        
+        
+            <div id="about-card-job">
+                <i class="fa fa-briefcase"></i>
+                <br>
+                <p>Android+Python</p>
+
+            </div>
+        
+        
+            <div id="about-card-location">
+                <i class="fa fa-map-marker-alt"></i>
+                <br>
+                Zhangzhou Fujian
+            </div>
+        
+    </div>
+</div>
+
+        
+            <div id="algolia-search-modal" class="modal-container">
+    <div class="modal">
+        <div class="modal-header">
+            <span class="close-button"><i class="fa fa-times"></i></span>
+            <a href="https://algolia.com" target="_blank" rel="noopener" class="searchby-algolia text-color-light link-unstyled">
+                <span class="searchby-algolia-text text-color-light text-small">by</span>
+                <img class="searchby-algolia-logo" src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/others/algolia-light.svg">
+            </a>
+            <i class="search-icon fa fa-search"></i>
+            <form id="algolia-search-form">
+                <input type="text" id="algolia-search-input" name="search" class="form-control input--large search-input" placeholder="Search ">
+            </form>
+        </div>
+        <div class="modal-body">
+            <div class="no-result text-color-light text-center">no post found</div>
+            <div class="results">
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2013/01/22/Cloneable和clone的使用，以及深复制与浅复制的区别/">
+                            <h3 class="media-heading">Cloneable和clone的使用，以及深复制与浅复制的区别</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Jan 22, 2013
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><ni>深浅复制总结下</ni></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2013/02/04/Ubuntu Problem/">
+                            <h3 class="media-heading">Ubuntu Problem</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Feb 4, 2013
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><ni>记录最近几年使用Ubuntu有用的Tips</ni></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2013/08/18/婚后，你一定会遇到更喜欢的人/">
+                            <h3 class="media-heading">婚后，你一定会遇到更喜欢的人</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Aug 18, 2013
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p>结婚后，你一定会遇到更喜欢的人。这件事几乎是肯定的。倒不是说先前结婚的人有多糟糕，也不是说后来出现的人有多美好。而是，你更了解自己了。</p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2013/11/09/ImageLoader must be init with configuration before using 错误解决方法/">
+                            <h3 class="media-heading">ImageLoader must be init with configuration before using 错误解决方法</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Nov 9, 2013
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p>最近开发过程中用到了开源项目Android-Universal-Image-Loader。<br></p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2013/12/14/把WordPress放在根目录而地址显示子目录的方法/">
+                            <h3 class="media-heading">把WordPress放在根目录而地址显示子目录的方法</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Dec 14, 2013
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p> 今天在狗爹（GoDaddy）随便买了个域名，想建个个人博客耍耍。<br></p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2014/02/15/越是聪明人，越容易在这件事上栽跟头/">
+                            <h3 class="media-heading">越是聪明人，越容易在这件事上栽跟头zt</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Feb 15, 2014
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p>一篇名为《李开复：聪明人创业为何容易失败》的商业报道里写道，记者问李开复，如何在短时间内对一个创业者或项目进行判断，有哪些指标或者投资方法论？<br></p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2014/04/02/Java中普通代码块，构造代码块，静态代码块区别及代码示例/">
+                            <h3 class="media-heading">Java中普通代码块，构造代码块，静态代码块区别及代码示例</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Apr 2, 2014
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p>执行顺序：（优先级从高到低）静态代码块&gt;main方法&gt;构造代码块&gt;构造方法。其中静态代码块只执行一次。构造代码块在每次创建对象是都会执行。<br></p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2014/04/14/getApplicationContext()、getBasecontext()、getApplication() 区别/">
+                            <h3 class="media-heading">getApplicationContext()、getBasecontext()、getApplication() 区别</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Apr 14, 2014
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><ni>搞清区别联系很重要，虽然好多情况下能通用的。</ni></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2014/04/24/使用注解来统计算法时间/">
+                            <h3 class="media-heading">使用注解统计算法运行时间</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Apr 24, 2014
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p>一直以为注解并没有什么卵用，后来用了butterknift和spring组件后才知道自定义组件可以完成很多任务。<br></p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2014/05/22/git merge和rebase的区别/">
+                            <h3 class="media-heading">git merge和rebase的区别</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    May 22, 2014
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><ni>一直以来都以为rebase是合并冲突的一种手段，和merge一样的，用哪个都行。</ni></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+            </div>
+        </div>
+        <div class="modal-footer">
+            <p class="results-count text-medium" data-message-zero="no post found" data-message-one="1 post found" data-message-other="{n} posts found">
+                80 posts found
+            </p>
+        </div>
+    </div>
+</div>
+
+        
+        
+<div id="cover" style="background-image:url('https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/cover.jpg');"></div>
+        <!--SCRIPTS-->
+<script src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/js/script-dbd16rvloemmuxdzniplmnxxvwoz24eya9wol0b7vvmlokgqsjivmb8dnscy.min.js"></script>
+<!--SCRIPTS END-->
+
+    
+
+
+    <script src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/js/moment-with-locales.min.js"></script>
+    <script src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/js/algoliasearch.min.js"></script>
+    <script>
+        var algoliaClient = algoliasearch('NPCJXUJXHV', '519d0ecd5f05b733ac031d89154c7bbb');
+        var algoliaIndex = algoliaClient.initIndex('my-hexo-blog');
+    </script>
+
+
+    </body>
+</html>

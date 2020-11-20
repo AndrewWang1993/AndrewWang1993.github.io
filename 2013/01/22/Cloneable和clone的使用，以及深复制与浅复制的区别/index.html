@@ -1,0 +1,771 @@
+
+<!DOCTYPE html>
+<html lang="en">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="AndrewWang&#39;s Blog">
+    <title>Cloneable和clone的使用，以及深复制与浅复制的区别 - AndrewWang&#39;s Blog</title>
+    <meta name="author" content="AndrewWang">
+    
+        <meta name="keywords" content="hexo,javascript,android,java,JS,Python,">
+    
+    
+        <link rel="icon" href="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/favicon(8).png">
+    
+    
+        <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+    
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"AndrewWang","sameAs":["https://github.com/AndrewWang1993","https://stackoverflow.com/users/4209302/andrewwang","mailto:fernando_caudill@outlook.com"],"image":"https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png"},"articleBody":"深浅复制总结下\n\n\n一.Cloneable 的用途  Cloneable和Serializable一样都是标记型接口，它们内部都没有方法和属性，implements Cloneable表示该对象能被克隆，能使用Object.clone()方法。如果没有implements Cloneable的类调用Object.clone()方法就会抛出CloneNotSupportedException。\n二.克隆的分类\n浅克隆（shallow clone），浅拷贝是指拷贝对象时仅仅拷贝对象本身和对象中的基本变量，而不拷贝对象包含的引用指向的对象。\n深克隆（deep clone），深拷贝不仅拷贝对象本身，而且拷贝对象包含的引用指向的所有对象。\n\n举例区别一下：对象A1中包含对B1的引用，B1中包含对C1的引用。浅拷贝A1得到A2，A2中依然包含对B1的引用，B1中依然包含对C1的引用。深拷贝则是对浅拷贝的递归，深拷贝A1得到A2，A2中包含对B2（B1的copy）的引用，B2中包含对C2（C1的copy）的引用。\n三.克隆的举例  要让一个对象进行克隆，其实就是两个步骤：\n\n让该类实现java.lang.Cloneable接口；\n重写（override）Object类的clone()方法。1234567891011121314151617181920212223242526272829303132333435363738394041424344454647484950515253545556575859606162636465666768697071  public class Wife implements Cloneable &#123;      private int id;      private String name;        public int getId() &#123;          return id;      &#125;        public void setId(int id) &#123;          this.id = id;      &#125;        public String getName() &#123;          return name;      &#125;        public void setName(String name) &#123;          this.name = name;      &#125;        public Wife(int id,String name) &#123;          this.id = id;          this.name = name;      &#125;        @Override      public int hashCode() &#123;//myeclipse自动生成的          final int prime = 31;          int result = 1;          result = prime * result + id;          result = prime * result + ((name == null) ? 0 : name.hashCode());          return result;      &#125;        @Override      public boolean equals(Object obj) &#123;//myeclipse自动生成的          if (this == obj)              return true;          if (obj == null)              return false;          if (getClass() != obj.getClass())              return false;          Wife other = (Wife) obj;          if (id != other.id)              return false;          if (name == null) &#123;              if (other.name != null)                  return false;          &#125; else if (!name.equals(other.name))              return false;          return true;      &#125;        @Override      public Object clone() throws CloneNotSupportedException &#123;          return super.clone();      &#125;        /**      * @param args      * @throws CloneNotSupportedException       */      public static void main(String[] args) throws CloneNotSupportedException &#123;          Wife wife = new Wife(1,\"wang\");          Wife wife2 = null;          wife2 = (Wife) wife.clone();          System.out.println(\"class same=\"+(wife.getClass()==wife2.getClass()));//true          System.out.println(\"object same=\"+(wife==wife2));//false          System.out.println(\"object equals=\"+(wife.equals(wife2)));//true      &#125;  &#125;\n\n\n四.浅克隆的举例123456789101112131415161718192021222324252627282930313233343536373839404142434445464748495051525354555657585960616263646566676869public class Husband implements Cloneable &#123;      private int id;      private Wife wife;            public Wife getWife() &#123;          return wife;      &#125;        public void setWife(Wife wife) &#123;          this.wife = wife;      &#125;        public int getId() &#123;          return id;      &#125;        public void setId(int id) &#123;          this.id = id;      &#125;        public Husband(int id) &#123;          this.id = id;      &#125;        @Override      public int hashCode() &#123;//myeclipse自动生成的          final int prime = 31;          int result = 1;          result = prime * result + id;          return result;      &#125;        @Override      protected Object clone() throws CloneNotSupportedException &#123;          return super.clone();      &#125;        @Override      public boolean equals(Object obj) &#123;//myeclipse自动生成的          if (this == obj)              return true;          if (obj == null)              return false;          if (getClass() != obj.getClass())              return false;          Husband other = (Husband) obj;          if (id != other.id)              return false;          return true;      &#125;        /**      * @param args      * @throws CloneNotSupportedException       */      public static void main(String[] args) throws CloneNotSupportedException &#123;          Wife wife = new Wife(1,\"jin\");          Husband husband = new Husband(1);          Husband husband2 = null;          husband.setWife(wife);          husband2 = (Husband) husband.clone();          System.out.println(\"husband class same=\"+(husband.getClass()==husband2.getClass()));//true          System.out.println(\"husband object same=\"+(husband==husband2));//false          System.out.println(\"husband object equals=\"+(husband2.equals(husband)));//true          System.out.println(\"wife class same=\"+(husband.getWife().getClass()==husband2.getWife().getClass()));//true          System.out.println(\"wife object same=\"+(husband.getWife()==husband2.getWife()));//true          System.out.println(\"wife object equals=\"+(husband.getWife().equals(husband.getWife())));//true      &#125;  &#125;\n五.深克隆的举例  如果要深克隆，需要重写（override）Object类的clone()方法，并且在方法内部调用持有对象的clone()方法；注意如下代码的clone()方法1234567891011121314151617181920212223242526272829303132333435363738394041424344454647484950515253545556575859606162636465666768697071  public class Husband implements Cloneable &#123;      private int id;      private Wife wife;            public Wife getWife() &#123;          return wife;      &#125;        public void setWife(Wife wife) &#123;          this.wife = wife;      &#125;        public int getId() &#123;          return id;      &#125;        public void setId(int id) &#123;          this.id = id;      &#125;        public Husband(int id) &#123;          this.id = id;      &#125;        @Override      public int hashCode() &#123;//myeclipse自动生成的          final int prime = 31;          int result = 1;          result = prime * result + id;          return result;      &#125;        @Override      protected Object clone() throws CloneNotSupportedException &#123;          Husband husband = (Husband) super.clone();          husband.wife = (Wife) husband.getWife().clone();          return husband;      &#125;        @Override      public boolean equals(Object obj) &#123;//myeclipse自动生成的          if (this == obj)              return true;          if (obj == null)              return false;          if (getClass() != obj.getClass())              return false;          Husband other = (Husband) obj;          if (id != other.id)              return false;          return true;      &#125;        /**      * @param args      * @throws CloneNotSupportedException       */      public static void main(String[] args) throws CloneNotSupportedException &#123;          Wife wife = new Wife(1,\"jin\");          Husband husband = new Husband(1);          Husband husband2 = null;          husband.setWife(wife);          husband2 = (Husband) husband.clone();          System.out.println(\"husband class same=\"+(husband.getClass()==husband2.getClass()));//true          System.out.println(\"husband object same=\"+(husband==husband2));//false          System.out.println(\"husband object equals=\"+(husband.equals(husband)));//true          System.out.println(\"wife class same=\"+(husband.getWife().getClass()==husband2.getWife().getClass()));//true          System.out.println(\"wife object same=\"+(husband.getWife()==husband2.getWife()));//false          System.out.println(\"wife object equals=\"+(husband.getWife().equals(husband.getWife())));//true      &#125;  &#125;\n但是也有不足之处，如果Husband内有N个对象属性，突然改变了类的结构，还要重新修改clone()方法。解决办法：可以使用Serializable运用反序列化手段，调用java.io.ObjectInputStream对象的 readObject()方法。\n六.使用字节流进行深克隆(暴力，直截了当)123456789public static &lt;T&gt; T clone(T obj) throws Exception &#123;    ByteArrayOutputStream bout = new ByteArrayOutputStream();    ObjectOutputStream oos = new ObjectOutputStream(bout);    oos.writeObject(obj);    ByteArrayInputStream bin = new ByteArrayInputStream(bout.toByteArray());    ObjectInputStream ois = new ObjectInputStream(bin);    return (T) ois.readObject();&#125;\n","dateCreated":"2013-01-22T16:10:00+08:00","dateModified":"2020-11-20T08:50:05+08:00","datePublished":"2013-01-22T16:10:00+08:00","description":"深浅复制总结下","headline":"Cloneable和clone的使用，以及深复制与浅复制的区别","image":[],"mainEntityOfPage":{"@type":"WebPage","@id":"https://xiaoo.ml/2013/01/22/Cloneable和clone的使用，以及深复制与浅复制的区别/"},"publisher":{"@type":"Organization","name":"AndrewWang","sameAs":["https://github.com/AndrewWang1993","https://stackoverflow.com/users/4209302/andrewwang","mailto:fernando_caudill@outlook.com"],"image":"https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png","logo":{"@type":"ImageObject","url":"https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png"}},"url":"https://xiaoo.ml/2013/01/22/Cloneable和clone的使用，以及深复制与浅复制的区别/","keywords":"RxJava"}</script>
+    <meta name="description" content="深浅复制总结下">
+<meta name="keywords" content="RxJava">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="Cloneable和clone的使用，以及深复制与浅复制的区别">
+<meta property="og:url" content="https://xiaoo.ml/2013/01/22/Cloneable和clone的使用，以及深复制与浅复制的区别/index.html">
+<meta property="og:site_name" content="AndrewWang&#39;s Blog">
+<meta property="og:description" content="深浅复制总结下">
+<meta property="og:locale" content="en">
+<meta property="og:updated_time" content="2020-11-20T00:50:05.781Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Cloneable和clone的使用，以及深复制与浅复制的区别">
+<meta name="twitter:description" content="深浅复制总结下">
+<meta name="twitter:creator" content="@https:&#x2F;&#x2F;twitter.com&#x2F;JamesMcMurr">
+    
+    
+        
+    
+    
+        <meta property="og:image" content="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png"/>
+    
+    
+    
+    
+    <!--STYLES-->
+    <link rel="stylesheet" href="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/css/style-c4ozcsklz4kht2pebhp44xorvyverh23toayhn7i6ubrpyedak24hv1v0hyd.min.css">
+    <!--STYLES END-->
+    
+
+    
+</head>
+
+    <body>
+        <div id="blog">
+            <!-- Define author's picture -->
+
+
+    
+        
+            
+        
+    
+
+<header id="header" data-behavior="2">
+    <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
+    <div class="header-title">
+        <a class="header-title-link" href="/ ">AndrewWang&#39;s Blog</a>
+    </div>
+    
+        
+            <a class="header-right-picture " href="#about">
+        
+        
+            <img class="header-picture" src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png" alt="Author&#39;s picture">
+        
+        </a>
+    
+</header>
+
+            <!-- Define author's picture -->
+
+
+
+        
+    
+
+<nav id="sidebar" data-behavior="2">
+    <div class="sidebar-container">
+        
+            <div class="sidebar-profile">
+                <a href="/#about">
+                    <img class="sidebar-profile-picture" src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png" alt="Author&#39;s picture">
+                </a>
+                <h4 class="sidebar-profile-name">AndrewWang</h4>
+                
+                    <h5 class="sidebar-profile-bio"><p>凡是过去，皆为序章<br>须知参差百态，乃是幸福本源<br>邮箱：<a href="mailto:fernando_caudill@outlook.com" target="_blank">fernando_caudill@outlook.com</a></p>
+</h5>
+                
+            </div>
+        
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/ " title="Home">
+                    
+                        <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Home</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/all-categories" title="Categories">
+                    
+                        <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Categories</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/all-tags" title="Tags">
+                    
+                        <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Tags</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/all-archives" title="Archives">
+                    
+                        <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Archives</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link open-algolia-search" href="#search" title="Search">
+                    
+                        <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Search</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="#about" title="About">
+                    
+                        <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">About</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="https://github.com/AndrewWang1993" target="_blank" rel="noopener" title="GitHub">
+                    
+                        <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">GitHub</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="https://stackoverflow.com/users/4209302/andrewwang" target="_blank" rel="noopener" title="Stack Overflow">
+                    
+                        <i class="sidebar-button-icon fab fa-stack-overflow" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Stack Overflow</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="mailto:fernando_caudill@outlook.com" target="_blank" rel="noopener" title="Mail">
+                    
+                        <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Mail</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/atom.xml" title="RSS">
+                    
+                        <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">RSS</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+    </div>
+</nav>
+
+            
+            <div id="main" data-behavior="2"
+                 class="
+                        hasCoverMetaIn
+                        ">
+                
+<article class="post">
+    
+    
+        <div class="post-header main-content-wrap text-left">
+    
+        <h1 class="post-title">
+            Cloneable和clone的使用，以及深复制与浅复制的区别
+        </h1>
+    
+    
+        <div class="post-meta">
+    <time datetime="2013-01-22T16:10:00+08:00">
+	
+		    Jan 22, 2013
+    	
+    </time>
+    
+        <span>in </span>
+        
+    <a class="category-link" href="/categories/Android/">Android</a>
+
+
+    
+</div>
+
+    
+</div>
+
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
+            <ni>深浅复制总结下</ni>
+
+<a id="more"></a>
+<h3 id="一-Cloneable-的用途"><a href="#一-Cloneable-的用途" class="headerlink" title="一.Cloneable 的用途"></a>一.Cloneable 的用途</h3><p>  Cloneable和Serializable一样都是标记型接口，它们内部都没有方法和属性，implements Cloneable表示该对象能被克隆，能使用Object.clone()方法。如果没有implements Cloneable的类调用Object.clone()方法就会抛出CloneNotSupportedException。</p>
+<h3 id="二-克隆的分类"><a href="#二-克隆的分类" class="headerlink" title="二.克隆的分类"></a>二.克隆的分类</h3><ol>
+<li>浅克隆（shallow clone），浅拷贝是指拷贝对象时仅仅拷贝对象本身和对象中的基本变量，而不拷贝对象包含的引用指向的对象。</li>
+<li>深克隆（deep clone），深拷贝不仅拷贝对象本身，而且拷贝对象包含的引用指向的所有对象。</li>
+</ol>
+<p>举例区别一下：对象A1中包含对B1的引用，B1中包含对C1的引用。浅拷贝A1得到A2，A2中依然包含对B1的引用，B1中依然包含对C1的引用。深拷贝则是对浅拷贝的递归，深拷贝A1得到A2，A2中包含对B2（B1的copy）的引用，B2中包含对C2（C1的copy）的引用。</p>
+<h3 id="三-克隆的举例"><a href="#三-克隆的举例" class="headerlink" title="三.克隆的举例"></a>三.克隆的举例</h3><p>  要让一个对象进行克隆，其实就是两个步骤：</p>
+<ol>
+<li>让该类实现java.lang.Cloneable接口；</li>
+<li>重写（override）Object类的clone()方法。<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br></pre></td><td class="code"><pre><span class="line">  <span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">Wife</span> <span class="keyword">implements</span> <span class="title">Cloneable</span> </span>&#123;  </span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">int</span> id;  </span><br><span class="line">    <span class="keyword">private</span> String name;  </span><br><span class="line">  </span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">int</span> <span class="title">getId</span><span class="params">()</span> </span>&#123;  </span><br><span class="line">        <span class="keyword">return</span> id;  </span><br><span class="line">    &#125;  </span><br><span class="line">  </span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">setId</span><span class="params">(<span class="keyword">int</span> id)</span> </span>&#123;  </span><br><span class="line">        <span class="keyword">this</span>.id = id;  </span><br><span class="line">    &#125;  </span><br><span class="line">  </span><br><span class="line">    <span class="function"><span class="keyword">public</span> String <span class="title">getName</span><span class="params">()</span> </span>&#123;  </span><br><span class="line">        <span class="keyword">return</span> name;  </span><br><span class="line">    &#125;  </span><br><span class="line">  </span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">setName</span><span class="params">(String name)</span> </span>&#123;  </span><br><span class="line">        <span class="keyword">this</span>.name = name;  </span><br><span class="line">    &#125;  </span><br><span class="line">  </span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="title">Wife</span><span class="params">(<span class="keyword">int</span> id,String name)</span> </span>&#123;  </span><br><span class="line">        <span class="keyword">this</span>.id = id;  </span><br><span class="line">        <span class="keyword">this</span>.name = name;  </span><br><span class="line">    &#125;  </span><br><span class="line">  </span><br><span class="line">    <span class="meta">@Override</span>  </span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">int</span> <span class="title">hashCode</span><span class="params">()</span> </span>&#123;<span class="comment">//myeclipse自动生成的  </span></span><br><span class="line">        <span class="keyword">final</span> <span class="keyword">int</span> prime = <span class="number">31</span>;  </span><br><span class="line">        <span class="keyword">int</span> result = <span class="number">1</span>;  </span><br><span class="line">        result = prime * result + id;  </span><br><span class="line">        result = prime * result + ((name == <span class="keyword">null</span>) ? <span class="number">0</span> : name.hashCode());  </span><br><span class="line">        <span class="keyword">return</span> result;  </span><br><span class="line">    &#125;  </span><br><span class="line">  </span><br><span class="line">    <span class="meta">@Override</span>  </span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">boolean</span> <span class="title">equals</span><span class="params">(Object obj)</span> </span>&#123;<span class="comment">//myeclipse自动生成的  </span></span><br><span class="line">        <span class="keyword">if</span> (<span class="keyword">this</span> == obj)  </span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">true</span>;  </span><br><span class="line">        <span class="keyword">if</span> (obj == <span class="keyword">null</span>)  </span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">false</span>;  </span><br><span class="line">        <span class="keyword">if</span> (getClass() != obj.getClass())  </span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">false</span>;  </span><br><span class="line">        Wife other = (Wife) obj;  </span><br><span class="line">        <span class="keyword">if</span> (id != other.id)  </span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">false</span>;  </span><br><span class="line">        <span class="keyword">if</span> (name == <span class="keyword">null</span>) &#123;  </span><br><span class="line">            <span class="keyword">if</span> (other.name != <span class="keyword">null</span>)  </span><br><span class="line">                <span class="keyword">return</span> <span class="keyword">false</span>;  </span><br><span class="line">        &#125; <span class="keyword">else</span> <span class="keyword">if</span> (!name.equals(other.name))  </span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">false</span>;  </span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">true</span>;  </span><br><span class="line">    &#125;  </span><br><span class="line">  </span><br><span class="line">    <span class="meta">@Override</span>  </span><br><span class="line">    <span class="function"><span class="keyword">public</span> Object <span class="title">clone</span><span class="params">()</span> <span class="keyword">throws</span> CloneNotSupportedException </span>&#123;  </span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">super</span>.clone();  </span><br><span class="line">    &#125;  </span><br><span class="line">  </span><br><span class="line">    <span class="comment">/** </span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> args </span></span><br><span class="line"><span class="comment">     * <span class="doctag">@throws</span> CloneNotSupportedException  </span></span><br><span class="line"><span class="comment">     */</span>  </span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> <span class="keyword">throws</span> CloneNotSupportedException </span>&#123;  </span><br><span class="line">        Wife wife = <span class="keyword">new</span> Wife(<span class="number">1</span>,<span class="string">"wang"</span>);  </span><br><span class="line">        Wife wife2 = <span class="keyword">null</span>;  </span><br><span class="line">        wife2 = (Wife) wife.clone();  </span><br><span class="line">        System.out.println(<span class="string">"class same="</span>+(wife.getClass()==wife2.getClass()));<span class="comment">//true  </span></span><br><span class="line">        System.out.println(<span class="string">"object same="</span>+(wife==wife2));<span class="comment">//false  </span></span><br><span class="line">        System.out.println(<span class="string">"object equals="</span>+(wife.equals(wife2)));<span class="comment">//true  </span></span><br><span class="line">    &#125;  </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+<h3 id="四-浅克隆的举例"><a href="#四-浅克隆的举例" class="headerlink" title="四.浅克隆的举例"></a>四.浅克隆的举例</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">Husband</span> <span class="keyword">implements</span> <span class="title">Cloneable</span> </span>&#123;  </span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">int</span> id;  </span><br><span class="line">    <span class="keyword">private</span> Wife wife;  </span><br><span class="line">      </span><br><span class="line">    <span class="function"><span class="keyword">public</span> Wife <span class="title">getWife</span><span class="params">()</span> </span>&#123;  </span><br><span class="line">        <span class="keyword">return</span> wife;  </span><br><span class="line">    &#125;  </span><br><span class="line">  </span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">setWife</span><span class="params">(Wife wife)</span> </span>&#123;  </span><br><span class="line">        <span class="keyword">this</span>.wife = wife;  </span><br><span class="line">    &#125;  </span><br><span class="line">  </span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">int</span> <span class="title">getId</span><span class="params">()</span> </span>&#123;  </span><br><span class="line">        <span class="keyword">return</span> id;  </span><br><span class="line">    &#125;  </span><br><span class="line">  </span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">setId</span><span class="params">(<span class="keyword">int</span> id)</span> </span>&#123;  </span><br><span class="line">        <span class="keyword">this</span>.id = id;  </span><br><span class="line">    &#125;  </span><br><span class="line">  </span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="title">Husband</span><span class="params">(<span class="keyword">int</span> id)</span> </span>&#123;  </span><br><span class="line">        <span class="keyword">this</span>.id = id;  </span><br><span class="line">    &#125;  </span><br><span class="line">  </span><br><span class="line">    <span class="meta">@Override</span>  </span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">int</span> <span class="title">hashCode</span><span class="params">()</span> </span>&#123;<span class="comment">//myeclipse自动生成的  </span></span><br><span class="line">        <span class="keyword">final</span> <span class="keyword">int</span> prime = <span class="number">31</span>;  </span><br><span class="line">        <span class="keyword">int</span> result = <span class="number">1</span>;  </span><br><span class="line">        result = prime * result + id;  </span><br><span class="line">        <span class="keyword">return</span> result;  </span><br><span class="line">    &#125;  </span><br><span class="line">  </span><br><span class="line">    <span class="meta">@Override</span>  </span><br><span class="line">    <span class="function"><span class="keyword">protected</span> Object <span class="title">clone</span><span class="params">()</span> <span class="keyword">throws</span> CloneNotSupportedException </span>&#123;  </span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">super</span>.clone();  </span><br><span class="line">    &#125;  </span><br><span class="line">  </span><br><span class="line">    <span class="meta">@Override</span>  </span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">boolean</span> <span class="title">equals</span><span class="params">(Object obj)</span> </span>&#123;<span class="comment">//myeclipse自动生成的  </span></span><br><span class="line">        <span class="keyword">if</span> (<span class="keyword">this</span> == obj)  </span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">true</span>;  </span><br><span class="line">        <span class="keyword">if</span> (obj == <span class="keyword">null</span>)  </span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">false</span>;  </span><br><span class="line">        <span class="keyword">if</span> (getClass() != obj.getClass())  </span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">false</span>;  </span><br><span class="line">        Husband other = (Husband) obj;  </span><br><span class="line">        <span class="keyword">if</span> (id != other.id)  </span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">false</span>;  </span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">true</span>;  </span><br><span class="line">    &#125;  </span><br><span class="line">  </span><br><span class="line">    <span class="comment">/** </span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> args </span></span><br><span class="line"><span class="comment">     * <span class="doctag">@throws</span> CloneNotSupportedException  </span></span><br><span class="line"><span class="comment">     */</span>  </span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> <span class="keyword">throws</span> CloneNotSupportedException </span>&#123;  </span><br><span class="line">        Wife wife = <span class="keyword">new</span> Wife(<span class="number">1</span>,<span class="string">"jin"</span>);  </span><br><span class="line">        Husband husband = <span class="keyword">new</span> Husband(<span class="number">1</span>);  </span><br><span class="line">        Husband husband2 = <span class="keyword">null</span>;  </span><br><span class="line">        husband.setWife(wife);  </span><br><span class="line">        husband2 = (Husband) husband.clone();  </span><br><span class="line">        System.out.println(<span class="string">"husband class same="</span>+(husband.getClass()==husband2.getClass()));<span class="comment">//true  </span></span><br><span class="line">        System.out.println(<span class="string">"husband object same="</span>+(husband==husband2));<span class="comment">//false  </span></span><br><span class="line">        System.out.println(<span class="string">"husband object equals="</span>+(husband2.equals(husband)));<span class="comment">//true  </span></span><br><span class="line">        System.out.println(<span class="string">"wife class same="</span>+(husband.getWife().getClass()==husband2.getWife().getClass()));<span class="comment">//true  </span></span><br><span class="line">        System.out.println(<span class="string">"wife object same="</span>+(husband.getWife()==husband2.getWife()));<span class="comment">//true  </span></span><br><span class="line">        System.out.println(<span class="string">"wife object equals="</span>+(husband.getWife().equals(husband.getWife())));<span class="comment">//true  </span></span><br><span class="line">    &#125;  </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="五-深克隆的举例"><a href="#五-深克隆的举例" class="headerlink" title="五.深克隆的举例"></a>五.深克隆的举例</h3><p>  如果要深克隆，需要重写（override）Object类的clone()方法，并且在方法内部调用持有对象的clone()方法；注意如下代码的clone()方法<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br></pre></td><td class="code"><pre><span class="line">  <span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">Husband</span> <span class="keyword">implements</span> <span class="title">Cloneable</span> </span>&#123;  </span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">int</span> id;  </span><br><span class="line">    <span class="keyword">private</span> Wife wife;  </span><br><span class="line">      </span><br><span class="line">    <span class="function"><span class="keyword">public</span> Wife <span class="title">getWife</span><span class="params">()</span> </span>&#123;  </span><br><span class="line">        <span class="keyword">return</span> wife;  </span><br><span class="line">    &#125;  </span><br><span class="line">  </span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">setWife</span><span class="params">(Wife wife)</span> </span>&#123;  </span><br><span class="line">        <span class="keyword">this</span>.wife = wife;  </span><br><span class="line">    &#125;  </span><br><span class="line">  </span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">int</span> <span class="title">getId</span><span class="params">()</span> </span>&#123;  </span><br><span class="line">        <span class="keyword">return</span> id;  </span><br><span class="line">    &#125;  </span><br><span class="line">  </span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">setId</span><span class="params">(<span class="keyword">int</span> id)</span> </span>&#123;  </span><br><span class="line">        <span class="keyword">this</span>.id = id;  </span><br><span class="line">    &#125;  </span><br><span class="line">  </span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="title">Husband</span><span class="params">(<span class="keyword">int</span> id)</span> </span>&#123;  </span><br><span class="line">        <span class="keyword">this</span>.id = id;  </span><br><span class="line">    &#125;  </span><br><span class="line">  </span><br><span class="line">    <span class="meta">@Override</span>  </span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">int</span> <span class="title">hashCode</span><span class="params">()</span> </span>&#123;<span class="comment">//myeclipse自动生成的  </span></span><br><span class="line">        <span class="keyword">final</span> <span class="keyword">int</span> prime = <span class="number">31</span>;  </span><br><span class="line">        <span class="keyword">int</span> result = <span class="number">1</span>;  </span><br><span class="line">        result = prime * result + id;  </span><br><span class="line">        <span class="keyword">return</span> result;  </span><br><span class="line">    &#125;  </span><br><span class="line">  </span><br><span class="line">    <span class="meta">@Override</span>  </span><br><span class="line">    <span class="function"><span class="keyword">protected</span> Object <span class="title">clone</span><span class="params">()</span> <span class="keyword">throws</span> CloneNotSupportedException </span>&#123;  </span><br><span class="line">        Husband husband = (Husband) <span class="keyword">super</span>.clone();  </span><br><span class="line">        husband.wife = (Wife) husband.getWife().clone();  </span><br><span class="line">        <span class="keyword">return</span> husband;  </span><br><span class="line">    &#125;  </span><br><span class="line">  </span><br><span class="line">    <span class="meta">@Override</span>  </span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">boolean</span> <span class="title">equals</span><span class="params">(Object obj)</span> </span>&#123;<span class="comment">//myeclipse自动生成的  </span></span><br><span class="line">        <span class="keyword">if</span> (<span class="keyword">this</span> == obj)  </span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">true</span>;  </span><br><span class="line">        <span class="keyword">if</span> (obj == <span class="keyword">null</span>)  </span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">false</span>;  </span><br><span class="line">        <span class="keyword">if</span> (getClass() != obj.getClass())  </span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">false</span>;  </span><br><span class="line">        Husband other = (Husband) obj;  </span><br><span class="line">        <span class="keyword">if</span> (id != other.id)  </span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">false</span>;  </span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">true</span>;  </span><br><span class="line">    &#125;  </span><br><span class="line">  </span><br><span class="line">    <span class="comment">/** </span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> args </span></span><br><span class="line"><span class="comment">     * <span class="doctag">@throws</span> CloneNotSupportedException  </span></span><br><span class="line"><span class="comment">     */</span>  </span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> <span class="keyword">throws</span> CloneNotSupportedException </span>&#123;  </span><br><span class="line">        Wife wife = <span class="keyword">new</span> Wife(<span class="number">1</span>,<span class="string">"jin"</span>);  </span><br><span class="line">        Husband husband = <span class="keyword">new</span> Husband(<span class="number">1</span>);  </span><br><span class="line">        Husband husband2 = <span class="keyword">null</span>;  </span><br><span class="line">        husband.setWife(wife);  </span><br><span class="line">        husband2 = (Husband) husband.clone();  </span><br><span class="line">        System.out.println(<span class="string">"husband class same="</span>+(husband.getClass()==husband2.getClass()));<span class="comment">//true  </span></span><br><span class="line">        System.out.println(<span class="string">"husband object same="</span>+(husband==husband2));<span class="comment">//false  </span></span><br><span class="line">        System.out.println(<span class="string">"husband object equals="</span>+(husband.equals(husband)));<span class="comment">//true  </span></span><br><span class="line">        System.out.println(<span class="string">"wife class same="</span>+(husband.getWife().getClass()==husband2.getWife().getClass()));<span class="comment">//true  </span></span><br><span class="line">        System.out.println(<span class="string">"wife object same="</span>+(husband.getWife()==husband2.getWife()));<span class="comment">//false  </span></span><br><span class="line">        System.out.println(<span class="string">"wife object equals="</span>+(husband.getWife().equals(husband.getWife())));<span class="comment">//true  </span></span><br><span class="line">    &#125;  </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>但是也有不足之处，如果Husband内有N个对象属性，突然改变了类的结构，还要重新修改clone()方法。解决办法：可以使用Serializable运用反序列化手段，调用java.io.ObjectInputStream对象的 readObject()方法。</p>
+<h3 id="六-使用字节流进行深克隆-暴力，直截了当"><a href="#六-使用字节流进行深克隆-暴力，直截了当" class="headerlink" title="六.使用字节流进行深克隆(暴力，直截了当)"></a>六.使用字节流进行深克隆(暴力，直截了当)</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">static</span> &lt;T&gt; <span class="function">T <span class="title">clone</span><span class="params">(T obj)</span> <span class="keyword">throws</span> Exception </span>&#123;</span><br><span class="line">    ByteArrayOutputStream bout = <span class="keyword">new</span> ByteArrayOutputStream();</span><br><span class="line">    ObjectOutputStream oos = <span class="keyword">new</span> ObjectOutputStream(bout);</span><br><span class="line">    oos.writeObject(obj);</span><br><span class="line"></span><br><span class="line">    ByteArrayInputStream bin = <span class="keyword">new</span> ByteArrayInputStream(bout.toByteArray());</span><br><span class="line">    ObjectInputStream ois = <span class="keyword">new</span> ObjectInputStream(bin);</span><br><span class="line">    <span class="keyword">return</span> (T) ois.readObject();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+            
+
+        </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
+        
+            <div class="post-footer-tags">
+                <span class="text-color-light text-small">TAGGED IN</span><br>
+                
+    <a class="tag tag--primary tag--small t-link" href="/tags/RxJava/">RxJava</a>
+
+            </div>
+        
+        
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2013/02/04/Ubuntu Problem/" data-tooltip="Ubuntu Problem" aria-label="PREVIOUS: Ubuntu Problem">
+                
+                    <i class="fa fa-angle-left" aria-hidden="true"></i>
+                    <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                </a>
+            </li>
+            <li class="post-action">
+                
+                    <a class="post-action-btn btn btn--disabled">
+                
+                    <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                    <i class="fa fa-angle-right" aria-hidden="true"></i>
+                </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a class="post-action-btn btn btn--default btn-open-shareoptions" href="#btn-open-shareoptions" aria-label="Share this post">
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://xiaoo.ml/2013/01/22/Cloneable和clone的使用，以及深复制与浅复制的区别/" title="Share on Facebook">
+                    <i class="fab fa-facebook" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://twitter.com/intent/tweet?text=https://xiaoo.ml/2013/01/22/Cloneable和clone的使用，以及深复制与浅复制的区别/" title="Share on Twitter">
+                    <i class="fab fa-twitter" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://xiaoo.ml/2013/01/22/Cloneable和clone的使用，以及深复制与浅复制的区别/" title="Share on Weibo">
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://xiaoo.ml/2013/01/22/Cloneable和clone的使用，以及深复制与浅复制的区别/&amp;title=Cloneable和clone的使用，以及深复制与浅复制的区别" title="Share on QQ">
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#" aria-label="Back to top">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+        
+        
+            
+        
+    </div>
+</article>
+
+
+
+
+
+                
+
+                
+                <footer id="footer" class="main-content-wrap">
+    <span class="copyrights">
+		Copyrights &copy; 2020 AndrewWang. All Rights Reserved.
+    </span>
+</footer>
+
+                
+
+            </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="2">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2013/02/04/Ubuntu Problem/" data-tooltip="Ubuntu Problem" aria-label="PREVIOUS: Ubuntu Problem">
+                
+                    <i class="fa fa-angle-left" aria-hidden="true"></i>
+                    <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                </a>
+            </li>
+            <li class="post-action">
+                
+                    <a class="post-action-btn btn btn--disabled">
+                
+                    <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                    <i class="fa fa-angle-right" aria-hidden="true"></i>
+                </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a class="post-action-btn btn btn--default btn-open-shareoptions" href="#btn-open-shareoptions" aria-label="Share this post">
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://xiaoo.ml/2013/01/22/Cloneable和clone的使用，以及深复制与浅复制的区别/" title="Share on Facebook">
+                    <i class="fab fa-facebook" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://twitter.com/intent/tweet?text=https://xiaoo.ml/2013/01/22/Cloneable和clone的使用，以及深复制与浅复制的区别/" title="Share on Twitter">
+                    <i class="fab fa-twitter" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://xiaoo.ml/2013/01/22/Cloneable和clone的使用，以及深复制与浅复制的区别/" title="Share on Weibo">
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://xiaoo.ml/2013/01/22/Cloneable和clone的使用，以及深复制与浅复制的区别/&amp;title=Cloneable和clone的使用，以及深复制与浅复制的区别" title="Share on QQ">
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#" aria-label="Back to top">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                
+    <div id="share-options-bar" class="share-options-bar" data-behavior="2">
+        <i id="btn-close-shareoptions" class="fa fa-times"></i>
+        <ul class="share-options">
+            
+                
+                
+                <li class="share-option">
+                    <a class="share-option-btn" target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://xiaoo.ml/2013/01/22/Cloneable和clone的使用，以及深复制与浅复制的区别/">
+                        <i class="fab fa-facebook" aria-hidden="true"></i><span>Share on Facebook</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a class="share-option-btn" target="new" href="https://twitter.com/intent/tweet?text=https://xiaoo.ml/2013/01/22/Cloneable和clone的使用，以及深复制与浅复制的区别/">
+                        <i class="fab fa-twitter" aria-hidden="true"></i><span>Share on Twitter</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a class="share-option-btn" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://xiaoo.ml/2013/01/22/Cloneable和clone的使用，以及深复制与浅复制的区别/">
+                        <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a class="share-option-btn" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://xiaoo.ml/2013/01/22/Cloneable和clone的使用，以及深复制与浅复制的区别/&amp;title=Cloneable和clone的使用，以及深复制与浅复制的区别">
+                        <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
+                    </a>
+                </li>
+            
+        </ul>
+    </div>
+
+
+            
+        </div>
+        
+
+
+    
+        
+    
+
+<div id="about">
+    <div id="about-card">
+        <div id="about-btn-close">
+            <i class="fa fa-times"></i>
+        </div>
+        
+            <img id="about-card-picture" src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png" alt="Author&#39;s picture">
+        
+            <h4 id="about-card-name">AndrewWang</h4>
+        
+            <div id="about-card-bio"><p>凡是过去，皆为序章<br>须知参差百态，乃是幸福本源<br>邮箱：<a href="mailto:fernando_caudill@outlook.com" target="_blank">fernando_caudill@outlook.com</a></p>
+</div>
+        
+        
+            <div id="about-card-job">
+                <i class="fa fa-briefcase"></i>
+                <br>
+                <p>Android+Python</p>
+
+            </div>
+        
+        
+            <div id="about-card-location">
+                <i class="fa fa-map-marker-alt"></i>
+                <br>
+                Zhangzhou Fujian
+            </div>
+        
+    </div>
+</div>
+
+        
+            <div id="algolia-search-modal" class="modal-container">
+    <div class="modal">
+        <div class="modal-header">
+            <span class="close-button"><i class="fa fa-times"></i></span>
+            <a href="https://algolia.com" target="_blank" rel="noopener" class="searchby-algolia text-color-light link-unstyled">
+                <span class="searchby-algolia-text text-color-light text-small">by</span>
+                <img class="searchby-algolia-logo" src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/others/algolia-light.svg">
+            </a>
+            <i class="search-icon fa fa-search"></i>
+            <form id="algolia-search-form">
+                <input type="text" id="algolia-search-input" name="search" class="form-control input--large search-input" placeholder="Search ">
+            </form>
+        </div>
+        <div class="modal-body">
+            <div class="no-result text-color-light text-center">no post found</div>
+            <div class="results">
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2013/01/22/Cloneable和clone的使用，以及深复制与浅复制的区别/">
+                            <h3 class="media-heading">Cloneable和clone的使用，以及深复制与浅复制的区别</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Jan 22, 2013
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><ni>深浅复制总结下</ni></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2013/02/04/Ubuntu Problem/">
+                            <h3 class="media-heading">Ubuntu Problem</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Feb 4, 2013
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><ni>记录最近几年使用Ubuntu有用的Tips</ni></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2013/08/18/婚后，你一定会遇到更喜欢的人/">
+                            <h3 class="media-heading">婚后，你一定会遇到更喜欢的人</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Aug 18, 2013
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p>结婚后，你一定会遇到更喜欢的人。这件事几乎是肯定的。倒不是说先前结婚的人有多糟糕，也不是说后来出现的人有多美好。而是，你更了解自己了。</p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2013/11/09/ImageLoader must be init with configuration before using 错误解决方法/">
+                            <h3 class="media-heading">ImageLoader must be init with configuration before using 错误解决方法</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Nov 9, 2013
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p>最近开发过程中用到了开源项目Android-Universal-Image-Loader。<br></p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2013/12/14/把WordPress放在根目录而地址显示子目录的方法/">
+                            <h3 class="media-heading">把WordPress放在根目录而地址显示子目录的方法</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Dec 14, 2013
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p> 今天在狗爹（GoDaddy）随便买了个域名，想建个个人博客耍耍。<br></p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2014/02/15/越是聪明人，越容易在这件事上栽跟头/">
+                            <h3 class="media-heading">越是聪明人，越容易在这件事上栽跟头zt</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Feb 15, 2014
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p>一篇名为《李开复：聪明人创业为何容易失败》的商业报道里写道，记者问李开复，如何在短时间内对一个创业者或项目进行判断，有哪些指标或者投资方法论？<br></p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2014/04/02/Java中普通代码块，构造代码块，静态代码块区别及代码示例/">
+                            <h3 class="media-heading">Java中普通代码块，构造代码块，静态代码块区别及代码示例</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Apr 2, 2014
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p>执行顺序：（优先级从高到低）静态代码块&gt;main方法&gt;构造代码块&gt;构造方法。其中静态代码块只执行一次。构造代码块在每次创建对象是都会执行。<br></p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2014/04/14/getApplicationContext()、getBasecontext()、getApplication() 区别/">
+                            <h3 class="media-heading">getApplicationContext()、getBasecontext()、getApplication() 区别</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Apr 14, 2014
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><ni>搞清区别联系很重要，虽然好多情况下能通用的。</ni></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2014/04/24/使用注解来统计算法时间/">
+                            <h3 class="media-heading">使用注解统计算法运行时间</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Apr 24, 2014
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p>一直以为注解并没有什么卵用，后来用了butterknift和spring组件后才知道自定义组件可以完成很多任务。<br></p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2014/05/22/git merge和rebase的区别/">
+                            <h3 class="media-heading">git merge和rebase的区别</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    May 22, 2014
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><ni>一直以来都以为rebase是合并冲突的一种手段，和merge一样的，用哪个都行。</ni></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+            </div>
+        </div>
+        <div class="modal-footer">
+            <p class="results-count text-medium" data-message-zero="no post found" data-message-one="1 post found" data-message-other="{n} posts found">
+                80 posts found
+            </p>
+        </div>
+    </div>
+</div>
+
+        
+        
+<div id="cover" style="background-image:url('https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/cover.jpg');"></div>
+        <!--SCRIPTS-->
+<script src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/js/script-dbd16rvloemmuxdzniplmnxxvwoz24eya9wol0b7vvmlokgqsjivmb8dnscy.min.js"></script>
+<!--SCRIPTS END-->
+
+    
+
+
+    <script src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/js/moment-with-locales.min.js"></script>
+    <script src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/js/algoliasearch.min.js"></script>
+    <script>
+        var algoliaClient = algoliasearch('NPCJXUJXHV', '519d0ecd5f05b733ac031d89154c7bbb');
+        var algoliaIndex = algoliaClient.initIndex('my-hexo-blog');
+    </script>
+
+
+    </body>
+</html>

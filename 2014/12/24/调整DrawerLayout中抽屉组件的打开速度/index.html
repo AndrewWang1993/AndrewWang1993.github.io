@@ -1,0 +1,770 @@
+
+<!DOCTYPE html>
+<html lang="en">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="AndrewWang&#39;s Blog">
+    <title>调整DrawerLayout中抽屉组件的打开速度 - AndrewWang&#39;s Blog</title>
+    <meta name="author" content="AndrewWang">
+    
+        <meta name="keywords" content="hexo,javascript,android,java,JS,Python,">
+    
+    
+        <link rel="icon" href="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/favicon(8).png">
+    
+    
+        <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+    
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"AndrewWang","sameAs":["https://github.com/AndrewWang1993","https://stackoverflow.com/users/4209302/andrewwang","mailto:fernando_caudill@outlook.com"],"image":"https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png"},"articleBody":"最近在研究DrawerArrow库的时候需要仔细查看三条线是怎么旋转的，无奈抽屉打开的速度太快，原生的抽屉布局实现了谷歌SDK的方法，并使用600ms这个常量作为打开和关闭抽屉的时间，所以我们如果要调试一些根据抽屉而运动的动画时需要寻找到一个办法时SDK中的抽屉打开速度可控。\n第一次尝试尝试打开DrawerLayout类，这个类包含用来打开和关闭导航抽屉的接口，因为一般在SDK里面都会包含一些方法来设置动画的时长，所以第一次尝试我们可以查阅DrawerLayout的javadoc来寻找duration一类的方法，可是很遗憾没有这些方法。所以我们要另寻他法。\n第二次尝试查看DrawerLayout的源代码去寻找设置动画的方法，因为一般设置动画的方法一定会有duration这类的时长参数。（如何下载并导入supportv4源代码）审阅DrawerLayout.Java的源代码 是通过openDrawer()和closeDrawer()来控制抽屉的开启和关闭。而在这个方法里又是通过mLeftDragger和mRightDragger来控制开关。1234567891011121314151617public void closeDrawer(View drawerView) &#123;      if (!isDrawerView(drawerView)) &#123;        throw new IllegalArgumentException(\"View \" + drawerView + \" is not a sliding drawer\");    &#125;    if (mFirstLayout) &#123;        final LayoutParams lp = (LayoutParams) drawerView.getLayoutParams();        lp.onScreen = 0.f;        lp.knownOpen = false;    &#125; else &#123;        if (checkDrawerViewAbsoluteGravity(drawerView, Gravity.LEFT)) &#123;            mLeftDragger.smoothSlideViewTo(drawerView, -drawerView.getWidth(), drawerView.getTop());        &#125; else &#123;            mRightDragger.smoothSlideViewTo(drawerView, getWidth(), drawerView.getTop());        &#125;    &#125;    invalidate();&#125;\n在这里我们注意到有个smoothSlideViewTo的方法很像是我们要找的东东，点进去看看。这里要说明的是mLeftDragger是ViewDragHelper.java的实例，ViewDragHelper负责抽屉开关的动画，下面是smoothSlideViewTo()方法123456public boolean smoothSlideViewTo(View child, int finalLeft, int finalTop) &#123;      mCapturedView = child;    mActivePointerId = INVALID_POINTER;    return forceSettleCapturedViewAt(finalLeft, finalTop, 0, 0);&#125;\n这段代码没告诉我们太多，仅仅告诉我们要去返回的那个方法进一步查看。12345678910111213141516private boolean forceSettleCapturedViewAt(int finalLeft, int finalTop, int xvel, int yvel) &#123;      final int startLeft = mCapturedView.getLeft();    final int startTop = mCapturedView.getTop();    final int dx = finalLeft - startLeft;    final int dy = finalTop - startTop;    if (dx == 0 &amp;&amp; dy == 0) &#123;        // Nothing to do. Send callbacks, be done.        mScroller.abortAnimation();        setDragState(STATE_IDLE);        return false;    &#125;    final int duration = computeSettleDuration(mCapturedView, dx, dy, xvel, yvel);    mScroller.startScroll(startLeft, startTop, dx, dy, duration);    setDragState(STATE_SETTLING);    return true;&#125;\n哈哈，我们找到一个叫duration的值，点进去看看。1234567891011121314151617private int computeSettleDuration(View child, int dx, int dy, int xvel, int yvel) &#123;      xvel = clampMag(xvel, (int) mMinVelocity, (int) mMaxVelocity);    yvel = clampMag(yvel, (int) mMinVelocity, (int) mMaxVelocity);    final int absDx = Math.abs(dx);    final int absDy = Math.abs(dy);    final int absXVel = Math.abs(xvel);    final int absYVel = Math.abs(yvel);    final int addedVel = absXVel + absYVel;    final int addedDistance = absDx + absDy;    final float xweight = xvel != 0 ? (float) absXVel / addedVel :                (float) absDx / addedDistance;    final float yweight = yvel != 0 ? (float) absYVel / addedVel :                (float) absDy / addedDistance;    int xduration = computeAxisDuration(dx, xvel, mCallback.getViewHorizontalDragRange(child));    int yduration = computeAxisDuration(dy, yvel, mCallback.getViewVerticalDragRange(child));    return (int) (xduration * xweight + yduration * yweight);&#125;\n看起来xweight和yweight是根据距离像素算出来的，不好改变，那我们就改变xduration和yduration的值吧。继续点击computeAxisDuration()12345678910111213141516171819private int computeAxisDuration(int delta, int velocity, int motionRange) &#123;      if (delta == 0) &#123;        return 0;    &#125;    final int width = mParentView.getWidth();    final int halfWidth = width / 2;    final float distanceRatio = Math.min(1f, (float) Math.abs(delta) / width);    final float distance = halfWidth + halfWidth *                distanceInfluenceForSnapDuration(distanceRatio);    int duration;    velocity = Math.abs(velocity);    if (velocity &gt; 0) &#123;        duration = 4 * Math.round(1000 * Math.abs(distance / velocity));    &#125; else &#123;        final float range = (float) Math.abs(delta) / motionRange;        duration = (int) ((range + 1) * BASE_SETTLE_DURATION);    &#125;    return Math.min(duration, MAX_SETTLE_DURATION);&#125;\n返回一个计算出的duration和常量中的较小者。那么我们看看这个常量是多少1private static final int MAX_SETTLE_DURATION = 600; // ms\n好吧，既然知道可以通过这个常量来加快抽屉的速度那么我们可以通过反射来改变这个值。123Field field = ViewDrager.class.getDeclaredField(\"MAX_SETTLE_DURATION\");  field.setAccessible(true);  field.set(null, 100); //设置动画时间为100ms\n很遗憾，在模拟器上能用，但是在真机上不能用，可能是没有动态改变成功，也可能是MAX_SETTLE_DURATION被标记为Final变量所以不能改变。所以我用反射把final去掉再试试。。。123456Field field = ViewDragHelper.class.getDeclaredField(\"MAX_SETTLE_DURATION\");  field.setAccessible(true);  Field modifiersField = Field.class.getDeclaredField(\"modifiers\");  modifiersField.setAccessible(true);  modifiersField.setInt(field, field.getModifiers() &amp; ~Modifier.FINAL);  //去掉final标记field.set(null, 0);\n又一次很遗憾，还是没改变成功。\n第三场尝试既然不能用反射修改变量值，那我就吧源代码拷下啦自定义一下好了吧。复制DrawerLayout.java和ViewDragHelper.java到本地工程，把improt 修改为本地。这样你就可以随心所欲的修改了。\n我可以这样改也可以这样改\n","dateCreated":"2014-12-24T11:10:00+08:00","dateModified":"2020-11-20T08:50:05+08:00","datePublished":"2014-12-24T11:10:00+08:00","description":"最近在研究DrawerArrow库的时候需要仔细查看三条线是怎么旋转的，无奈抽屉打开的速度太快，原生的抽屉布局实现了谷歌SDK的方法，并使用600ms这个常量作为打开和关闭抽屉的时间，所以我们如果要调试一些根据抽屉而运动的动画时需要寻找到一个办法时SDK中的抽屉打开速度可控。","headline":"调整DrawerLayout中抽屉组件的打开速度","image":[],"mainEntityOfPage":{"@type":"WebPage","@id":"https://xiaoo.ml/2014/12/24/调整DrawerLayout中抽屉组件的打开速度/"},"publisher":{"@type":"Organization","name":"AndrewWang","sameAs":["https://github.com/AndrewWang1993","https://stackoverflow.com/users/4209302/andrewwang","mailto:fernando_caudill@outlook.com"],"image":"https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png","logo":{"@type":"ImageObject","url":"https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png"}},"url":"https://xiaoo.ml/2014/12/24/调整DrawerLayout中抽屉组件的打开速度/","keywords":"Drawer"}</script>
+    <meta name="description" content="最近在研究DrawerArrow库的时候需要仔细查看三条线是怎么旋转的，无奈抽屉打开的速度太快，原生的抽屉布局实现了谷歌SDK的方法，并使用600ms这个常量作为打开和关闭抽屉的时间，所以我们如果要调试一些根据抽屉而运动的动画时需要寻找到一个办法时SDK中的抽屉打开速度可控。">
+<meta name="keywords" content="Drawer">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="调整DrawerLayout中抽屉组件的打开速度">
+<meta property="og:url" content="https://xiaoo.ml/2014/12/24/调整DrawerLayout中抽屉组件的打开速度/index.html">
+<meta property="og:site_name" content="AndrewWang&#39;s Blog">
+<meta property="og:description" content="最近在研究DrawerArrow库的时候需要仔细查看三条线是怎么旋转的，无奈抽屉打开的速度太快，原生的抽屉布局实现了谷歌SDK的方法，并使用600ms这个常量作为打开和关闭抽屉的时间，所以我们如果要调试一些根据抽屉而运动的动画时需要寻找到一个办法时SDK中的抽屉打开速度可控。">
+<meta property="og:locale" content="en">
+<meta property="og:image" content="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/draw1.jpg">
+<meta property="og:image" content="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/draw2.jpg">
+<meta property="og:updated_time" content="2020-11-20T00:50:05.802Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="调整DrawerLayout中抽屉组件的打开速度">
+<meta name="twitter:description" content="最近在研究DrawerArrow库的时候需要仔细查看三条线是怎么旋转的，无奈抽屉打开的速度太快，原生的抽屉布局实现了谷歌SDK的方法，并使用600ms这个常量作为打开和关闭抽屉的时间，所以我们如果要调试一些根据抽屉而运动的动画时需要寻找到一个办法时SDK中的抽屉打开速度可控。">
+<meta name="twitter:image" content="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/draw1.jpg">
+<meta name="twitter:creator" content="@https:&#x2F;&#x2F;twitter.com&#x2F;JamesMcMurr">
+    
+    
+        
+    
+    
+        <meta property="og:image" content="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png"/>
+    
+    
+    
+    
+    <!--STYLES-->
+    <link rel="stylesheet" href="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/css/style-c4ozcsklz4kht2pebhp44xorvyverh23toayhn7i6ubrpyedak24hv1v0hyd.min.css">
+    <!--STYLES END-->
+    
+
+    
+</head>
+
+    <body>
+        <div id="blog">
+            <!-- Define author's picture -->
+
+
+    
+        
+            
+        
+    
+
+<header id="header" data-behavior="2">
+    <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
+    <div class="header-title">
+        <a class="header-title-link" href="/ ">AndrewWang&#39;s Blog</a>
+    </div>
+    
+        
+            <a class="header-right-picture " href="#about">
+        
+        
+            <img class="header-picture" src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png" alt="Author&#39;s picture">
+        
+        </a>
+    
+</header>
+
+            <!-- Define author's picture -->
+
+
+
+        
+    
+
+<nav id="sidebar" data-behavior="2">
+    <div class="sidebar-container">
+        
+            <div class="sidebar-profile">
+                <a href="/#about">
+                    <img class="sidebar-profile-picture" src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png" alt="Author&#39;s picture">
+                </a>
+                <h4 class="sidebar-profile-name">AndrewWang</h4>
+                
+                    <h5 class="sidebar-profile-bio"><p>凡是过去，皆为序章<br>须知参差百态，乃是幸福本源<br>邮箱：<a href="mailto:fernando_caudill@outlook.com" target="_blank">fernando_caudill@outlook.com</a></p>
+</h5>
+                
+            </div>
+        
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/ " title="Home">
+                    
+                        <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Home</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/all-categories" title="Categories">
+                    
+                        <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Categories</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/all-tags" title="Tags">
+                    
+                        <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Tags</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/all-archives" title="Archives">
+                    
+                        <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Archives</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link open-algolia-search" href="#search" title="Search">
+                    
+                        <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Search</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="#about" title="About">
+                    
+                        <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">About</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="https://github.com/AndrewWang1993" target="_blank" rel="noopener" title="GitHub">
+                    
+                        <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">GitHub</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="https://stackoverflow.com/users/4209302/andrewwang" target="_blank" rel="noopener" title="Stack Overflow">
+                    
+                        <i class="sidebar-button-icon fab fa-stack-overflow" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Stack Overflow</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="mailto:fernando_caudill@outlook.com" target="_blank" rel="noopener" title="Mail">
+                    
+                        <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Mail</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/atom.xml" title="RSS">
+                    
+                        <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">RSS</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+    </div>
+</nav>
+
+            
+            <div id="main" data-behavior="2"
+                 class="
+                        hasCoverMetaIn
+                        ">
+                
+<article class="post">
+    
+    
+        <div class="post-header main-content-wrap text-left">
+    
+        <h1 class="post-title">
+            调整DrawerLayout中抽屉组件的打开速度
+        </h1>
+    
+    
+        <div class="post-meta">
+    <time datetime="2014-12-24T11:10:00+08:00">
+	
+		    Dec 24, 2014
+    	
+    </time>
+    
+        <span>in </span>
+        
+    <a class="category-link" href="/categories/Android/">Android</a>
+
+
+    
+</div>
+
+    
+</div>
+
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
+            <p>最近在研究DrawerArrow库的时候需要仔细查看三条线是怎么旋转的，无奈抽屉打开的速度太快，原生的抽屉布局实现了谷歌SDK的方法，并使用600ms这个常量作为打开和关闭抽屉的时间，所以我们如果要调试一些根据抽屉而运动的动画时需要寻找到一个办法时SDK中的抽屉打开速度可控。<br><a id="more"></a></p>
+<h3 id="第一次尝试"><a href="#第一次尝试" class="headerlink" title="第一次尝试"></a>第一次尝试</h3><p>尝试打开DrawerLayout类，这个类包含用来打开和关闭导航抽屉的接口，因为一般在SDK里面都会包含一些方法来设置动画的时长，所以第一次尝试我们可以查阅DrawerLayout的javadoc来寻找duration一类的方法，可是很遗憾没有这些方法。所以我们要另寻他法。</p>
+<h3 id="第二次尝试"><a href="#第二次尝试" class="headerlink" title="第二次尝试"></a>第二次尝试</h3><p>查看DrawerLayout的源代码去寻找设置动画的方法，因为一般设置动画的方法一定会有duration这类的时长参数。（如何下载并导入supportv4源代码）<br>审阅DrawerLayout.Java的源代码 是通过openDrawer()和closeDrawer()来控制抽屉的开启和关闭。而在这个方法里又是通过mLeftDragger和mRightDragger来控制开关。<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">closeDrawer</span><span class="params">(View drawerView)</span> </span>&#123;  </span><br><span class="line">    <span class="keyword">if</span> (!isDrawerView(drawerView)) &#123;</span><br><span class="line">        <span class="keyword">throw</span> <span class="keyword">new</span> IllegalArgumentException(<span class="string">"View "</span> + drawerView + <span class="string">" is not a sliding drawer"</span>);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">if</span> (mFirstLayout) &#123;</span><br><span class="line">        <span class="keyword">final</span> LayoutParams lp = (LayoutParams) drawerView.getLayoutParams();</span><br><span class="line">        lp.onScreen = <span class="number">0</span>.f;</span><br><span class="line">        lp.knownOpen = <span class="keyword">false</span>;</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="keyword">if</span> (checkDrawerViewAbsoluteGravity(drawerView, Gravity.LEFT)) &#123;</span><br><span class="line">            mLeftDragger.smoothSlideViewTo(drawerView, -drawerView.getWidth(), drawerView.getTop());</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            mRightDragger.smoothSlideViewTo(drawerView, getWidth(), drawerView.getTop());</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    invalidate();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>在这里我们注意到有个smoothSlideViewTo的方法很像是我们要找的东东，点进去看看。<br>这里要说明的是mLeftDragger是ViewDragHelper.java的实例，ViewDragHelper负责抽屉开关的动画，下面是smoothSlideViewTo()方法<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">boolean</span> <span class="title">smoothSlideViewTo</span><span class="params">(View child, <span class="keyword">int</span> finalLeft, <span class="keyword">int</span> finalTop)</span> </span>&#123;  </span><br><span class="line">    mCapturedView = child;</span><br><span class="line">    mActivePointerId = INVALID_POINTER;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> forceSettleCapturedViewAt(finalLeft, finalTop, <span class="number">0</span>, <span class="number">0</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>这段代码没告诉我们太多，仅仅告诉我们要去返回的那个方法进一步查看。<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">private</span> <span class="keyword">boolean</span> <span class="title">forceSettleCapturedViewAt</span><span class="params">(<span class="keyword">int</span> finalLeft, <span class="keyword">int</span> finalTop, <span class="keyword">int</span> xvel, <span class="keyword">int</span> yvel)</span> </span>&#123;  </span><br><span class="line">    <span class="keyword">final</span> <span class="keyword">int</span> startLeft = mCapturedView.getLeft();</span><br><span class="line">    <span class="keyword">final</span> <span class="keyword">int</span> startTop = mCapturedView.getTop();</span><br><span class="line">    <span class="keyword">final</span> <span class="keyword">int</span> dx = finalLeft - startLeft;</span><br><span class="line">    <span class="keyword">final</span> <span class="keyword">int</span> dy = finalTop - startTop;</span><br><span class="line">    <span class="keyword">if</span> (dx == <span class="number">0</span> &amp;&amp; dy == <span class="number">0</span>) &#123;</span><br><span class="line">        <span class="comment">// Nothing to do. Send callbacks, be done.</span></span><br><span class="line">        mScroller.abortAnimation();</span><br><span class="line">        setDragState(STATE_IDLE);</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">false</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">final</span> <span class="keyword">int</span> duration = computeSettleDuration(mCapturedView, dx, dy, xvel, yvel);</span><br><span class="line">    mScroller.startScroll(startLeft, startTop, dx, dy, duration);</span><br><span class="line">    setDragState(STATE_SETTLING);</span><br><span class="line">    <span class="keyword">return</span> <span class="keyword">true</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>哈哈，我们找到一个叫duration的值，点进去看看。<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">private</span> <span class="keyword">int</span> <span class="title">computeSettleDuration</span><span class="params">(View child, <span class="keyword">int</span> dx, <span class="keyword">int</span> dy, <span class="keyword">int</span> xvel, <span class="keyword">int</span> yvel)</span> </span>&#123;  </span><br><span class="line">    xvel = clampMag(xvel, (<span class="keyword">int</span>) mMinVelocity, (<span class="keyword">int</span>) mMaxVelocity);</span><br><span class="line">    yvel = clampMag(yvel, (<span class="keyword">int</span>) mMinVelocity, (<span class="keyword">int</span>) mMaxVelocity);</span><br><span class="line">    <span class="keyword">final</span> <span class="keyword">int</span> absDx = Math.abs(dx);</span><br><span class="line">    <span class="keyword">final</span> <span class="keyword">int</span> absDy = Math.abs(dy);</span><br><span class="line">    <span class="keyword">final</span> <span class="keyword">int</span> absXVel = Math.abs(xvel);</span><br><span class="line">    <span class="keyword">final</span> <span class="keyword">int</span> absYVel = Math.abs(yvel);</span><br><span class="line">    <span class="keyword">final</span> <span class="keyword">int</span> addedVel = absXVel + absYVel;</span><br><span class="line">    <span class="keyword">final</span> <span class="keyword">int</span> addedDistance = absDx + absDy;</span><br><span class="line">    <span class="keyword">final</span> <span class="keyword">float</span> xweight = xvel != <span class="number">0</span> ? (<span class="keyword">float</span>) absXVel / addedVel :</span><br><span class="line">                (<span class="keyword">float</span>) absDx / addedDistance;</span><br><span class="line">    <span class="keyword">final</span> <span class="keyword">float</span> yweight = yvel != <span class="number">0</span> ? (<span class="keyword">float</span>) absYVel / addedVel :</span><br><span class="line">                (<span class="keyword">float</span>) absDy / addedDistance;</span><br><span class="line">    <span class="keyword">int</span> xduration = computeAxisDuration(dx, xvel, mCallback.getViewHorizontalDragRange(child));</span><br><span class="line">    <span class="keyword">int</span> yduration = computeAxisDuration(dy, yvel, mCallback.getViewVerticalDragRange(child));</span><br><span class="line">    <span class="keyword">return</span> (<span class="keyword">int</span>) (xduration * xweight + yduration * yweight);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>看起来xweight和yweight是根据距离像素算出来的，不好改变，那我们就改变xduration和yduration的值吧。继续点击computeAxisDuration()<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">private</span> <span class="keyword">int</span> <span class="title">computeAxisDuration</span><span class="params">(<span class="keyword">int</span> delta, <span class="keyword">int</span> velocity, <span class="keyword">int</span> motionRange)</span> </span>&#123;  </span><br><span class="line">    <span class="keyword">if</span> (delta == <span class="number">0</span>) &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">final</span> <span class="keyword">int</span> width = mParentView.getWidth();</span><br><span class="line">    <span class="keyword">final</span> <span class="keyword">int</span> halfWidth = width / <span class="number">2</span>;</span><br><span class="line">    <span class="keyword">final</span> <span class="keyword">float</span> distanceRatio = Math.min(<span class="number">1f</span>, (<span class="keyword">float</span>) Math.abs(delta) / width);</span><br><span class="line">    <span class="keyword">final</span> <span class="keyword">float</span> distance = halfWidth + halfWidth *</span><br><span class="line">                distanceInfluenceForSnapDuration(distanceRatio);</span><br><span class="line">    <span class="keyword">int</span> duration;</span><br><span class="line">    velocity = Math.abs(velocity);</span><br><span class="line">    <span class="keyword">if</span> (velocity &gt; <span class="number">0</span>) &#123;</span><br><span class="line">        duration = <span class="number">4</span> * Math.round(<span class="number">1000</span> * Math.abs(distance / velocity));</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="keyword">final</span> <span class="keyword">float</span> range = (<span class="keyword">float</span>) Math.abs(delta) / motionRange;</span><br><span class="line">        duration = (<span class="keyword">int</span>) ((range + <span class="number">1</span>) * BASE_SETTLE_DURATION);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> Math.min(duration, MAX_SETTLE_DURATION);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>返回一个计算出的duration和常量中的较小者。那么我们看看这个常量是多少<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">int</span> MAX_SETTLE_DURATION = <span class="number">600</span>; <span class="comment">// ms</span></span><br></pre></td></tr></table></figure></p>
+<p>好吧，既然知道可以通过这个常量来加快抽屉的速度那么我们可以通过反射来改变这个值。<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">Field field = ViewDrager.class.getDeclaredField(<span class="string">"MAX_SETTLE_DURATION"</span>);  </span><br><span class="line">field.setAccessible(<span class="keyword">true</span>);  </span><br><span class="line">field.set(<span class="keyword">null</span>, <span class="number">100</span>); <span class="comment">//设置动画时间为100ms</span></span><br></pre></td></tr></table></figure></p>
+<p>很遗憾，在模拟器上能用，但是在真机上不能用，可能是没有动态改变成功，也可能是MAX_SETTLE_DURATION被标记为Final变量所以不能改变。<br>所以我用反射把final去掉再试试。。。<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">Field field = ViewDragHelper.class.getDeclaredField(<span class="string">"MAX_SETTLE_DURATION"</span>);  </span><br><span class="line">field.setAccessible(<span class="keyword">true</span>);  </span><br><span class="line">Field modifiersField = Field.class.getDeclaredField(<span class="string">"modifiers"</span>);  </span><br><span class="line">modifiersField.setAccessible(<span class="keyword">true</span>);  </span><br><span class="line">modifiersField.setInt(field, field.getModifiers() &amp; ~Modifier.FINAL);  <span class="comment">//去掉final标记</span></span><br><span class="line">field.set(<span class="keyword">null</span>, <span class="number">0</span>);</span><br></pre></td></tr></table></figure></p>
+<p>又一次很遗憾，还是没改变成功。</p>
+<h3 id="第三场尝试"><a href="#第三场尝试" class="headerlink" title="第三场尝试"></a>第三场尝试</h3><p>既然不能用反射修改变量值，那我就吧源代码拷下啦自定义一下好了吧。<br>复制DrawerLayout.java和ViewDragHelper.java到本地工程，把improt 修改为本地。这样你就可以随心所欲的修改了。</p>
+<p>我可以这样改<br><img src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/draw1.jpg" alt=""><br>也可以这样改<br><img src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/draw2.jpg" alt=""></p>
+
+            
+
+        </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
+        
+            <div class="post-footer-tags">
+                <span class="text-color-light text-small">TAGGED IN</span><br>
+                
+    <a class="tag tag--primary tag--small t-link" href="/tags/Drawer/">Drawer</a>
+
+            </div>
+        
+        
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2015/01/08/一些smali不常见的语法/" data-tooltip="一些smali不常见的语法" aria-label="PREVIOUS: 一些smali不常见的语法">
+                
+                    <i class="fa fa-angle-left" aria-hidden="true"></i>
+                    <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2014/12/08/App发测试前的自测list/" data-tooltip="App发测试前的自测List" aria-label="NEXT: App发测试前的自测List">
+                
+                    <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                    <i class="fa fa-angle-right" aria-hidden="true"></i>
+                </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a class="post-action-btn btn btn--default btn-open-shareoptions" href="#btn-open-shareoptions" aria-label="Share this post">
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://xiaoo.ml/2014/12/24/调整DrawerLayout中抽屉组件的打开速度/" title="Share on Facebook">
+                    <i class="fab fa-facebook" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://twitter.com/intent/tweet?text=https://xiaoo.ml/2014/12/24/调整DrawerLayout中抽屉组件的打开速度/" title="Share on Twitter">
+                    <i class="fab fa-twitter" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://xiaoo.ml/2014/12/24/调整DrawerLayout中抽屉组件的打开速度/" title="Share on Weibo">
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://xiaoo.ml/2014/12/24/调整DrawerLayout中抽屉组件的打开速度/&amp;title=调整DrawerLayout中抽屉组件的打开速度" title="Share on QQ">
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#" aria-label="Back to top">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+        
+        
+            
+        
+    </div>
+</article>
+
+
+
+
+
+                
+
+                
+                <footer id="footer" class="main-content-wrap">
+    <span class="copyrights">
+		Copyrights &copy; 2020 AndrewWang. All Rights Reserved.
+    </span>
+</footer>
+
+                
+
+            </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="2">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2015/01/08/一些smali不常见的语法/" data-tooltip="一些smali不常见的语法" aria-label="PREVIOUS: 一些smali不常见的语法">
+                
+                    <i class="fa fa-angle-left" aria-hidden="true"></i>
+                    <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2014/12/08/App发测试前的自测list/" data-tooltip="App发测试前的自测List" aria-label="NEXT: App发测试前的自测List">
+                
+                    <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                    <i class="fa fa-angle-right" aria-hidden="true"></i>
+                </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a class="post-action-btn btn btn--default btn-open-shareoptions" href="#btn-open-shareoptions" aria-label="Share this post">
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://xiaoo.ml/2014/12/24/调整DrawerLayout中抽屉组件的打开速度/" title="Share on Facebook">
+                    <i class="fab fa-facebook" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://twitter.com/intent/tweet?text=https://xiaoo.ml/2014/12/24/调整DrawerLayout中抽屉组件的打开速度/" title="Share on Twitter">
+                    <i class="fab fa-twitter" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://xiaoo.ml/2014/12/24/调整DrawerLayout中抽屉组件的打开速度/" title="Share on Weibo">
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://xiaoo.ml/2014/12/24/调整DrawerLayout中抽屉组件的打开速度/&amp;title=调整DrawerLayout中抽屉组件的打开速度" title="Share on QQ">
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#" aria-label="Back to top">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                
+    <div id="share-options-bar" class="share-options-bar" data-behavior="2">
+        <i id="btn-close-shareoptions" class="fa fa-times"></i>
+        <ul class="share-options">
+            
+                
+                
+                <li class="share-option">
+                    <a class="share-option-btn" target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://xiaoo.ml/2014/12/24/调整DrawerLayout中抽屉组件的打开速度/">
+                        <i class="fab fa-facebook" aria-hidden="true"></i><span>Share on Facebook</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a class="share-option-btn" target="new" href="https://twitter.com/intent/tweet?text=https://xiaoo.ml/2014/12/24/调整DrawerLayout中抽屉组件的打开速度/">
+                        <i class="fab fa-twitter" aria-hidden="true"></i><span>Share on Twitter</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a class="share-option-btn" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://xiaoo.ml/2014/12/24/调整DrawerLayout中抽屉组件的打开速度/">
+                        <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a class="share-option-btn" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://xiaoo.ml/2014/12/24/调整DrawerLayout中抽屉组件的打开速度/&amp;title=调整DrawerLayout中抽屉组件的打开速度">
+                        <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
+                    </a>
+                </li>
+            
+        </ul>
+    </div>
+
+
+            
+        </div>
+        
+
+
+    
+        
+    
+
+<div id="about">
+    <div id="about-card">
+        <div id="about-btn-close">
+            <i class="fa fa-times"></i>
+        </div>
+        
+            <img id="about-card-picture" src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png" alt="Author&#39;s picture">
+        
+            <h4 id="about-card-name">AndrewWang</h4>
+        
+            <div id="about-card-bio"><p>凡是过去，皆为序章<br>须知参差百态，乃是幸福本源<br>邮箱：<a href="mailto:fernando_caudill@outlook.com" target="_blank">fernando_caudill@outlook.com</a></p>
+</div>
+        
+        
+            <div id="about-card-job">
+                <i class="fa fa-briefcase"></i>
+                <br>
+                <p>Android+Python</p>
+
+            </div>
+        
+        
+            <div id="about-card-location">
+                <i class="fa fa-map-marker-alt"></i>
+                <br>
+                Zhangzhou Fujian
+            </div>
+        
+    </div>
+</div>
+
+        
+            <div id="algolia-search-modal" class="modal-container">
+    <div class="modal">
+        <div class="modal-header">
+            <span class="close-button"><i class="fa fa-times"></i></span>
+            <a href="https://algolia.com" target="_blank" rel="noopener" class="searchby-algolia text-color-light link-unstyled">
+                <span class="searchby-algolia-text text-color-light text-small">by</span>
+                <img class="searchby-algolia-logo" src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/others/algolia-light.svg">
+            </a>
+            <i class="search-icon fa fa-search"></i>
+            <form id="algolia-search-form">
+                <input type="text" id="algolia-search-input" name="search" class="form-control input--large search-input" placeholder="Search ">
+            </form>
+        </div>
+        <div class="modal-body">
+            <div class="no-result text-color-light text-center">no post found</div>
+            <div class="results">
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2013/01/22/Cloneable和clone的使用，以及深复制与浅复制的区别/">
+                            <h3 class="media-heading">Cloneable和clone的使用，以及深复制与浅复制的区别</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Jan 22, 2013
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><ni>深浅复制总结下</ni></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2013/02/04/Ubuntu Problem/">
+                            <h3 class="media-heading">Ubuntu Problem</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Feb 4, 2013
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><ni>记录最近几年使用Ubuntu有用的Tips</ni></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2013/08/18/婚后，你一定会遇到更喜欢的人/">
+                            <h3 class="media-heading">婚后，你一定会遇到更喜欢的人</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Aug 18, 2013
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p>结婚后，你一定会遇到更喜欢的人。这件事几乎是肯定的。倒不是说先前结婚的人有多糟糕，也不是说后来出现的人有多美好。而是，你更了解自己了。</p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2013/11/09/ImageLoader must be init with configuration before using 错误解决方法/">
+                            <h3 class="media-heading">ImageLoader must be init with configuration before using 错误解决方法</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Nov 9, 2013
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p>最近开发过程中用到了开源项目Android-Universal-Image-Loader。<br></p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2013/12/14/把WordPress放在根目录而地址显示子目录的方法/">
+                            <h3 class="media-heading">把WordPress放在根目录而地址显示子目录的方法</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Dec 14, 2013
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p> 今天在狗爹（GoDaddy）随便买了个域名，想建个个人博客耍耍。<br></p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2014/02/15/越是聪明人，越容易在这件事上栽跟头/">
+                            <h3 class="media-heading">越是聪明人，越容易在这件事上栽跟头zt</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Feb 15, 2014
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p>一篇名为《李开复：聪明人创业为何容易失败》的商业报道里写道，记者问李开复，如何在短时间内对一个创业者或项目进行判断，有哪些指标或者投资方法论？<br></p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2014/04/02/Java中普通代码块，构造代码块，静态代码块区别及代码示例/">
+                            <h3 class="media-heading">Java中普通代码块，构造代码块，静态代码块区别及代码示例</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Apr 2, 2014
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p>执行顺序：（优先级从高到低）静态代码块&gt;main方法&gt;构造代码块&gt;构造方法。其中静态代码块只执行一次。构造代码块在每次创建对象是都会执行。<br></p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2014/04/14/getApplicationContext()、getBasecontext()、getApplication() 区别/">
+                            <h3 class="media-heading">getApplicationContext()、getBasecontext()、getApplication() 区别</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Apr 14, 2014
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><ni>搞清区别联系很重要，虽然好多情况下能通用的。</ni></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2014/04/24/使用注解来统计算法时间/">
+                            <h3 class="media-heading">使用注解统计算法运行时间</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Apr 24, 2014
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p>一直以为注解并没有什么卵用，后来用了butterknift和spring组件后才知道自定义组件可以完成很多任务。<br></p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2014/05/22/git merge和rebase的区别/">
+                            <h3 class="media-heading">git merge和rebase的区别</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    May 22, 2014
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><ni>一直以来都以为rebase是合并冲突的一种手段，和merge一样的，用哪个都行。</ni></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+            </div>
+        </div>
+        <div class="modal-footer">
+            <p class="results-count text-medium" data-message-zero="no post found" data-message-one="1 post found" data-message-other="{n} posts found">
+                80 posts found
+            </p>
+        </div>
+    </div>
+</div>
+
+        
+        
+<div id="cover" style="background-image:url('https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/cover.jpg');"></div>
+        <!--SCRIPTS-->
+<script src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/js/script-dbd16rvloemmuxdzniplmnxxvwoz24eya9wol0b7vvmlokgqsjivmb8dnscy.min.js"></script>
+<!--SCRIPTS END-->
+
+    
+
+
+    <script src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/js/moment-with-locales.min.js"></script>
+    <script src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/js/algoliasearch.min.js"></script>
+    <script>
+        var algoliaClient = algoliasearch('NPCJXUJXHV', '519d0ecd5f05b733ac031d89154c7bbb');
+        var algoliaIndex = algoliaClient.initIndex('my-hexo-blog');
+    </script>
+
+
+    </body>
+</html>

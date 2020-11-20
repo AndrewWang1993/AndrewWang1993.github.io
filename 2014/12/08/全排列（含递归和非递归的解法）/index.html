@@ -1,0 +1,772 @@
+
+<!DOCTYPE html>
+<html lang="en">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="AndrewWang&#39;s Blog">
+    <title>全排列（含递归和非递归的解法） - AndrewWang&#39;s Blog</title>
+    <meta name="author" content="AndrewWang">
+    
+        <meta name="keywords" content="hexo,javascript,android,java,JS,Python,">
+    
+    
+        <link rel="icon" href="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/favicon(8).png">
+    
+    
+        <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+    
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"AndrewWang","sameAs":["https://github.com/AndrewWang1993","https://stackoverflow.com/users/4209302/andrewwang","mailto:fernando_caudill@outlook.com"],"image":"https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png"},"articleBody":"一种向线程实时传递参数的方法\n用Java写一个函数, 如 Foo(const char *str), 打印出 str 的全排列,如 abc 的全排列: abc, acb, bca, dac, cab, cba\n一、递归版本1、算法简述简单地说：就是第一个数分别以后面的数进行交换E．g：E = （a , b , c），则 prem（E）= a.perm（b,c）+ b.perm（a,c）+ c.perm（a,b）然后a.perm（b,c）= ab.perm（c）+ ac.perm（b）= abc + acb.依次递归进行12345678910111213141516171819202122232425public static ArrayList&lt;String&gt; allSort2(String str, int pos) &#123;          ArrayList&lt;String&gt; list = new ArrayList&lt;String&gt;();          if(pos==0)&#123;  //          str=quickSort(str);          &#125;          int len = str.length();          if (len == 0) &#123;              list.add(\"\");              return list;          &#125;          list.add(str);          if (len == 1) &#123;              return list;          &#125;          for (int i = pos; i &lt; len; i++) &#123;              str = swap(str, i, pos);              list.add(str);              if (pos &lt; len - 1) &#123;                  list.addAll(allSort2(str, pos + 1));              &#125; else &#123;                  return list;              &#125;          &#125;          return list;      &#125;\n二、非递归版本1、算法简述\n要考虑全排列的非递归实现，先来考虑如何计算字符串的下一个排列。如”1234”的下一个排列就是”1243”。只要对字符串反复求出下一个排列，全排列的也就迎刃而解了。\n如何计算字符串的下一个排列了？来考虑”926520”这个字符串，我们从后向前找第一双相邻的递增数字，”20”、”52”都是非递增的，”26 “即满足要求，称前一个数字2为替换数，替换数的下标称为替换点，再从后面找一个比替换数大的最小数（这个数必然存在），0、2都不行，5可以，将5和2交换得到”956220”，然后再将替换点后的字符串”6220”颠倒即得到”950226”。\n如果达到这个数的最大，比如1234-à4321,这个时候就结束整个循环。\n如果输入是一个非最小数，如1324，则将它转换为最小数，如1234，再进行排序。排序算法用快排，可以自己写一个，如果快排不会的话，就先看会再来接着看，或者自己想一个靠谱的算法，也可以直接用VC库中的qsort(s , n , sizeof(s[0]) , cmp);各参数是什么意思就自己在下面多花点时间吧。\n1234567891011121314151617181920212223242526272829303132333435363738394041public String[] allSort1(String str) &#123;          int len = str.length();          if (len == 0) &#123;              return null;          &#125;          int count = 0, n = 1;          for (int i = 1; i &lt;= len; i++) &#123;              n *= i;          &#125;          String[] strings = new String[n];          String mtuxString = str;          if (len == 1) &#123;              strings[0] = mtuxString;          &#125;          // while (!str.equals(mtuxString)) &#123;          // mtuxString = swap(mtuxString, n, --n);          // &#125;          for (int i = 0; i &lt; n / len; i++) &#123;              if (i % 2 == 0) &#123;                  for (int j = len - 1; j &gt; 0; j--) &#123;                      mtuxString = swap(mtuxString, j, j - 1);                      strings[count++] = mtuxString;                      if (j == 1) &#123;                          mtuxString = swap(mtuxString, len - 1, len - 2);                          strings[count++] = mtuxString;                      &#125;                  &#125;              &#125; else &#123;                  for (int j = 1; j &lt;= len - 1; j++) &#123;                      mtuxString = swap(mtuxString, j, j - 1);                      strings[count++] = mtuxString;                      if (j == len - 1) &#123;                          mtuxString = swap(mtuxString, 0, 1);                          strings[count++] = mtuxString;                      &#125;                  &#125;              &#125;          &#125;            return strings;      &#125;\n三、非递归还有一种方法描述：和上一种不同的是：这种算法比较笨，但很好理解，不用按照上一种那么严格从小到大进行排列输出。\n首先先将最后一个数从右往左依次交换输出，然后判断个数是否为基数，交换离该数最远端的两个数，再把第一个数从左往右交换输出，交换远端的两个数，如此进行循环就能排列完全部的数。这说得可能比较抽象，看一个例子：\nE.g：               1 2 3 4\n第一次：（从右往左）：1 2 4 3   —  1 2 4 3 — 1 4 2 3  —  4 1 2 3   把最后一个数依次往前移                      交换：2 和 3  —&gt;   4 1 3 2\n第二次：（从左往右）：4 1 3 2  —  1 4 3 2  —  1 3 4 2  —  1 3 2 4  把第一个数依次往后移                      交换：1 和 3  —-&gt; 3 1 2 4           重复第一次，知道把所有数输出为止\n这个具体就不实现了，仅仅把上面两种方法需要用到的swap方法和快速排序quickSort方法写出。\n12345678910111213public static String swap(String str, int i, int j) &#123;          if (str.length() == 0) &#123;              return null;          &#125;          String afterSwap = \"\";          char c;          char[] cs = str.toCharArray();          c = cs[i];          cs[i] = cs[j];          cs[j] = c;          afterSwap = String.valueOf(cs);          return afterSwap;      &#125;\n1234567891011121314151617181920212223242526272829303132333435363738394041424344454647484950/**      * Qucik sort 54,12,9,89,3,19,29,1 （1）选择54作为中轴 并定义tmp=54 1,12,9,89,3,19,29,1      * （2） 定义一个队尾游标，从后向前扫描，选择小于54的第一个元素，并把它复制到54这个位置 1,12,9,89,3,19,29,89      * （3）定义一个队首游标，从前向后扫描，扫描到大于54的第一个元素，并把它复制到1这个位置 1,12,9,29,3,19,29,89      * （4）继续步骤2的扫描，扫描小于54的第一个元素，并把它复制到89这个位置 1,12,9,29,3,19,54,89      * (5)继续步骤3的扫描，当扫描游标触碰到队尾游标时还未发现大于54的元素，则把tmp复制到队尾游标所指向的位置      * (1,12,9,29,3,19)54(89) (6)分别对54左右两个数组执行步骤1      *       * @param str      * @return      */      public static String quickSort(String str) &#123;          int len = str.length();          if (len == 0) &#123;              return \"\";          &#125;          if (len == 1) &#123;              return str;          &#125;          String resultStr = \"\";          char[] cr = str.toCharArray();          char pivol = cr[0];          int i = 0, j = len - 1;          while (true) &#123;              if (i &lt; j) &#123;                  while (j &gt;= 0 &amp;&amp; j &gt; i) &#123;                      if (cr[j] &gt; pivol) &#123;                          j--;                      &#125; else &#123;                          cr[i] = cr[j];                          break;                      &#125;                  &#125;                  while (i &lt; len &amp;&amp; j &gt; i) &#123;                      if (cr[i] &lt;= pivol) &#123;                          i++;                      &#125; else &#123;                          cr[j] = cr[i];                          break;                      &#125;                  &#125;              &#125; else &#123;                  cr[j] = pivol;                  resultStr = String.valueOf(cr);                  break;              &#125;          &#125;          return quickSort(resultStr.substring(0, j)) + pivol                  + quickSort(resultStr.substring(j + 1, len));      &#125;\n四、总结至此我们已经运用了递归与非递归的方法解决了全排列问题，总结一下就是：1．全排列就是从第一个数字起每个数分别与它后面的数字交换。2．去重的全排列就是从第一个数字起每个数分别与它后面非重复出现的数字交换。3．全排列的非递归就是由后向前找替换数和替换点，然后由后向前找第一个比替换数大的数与替换数交换，最后颠倒替换点后的所有数据。\n","dateCreated":"2014-12-08T16:10:00+08:00","dateModified":"2020-11-20T08:50:05+08:00","datePublished":"2014-12-08T16:10:00+08:00","description":"一种向线程实时传递参数的方法","headline":"全排列（含递归和非递归的解法）","image":[],"mainEntityOfPage":{"@type":"WebPage","@id":"https://xiaoo.ml/2014/12/08/全排列（含递归和非递归的解法）/"},"publisher":{"@type":"Organization","name":"AndrewWang","sameAs":["https://github.com/AndrewWang1993","https://stackoverflow.com/users/4209302/andrewwang","mailto:fernando_caudill@outlook.com"],"image":"https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png","logo":{"@type":"ImageObject","url":"https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png"}},"url":"https://xiaoo.ml/2014/12/08/全排列（含递归和非递归的解法）/","keywords":"Handler"}</script>
+    <meta name="description" content="一种向线程实时传递参数的方法">
+<meta name="keywords" content="Handler">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="全排列（含递归和非递归的解法）">
+<meta property="og:url" content="https://xiaoo.ml/2014/12/08/全排列（含递归和非递归的解法）/index.html">
+<meta property="og:site_name" content="AndrewWang&#39;s Blog">
+<meta property="og:description" content="一种向线程实时传递参数的方法">
+<meta property="og:locale" content="en">
+<meta property="og:updated_time" content="2020-11-20T00:50:05.794Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="全排列（含递归和非递归的解法）">
+<meta name="twitter:description" content="一种向线程实时传递参数的方法">
+<meta name="twitter:creator" content="@https:&#x2F;&#x2F;twitter.com&#x2F;JamesMcMurr">
+    
+    
+        
+    
+    
+        <meta property="og:image" content="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png"/>
+    
+    
+    
+    
+    <!--STYLES-->
+    <link rel="stylesheet" href="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/css/style-c4ozcsklz4kht2pebhp44xorvyverh23toayhn7i6ubrpyedak24hv1v0hyd.min.css">
+    <!--STYLES END-->
+    
+
+    
+</head>
+
+    <body>
+        <div id="blog">
+            <!-- Define author's picture -->
+
+
+    
+        
+            
+        
+    
+
+<header id="header" data-behavior="2">
+    <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
+    <div class="header-title">
+        <a class="header-title-link" href="/ ">AndrewWang&#39;s Blog</a>
+    </div>
+    
+        
+            <a class="header-right-picture " href="#about">
+        
+        
+            <img class="header-picture" src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png" alt="Author&#39;s picture">
+        
+        </a>
+    
+</header>
+
+            <!-- Define author's picture -->
+
+
+
+        
+    
+
+<nav id="sidebar" data-behavior="2">
+    <div class="sidebar-container">
+        
+            <div class="sidebar-profile">
+                <a href="/#about">
+                    <img class="sidebar-profile-picture" src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png" alt="Author&#39;s picture">
+                </a>
+                <h4 class="sidebar-profile-name">AndrewWang</h4>
+                
+                    <h5 class="sidebar-profile-bio"><p>凡是过去，皆为序章<br>须知参差百态，乃是幸福本源<br>邮箱：<a href="mailto:fernando_caudill@outlook.com" target="_blank">fernando_caudill@outlook.com</a></p>
+</h5>
+                
+            </div>
+        
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/ " title="Home">
+                    
+                        <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Home</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/all-categories" title="Categories">
+                    
+                        <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Categories</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/all-tags" title="Tags">
+                    
+                        <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Tags</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/all-archives" title="Archives">
+                    
+                        <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Archives</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link open-algolia-search" href="#search" title="Search">
+                    
+                        <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Search</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="#about" title="About">
+                    
+                        <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">About</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="https://github.com/AndrewWang1993" target="_blank" rel="noopener" title="GitHub">
+                    
+                        <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">GitHub</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="https://stackoverflow.com/users/4209302/andrewwang" target="_blank" rel="noopener" title="Stack Overflow">
+                    
+                        <i class="sidebar-button-icon fab fa-stack-overflow" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Stack Overflow</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="mailto:fernando_caudill@outlook.com" target="_blank" rel="noopener" title="Mail">
+                    
+                        <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Mail</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/atom.xml" title="RSS">
+                    
+                        <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">RSS</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+    </div>
+</nav>
+
+            
+            <div id="main" data-behavior="2"
+                 class="
+                        hasCoverMetaIn
+                        ">
+                
+<article class="post">
+    
+    
+        <div class="post-header main-content-wrap text-left">
+    
+        <h1 class="post-title">
+            全排列（含递归和非递归的解法）
+        </h1>
+    
+    
+        <div class="post-meta">
+    <time datetime="2014-12-08T16:10:00+08:00">
+	
+		    Dec 08, 2014
+    	
+    </time>
+    
+        <span>in </span>
+        
+    <a class="category-link" href="/categories/Android/">Android</a>
+
+
+    
+</div>
+
+    
+</div>
+
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
+            <p>一种向线程实时传递参数的方法<br><a id="more"></a></p>
+<p>用Java写一个函数, 如 Foo(const char *str), 打印出 str 的全排列,如 abc 的全排列: abc, acb, bca, dac, cab, cba</p>
+<h3 id="一、递归版本"><a href="#一、递归版本" class="headerlink" title="一、递归版本"></a>一、递归版本</h3><p>1、算法简述<br>简单地说：就是第一个数分别以后面的数进行交换<br>E．g：E = （a , b , c），则 prem（E）= a.perm（b,c）+ b.perm（a,c）+ c.perm（a,b）<br>然后a.perm（b,c）= ab.perm（c）+ ac.perm（b）= abc + acb.依次递归进行<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">static</span> ArrayList&lt;String&gt; <span class="title">allSort2</span><span class="params">(String str, <span class="keyword">int</span> pos)</span> </span>&#123;  </span><br><span class="line">        ArrayList&lt;String&gt; list = <span class="keyword">new</span> ArrayList&lt;String&gt;();  </span><br><span class="line">        <span class="keyword">if</span>(pos==<span class="number">0</span>)&#123;  </span><br><span class="line"><span class="comment">//          str=quickSort(str);  </span></span><br><span class="line">        &#125;  </span><br><span class="line">        <span class="keyword">int</span> len = str.length();  </span><br><span class="line">        <span class="keyword">if</span> (len == <span class="number">0</span>) &#123;  </span><br><span class="line">            list.add(<span class="string">""</span>);  </span><br><span class="line">            <span class="keyword">return</span> list;  </span><br><span class="line">        &#125;  </span><br><span class="line">        list.add(str);  </span><br><span class="line">        <span class="keyword">if</span> (len == <span class="number">1</span>) &#123;  </span><br><span class="line">            <span class="keyword">return</span> list;  </span><br><span class="line">        &#125;  </span><br><span class="line">        <span class="keyword">for</span> (<span class="keyword">int</span> i = pos; i &lt; len; i++) &#123;  </span><br><span class="line">            str = swap(str, i, pos);  </span><br><span class="line">            list.add(str);  </span><br><span class="line">            <span class="keyword">if</span> (pos &lt; len - <span class="number">1</span>) &#123;  </span><br><span class="line">                list.addAll(allSort2(str, pos + <span class="number">1</span>));  </span><br><span class="line">            &#125; <span class="keyword">else</span> &#123;  </span><br><span class="line">                <span class="keyword">return</span> list;  </span><br><span class="line">            &#125;  </span><br><span class="line">        &#125;  </span><br><span class="line">        <span class="keyword">return</span> list;  </span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure></p>
+<h3 id="二、非递归版本"><a href="#二、非递归版本" class="headerlink" title="二、非递归版本"></a>二、非递归版本</h3><p>1、算法简述</p>
+<p>要考虑全排列的非递归实现，先来考虑如何计算字符串的下一个排列。如”1234”的下一个排列就是”1243”。只要对字符串反复求出下一个排列，全排列的也就迎刃而解了。</p>
+<p>如何计算字符串的下一个排列了？来考虑”926520”这个字符串，我们从后向前找第一双相邻的递增数字，”20”、”52”都是非递增的，”26 “即满足要求，称前一个数字2为替换数，替换数的下标称为替换点，再从后面找一个比替换数大的最小数（这个数必然存在），0、2都不行，5可以，将5和2交换得到”956220”，然后再将替换点后的字符串”6220”颠倒即得到”950226”。</p>
+<p>如果达到这个数的最大，比如1234-à4321,这个时候就结束整个循环。</p>
+<p>如果输入是一个非最小数，如1324，则将它转换为最小数，如1234，再进行排序。排序算法用快排，可以自己写一个，如果快排不会的话，就先看会再来接着看，或者自己想一个靠谱的算法，也可以直接用VC库中的qsort(s , n , sizeof(s[0]) , cmp);各参数是什么意思就自己在下面多花点时间吧。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> String[] allSort1(String str) &#123;  </span><br><span class="line">        <span class="keyword">int</span> len = str.length();  </span><br><span class="line">        <span class="keyword">if</span> (len == <span class="number">0</span>) &#123;  </span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">null</span>;  </span><br><span class="line">        &#125;  </span><br><span class="line">        <span class="keyword">int</span> count = <span class="number">0</span>, n = <span class="number">1</span>;  </span><br><span class="line">        <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">1</span>; i &lt;= len; i++) &#123;  </span><br><span class="line">            n *= i;  </span><br><span class="line">        &#125;  </span><br><span class="line">        String[] strings = <span class="keyword">new</span> String[n];  </span><br><span class="line">        String mtuxString = str;  </span><br><span class="line">        <span class="keyword">if</span> (len == <span class="number">1</span>) &#123;  </span><br><span class="line">            strings[<span class="number">0</span>] = mtuxString;  </span><br><span class="line">        &#125;  </span><br><span class="line">        <span class="comment">// while (!str.equals(mtuxString)) &#123;  </span></span><br><span class="line">        <span class="comment">// mtuxString = swap(mtuxString, n, --n);  </span></span><br><span class="line">        <span class="comment">// &#125;  </span></span><br><span class="line">        <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; n / len; i++) &#123;  </span><br><span class="line">            <span class="keyword">if</span> (i % <span class="number">2</span> == <span class="number">0</span>) &#123;  </span><br><span class="line">                <span class="keyword">for</span> (<span class="keyword">int</span> j = len - <span class="number">1</span>; j &gt; <span class="number">0</span>; j--) &#123;  </span><br><span class="line">                    mtuxString = swap(mtuxString, j, j - <span class="number">1</span>);  </span><br><span class="line">                    strings[count++] = mtuxString;  </span><br><span class="line">                    <span class="keyword">if</span> (j == <span class="number">1</span>) &#123;  </span><br><span class="line">                        mtuxString = swap(mtuxString, len - <span class="number">1</span>, len - <span class="number">2</span>);  </span><br><span class="line">                        strings[count++] = mtuxString;  </span><br><span class="line">                    &#125;  </span><br><span class="line">                &#125;  </span><br><span class="line">            &#125; <span class="keyword">else</span> &#123;  </span><br><span class="line">                <span class="keyword">for</span> (<span class="keyword">int</span> j = <span class="number">1</span>; j &lt;= len - <span class="number">1</span>; j++) &#123;  </span><br><span class="line">                    mtuxString = swap(mtuxString, j, j - <span class="number">1</span>);  </span><br><span class="line">                    strings[count++] = mtuxString;  </span><br><span class="line">                    <span class="keyword">if</span> (j == len - <span class="number">1</span>) &#123;  </span><br><span class="line">                        mtuxString = swap(mtuxString, <span class="number">0</span>, <span class="number">1</span>);  </span><br><span class="line">                        strings[count++] = mtuxString;  </span><br><span class="line">                    &#125;  </span><br><span class="line">                &#125;  </span><br><span class="line">            &#125;  </span><br><span class="line">        &#125;  </span><br><span class="line">  </span><br><span class="line">        <span class="keyword">return</span> strings;  </span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<h3 id="三、非递归还有一种方法"><a href="#三、非递归还有一种方法" class="headerlink" title="三、非递归还有一种方法"></a>三、非递归还有一种方法</h3><p>描述：和上一种不同的是：这种算法比较笨，但很好理解，不用按照上一种那么严格从小到大进行排列输出。</p>
+<p>首先先将最后一个数从右往左依次交换输出，然后判断个数是否为基数，交换离该数最远端的两个数，再把第一个数从左往右交换输出，交换远端的两个数，如此进行循环就能排列完全部的数。这说得可能比较抽象，看一个例子：</p>
+<p>E.g：               1 2 3 4</p>
+<p>第一次：（从右往左）：1 2 4 3   —  1 2 4 3 — 1 4 2 3  —  4 1 2 3   把最后一个数依次往前移<br>                      交换：2 和 3  —&gt;   4 1 3 2</p>
+<p>第二次：（从左往右）：4 1 3 2  —  1 4 3 2  —  1 3 4 2  —  1 3 2 4  把第一个数依次往后移<br>                      交换：1 和 3  —-&gt; 3 1 2 4           重复第一次，知道把所有数输出为止</p>
+<p>这个具体就不实现了，仅仅把上面两种方法需要用到的swap方法和快速排序quickSort方法写出。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">static</span> String <span class="title">swap</span><span class="params">(String str, <span class="keyword">int</span> i, <span class="keyword">int</span> j)</span> </span>&#123;  </span><br><span class="line">        <span class="keyword">if</span> (str.length() == <span class="number">0</span>) &#123;  </span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">null</span>;  </span><br><span class="line">        &#125;  </span><br><span class="line">        String afterSwap = <span class="string">""</span>;  </span><br><span class="line">        <span class="keyword">char</span> c;  </span><br><span class="line">        <span class="keyword">char</span>[] cs = str.toCharArray();  </span><br><span class="line">        c = cs[i];  </span><br><span class="line">        cs[i] = cs[j];  </span><br><span class="line">        cs[j] = c;  </span><br><span class="line">        afterSwap = String.valueOf(cs);  </span><br><span class="line">        <span class="keyword">return</span> afterSwap;  </span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/** </span></span><br><span class="line"><span class="comment">     * Qucik sort 54,12,9,89,3,19,29,1 （1）选择54作为中轴 并定义tmp=54 1,12,9,89,3,19,29,1 </span></span><br><span class="line"><span class="comment">     * （2） 定义一个队尾游标，从后向前扫描，选择小于54的第一个元素，并把它复制到54这个位置 1,12,9,89,3,19,29,89 </span></span><br><span class="line"><span class="comment">     * （3）定义一个队首游标，从前向后扫描，扫描到大于54的第一个元素，并把它复制到1这个位置 1,12,9,29,3,19,29,89 </span></span><br><span class="line"><span class="comment">     * （4）继续步骤2的扫描，扫描小于54的第一个元素，并把它复制到89这个位置 1,12,9,29,3,19,54,89 </span></span><br><span class="line"><span class="comment">     * (5)继续步骤3的扫描，当扫描游标触碰到队尾游标时还未发现大于54的元素，则把tmp复制到队尾游标所指向的位置 </span></span><br><span class="line"><span class="comment">     * (1,12,9,29,3,19)54(89) (6)分别对54左右两个数组执行步骤1 </span></span><br><span class="line"><span class="comment">     *  </span></span><br><span class="line"><span class="comment">     * <span class="doctag">@param</span> str </span></span><br><span class="line"><span class="comment">     * <span class="doctag">@return</span> </span></span><br><span class="line"><span class="comment">     */</span>  </span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> String <span class="title">quickSort</span><span class="params">(String str)</span> </span>&#123;  </span><br><span class="line">        <span class="keyword">int</span> len = str.length();  </span><br><span class="line">        <span class="keyword">if</span> (len == <span class="number">0</span>) &#123;  </span><br><span class="line">            <span class="keyword">return</span> <span class="string">""</span>;  </span><br><span class="line">        &#125;  </span><br><span class="line">        <span class="keyword">if</span> (len == <span class="number">1</span>) &#123;  </span><br><span class="line">            <span class="keyword">return</span> str;  </span><br><span class="line">        &#125;  </span><br><span class="line">        String resultStr = <span class="string">""</span>;  </span><br><span class="line">        <span class="keyword">char</span>[] cr = str.toCharArray();  </span><br><span class="line">        <span class="keyword">char</span> pivol = cr[<span class="number">0</span>];  </span><br><span class="line">        <span class="keyword">int</span> i = <span class="number">0</span>, j = len - <span class="number">1</span>;  </span><br><span class="line">        <span class="keyword">while</span> (<span class="keyword">true</span>) &#123;  </span><br><span class="line">            <span class="keyword">if</span> (i &lt; j) &#123;  </span><br><span class="line">                <span class="keyword">while</span> (j &gt;= <span class="number">0</span> &amp;&amp; j &gt; i) &#123;  </span><br><span class="line">                    <span class="keyword">if</span> (cr[j] &gt; pivol) &#123;  </span><br><span class="line">                        j--;  </span><br><span class="line">                    &#125; <span class="keyword">else</span> &#123;  </span><br><span class="line">                        cr[i] = cr[j];  </span><br><span class="line">                        <span class="keyword">break</span>;  </span><br><span class="line">                    &#125;  </span><br><span class="line">                &#125;  </span><br><span class="line">                <span class="keyword">while</span> (i &lt; len &amp;&amp; j &gt; i) &#123;  </span><br><span class="line">                    <span class="keyword">if</span> (cr[i] &lt;= pivol) &#123;  </span><br><span class="line">                        i++;  </span><br><span class="line">                    &#125; <span class="keyword">else</span> &#123;  </span><br><span class="line">                        cr[j] = cr[i];  </span><br><span class="line">                        <span class="keyword">break</span>;  </span><br><span class="line">                    &#125;  </span><br><span class="line">                &#125;  </span><br><span class="line">            &#125; <span class="keyword">else</span> &#123;  </span><br><span class="line">                cr[j] = pivol;  </span><br><span class="line">                resultStr = String.valueOf(cr);  </span><br><span class="line">                <span class="keyword">break</span>;  </span><br><span class="line">            &#125;  </span><br><span class="line">        &#125;  </span><br><span class="line">        <span class="keyword">return</span> quickSort(resultStr.substring(<span class="number">0</span>, j)) + pivol  </span><br><span class="line">                + quickSort(resultStr.substring(j + <span class="number">1</span>, len));  </span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<h3 id="四、总结"><a href="#四、总结" class="headerlink" title="四、总结"></a>四、总结</h3><p>至此我们已经运用了递归与非递归的方法解决了全排列问题，总结一下就是：<br>1．全排列就是从第一个数字起每个数分别与它后面的数字交换。<br>2．去重的全排列就是从第一个数字起每个数分别与它后面非重复出现的数字交换。<br>3．全排列的非递归就是由后向前找替换数和替换点，然后由后向前找第一个比替换数大的数与替换数交换，最后颠倒替换点后的所有数据。</p>
+
+            
+
+        </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
+        
+            <div class="post-footer-tags">
+                <span class="text-color-light text-small">TAGGED IN</span><br>
+                
+    <a class="tag tag--primary tag--small t-link" href="/tags/Handler/">Handler</a>
+
+            </div>
+        
+        
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2014/12/08/App发测试前的自测list/" data-tooltip="App发测试前的自测List" aria-label="PREVIOUS: App发测试前的自测List">
+                
+                    <i class="fa fa-angle-left" aria-hidden="true"></i>
+                    <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2014/12/04/安卓调试错误 waiting for debugger/" data-tooltip="安卓调试错误 waiting for debugger" aria-label="NEXT: 安卓调试错误 waiting for debugger">
+                
+                    <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                    <i class="fa fa-angle-right" aria-hidden="true"></i>
+                </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a class="post-action-btn btn btn--default btn-open-shareoptions" href="#btn-open-shareoptions" aria-label="Share this post">
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://xiaoo.ml/2014/12/08/全排列（含递归和非递归的解法）/" title="Share on Facebook">
+                    <i class="fab fa-facebook" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://twitter.com/intent/tweet?text=https://xiaoo.ml/2014/12/08/全排列（含递归和非递归的解法）/" title="Share on Twitter">
+                    <i class="fab fa-twitter" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://xiaoo.ml/2014/12/08/全排列（含递归和非递归的解法）/" title="Share on Weibo">
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://xiaoo.ml/2014/12/08/全排列（含递归和非递归的解法）/&amp;title=全排列（含递归和非递归的解法）" title="Share on QQ">
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#" aria-label="Back to top">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+        
+        
+            
+        
+    </div>
+</article>
+
+
+
+
+
+                
+
+                
+                <footer id="footer" class="main-content-wrap">
+    <span class="copyrights">
+		Copyrights &copy; 2020 AndrewWang. All Rights Reserved.
+    </span>
+</footer>
+
+                
+
+            </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="2">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2014/12/08/App发测试前的自测list/" data-tooltip="App发测试前的自测List" aria-label="PREVIOUS: App发测试前的自测List">
+                
+                    <i class="fa fa-angle-left" aria-hidden="true"></i>
+                    <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2014/12/04/安卓调试错误 waiting for debugger/" data-tooltip="安卓调试错误 waiting for debugger" aria-label="NEXT: 安卓调试错误 waiting for debugger">
+                
+                    <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                    <i class="fa fa-angle-right" aria-hidden="true"></i>
+                </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a class="post-action-btn btn btn--default btn-open-shareoptions" href="#btn-open-shareoptions" aria-label="Share this post">
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://xiaoo.ml/2014/12/08/全排列（含递归和非递归的解法）/" title="Share on Facebook">
+                    <i class="fab fa-facebook" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://twitter.com/intent/tweet?text=https://xiaoo.ml/2014/12/08/全排列（含递归和非递归的解法）/" title="Share on Twitter">
+                    <i class="fab fa-twitter" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://xiaoo.ml/2014/12/08/全排列（含递归和非递归的解法）/" title="Share on Weibo">
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://xiaoo.ml/2014/12/08/全排列（含递归和非递归的解法）/&amp;title=全排列（含递归和非递归的解法）" title="Share on QQ">
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#" aria-label="Back to top">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                
+    <div id="share-options-bar" class="share-options-bar" data-behavior="2">
+        <i id="btn-close-shareoptions" class="fa fa-times"></i>
+        <ul class="share-options">
+            
+                
+                
+                <li class="share-option">
+                    <a class="share-option-btn" target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://xiaoo.ml/2014/12/08/全排列（含递归和非递归的解法）/">
+                        <i class="fab fa-facebook" aria-hidden="true"></i><span>Share on Facebook</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a class="share-option-btn" target="new" href="https://twitter.com/intent/tweet?text=https://xiaoo.ml/2014/12/08/全排列（含递归和非递归的解法）/">
+                        <i class="fab fa-twitter" aria-hidden="true"></i><span>Share on Twitter</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a class="share-option-btn" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://xiaoo.ml/2014/12/08/全排列（含递归和非递归的解法）/">
+                        <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a class="share-option-btn" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://xiaoo.ml/2014/12/08/全排列（含递归和非递归的解法）/&amp;title=全排列（含递归和非递归的解法）">
+                        <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
+                    </a>
+                </li>
+            
+        </ul>
+    </div>
+
+
+            
+        </div>
+        
+
+
+    
+        
+    
+
+<div id="about">
+    <div id="about-card">
+        <div id="about-btn-close">
+            <i class="fa fa-times"></i>
+        </div>
+        
+            <img id="about-card-picture" src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png" alt="Author&#39;s picture">
+        
+            <h4 id="about-card-name">AndrewWang</h4>
+        
+            <div id="about-card-bio"><p>凡是过去，皆为序章<br>须知参差百态，乃是幸福本源<br>邮箱：<a href="mailto:fernando_caudill@outlook.com" target="_blank">fernando_caudill@outlook.com</a></p>
+</div>
+        
+        
+            <div id="about-card-job">
+                <i class="fa fa-briefcase"></i>
+                <br>
+                <p>Android+Python</p>
+
+            </div>
+        
+        
+            <div id="about-card-location">
+                <i class="fa fa-map-marker-alt"></i>
+                <br>
+                Zhangzhou Fujian
+            </div>
+        
+    </div>
+</div>
+
+        
+            <div id="algolia-search-modal" class="modal-container">
+    <div class="modal">
+        <div class="modal-header">
+            <span class="close-button"><i class="fa fa-times"></i></span>
+            <a href="https://algolia.com" target="_blank" rel="noopener" class="searchby-algolia text-color-light link-unstyled">
+                <span class="searchby-algolia-text text-color-light text-small">by</span>
+                <img class="searchby-algolia-logo" src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/others/algolia-light.svg">
+            </a>
+            <i class="search-icon fa fa-search"></i>
+            <form id="algolia-search-form">
+                <input type="text" id="algolia-search-input" name="search" class="form-control input--large search-input" placeholder="Search ">
+            </form>
+        </div>
+        <div class="modal-body">
+            <div class="no-result text-color-light text-center">no post found</div>
+            <div class="results">
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2013/01/22/Cloneable和clone的使用，以及深复制与浅复制的区别/">
+                            <h3 class="media-heading">Cloneable和clone的使用，以及深复制与浅复制的区别</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Jan 22, 2013
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><ni>深浅复制总结下</ni></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2013/02/04/Ubuntu Problem/">
+                            <h3 class="media-heading">Ubuntu Problem</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Feb 4, 2013
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><ni>记录最近几年使用Ubuntu有用的Tips</ni></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2013/08/18/婚后，你一定会遇到更喜欢的人/">
+                            <h3 class="media-heading">婚后，你一定会遇到更喜欢的人</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Aug 18, 2013
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p>结婚后，你一定会遇到更喜欢的人。这件事几乎是肯定的。倒不是说先前结婚的人有多糟糕，也不是说后来出现的人有多美好。而是，你更了解自己了。</p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2013/11/09/ImageLoader must be init with configuration before using 错误解决方法/">
+                            <h3 class="media-heading">ImageLoader must be init with configuration before using 错误解决方法</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Nov 9, 2013
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p>最近开发过程中用到了开源项目Android-Universal-Image-Loader。<br></p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2013/12/14/把WordPress放在根目录而地址显示子目录的方法/">
+                            <h3 class="media-heading">把WordPress放在根目录而地址显示子目录的方法</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Dec 14, 2013
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p> 今天在狗爹（GoDaddy）随便买了个域名，想建个个人博客耍耍。<br></p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2014/02/15/越是聪明人，越容易在这件事上栽跟头/">
+                            <h3 class="media-heading">越是聪明人，越容易在这件事上栽跟头zt</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Feb 15, 2014
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p>一篇名为《李开复：聪明人创业为何容易失败》的商业报道里写道，记者问李开复，如何在短时间内对一个创业者或项目进行判断，有哪些指标或者投资方法论？<br></p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2014/04/02/Java中普通代码块，构造代码块，静态代码块区别及代码示例/">
+                            <h3 class="media-heading">Java中普通代码块，构造代码块，静态代码块区别及代码示例</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Apr 2, 2014
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p>执行顺序：（优先级从高到低）静态代码块&gt;main方法&gt;构造代码块&gt;构造方法。其中静态代码块只执行一次。构造代码块在每次创建对象是都会执行。<br></p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2014/04/14/getApplicationContext()、getBasecontext()、getApplication() 区别/">
+                            <h3 class="media-heading">getApplicationContext()、getBasecontext()、getApplication() 区别</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Apr 14, 2014
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><ni>搞清区别联系很重要，虽然好多情况下能通用的。</ni></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2014/04/24/使用注解来统计算法时间/">
+                            <h3 class="media-heading">使用注解统计算法运行时间</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Apr 24, 2014
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p>一直以为注解并没有什么卵用，后来用了butterknift和spring组件后才知道自定义组件可以完成很多任务。<br></p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2014/05/22/git merge和rebase的区别/">
+                            <h3 class="media-heading">git merge和rebase的区别</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    May 22, 2014
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><ni>一直以来都以为rebase是合并冲突的一种手段，和merge一样的，用哪个都行。</ni></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+            </div>
+        </div>
+        <div class="modal-footer">
+            <p class="results-count text-medium" data-message-zero="no post found" data-message-one="1 post found" data-message-other="{n} posts found">
+                80 posts found
+            </p>
+        </div>
+    </div>
+</div>
+
+        
+        
+<div id="cover" style="background-image:url('https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/cover.jpg');"></div>
+        <!--SCRIPTS-->
+<script src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/js/script-dbd16rvloemmuxdzniplmnxxvwoz24eya9wol0b7vvmlokgqsjivmb8dnscy.min.js"></script>
+<!--SCRIPTS END-->
+
+    
+
+
+    <script src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/js/moment-with-locales.min.js"></script>
+    <script src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/js/algoliasearch.min.js"></script>
+    <script>
+        var algoliaClient = algoliasearch('NPCJXUJXHV', '519d0ecd5f05b733ac031d89154c7bbb');
+        var algoliaIndex = algoliaClient.initIndex('my-hexo-blog');
+    </script>
+
+
+    </body>
+</html>

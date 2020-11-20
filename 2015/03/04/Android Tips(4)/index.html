@@ -1,0 +1,830 @@
+
+<!DOCTYPE html>
+<html lang="en">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="AndrewWang&#39;s Blog">
+    <title>Android Tips(4) - AndrewWang&#39;s Blog</title>
+    <meta name="author" content="AndrewWang">
+    
+        <meta name="keywords" content="hexo,javascript,android,java,JS,Python,">
+    
+    
+        <link rel="icon" href="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/favicon(8).png">
+    
+    
+        <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+    
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"AndrewWang","sameAs":["https://github.com/AndrewWang1993","https://stackoverflow.com/users/4209302/andrewwang","mailto:fernando_caudill@outlook.com"],"image":"https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png"},"articleBody":"系列四 \n\n\n\n当app的theme用的是NoActionBar,但是在layout中仍然用到toolbar的时候,不要在style文件中加fitsSystemWindows属性,而是在用到toolbar的layout最外层加fitsSystemWindows,否则当你使用EditText,在小米手机上长按EditText调出系统粘贴功能的时候,粘贴的layout的布局会错位.\n当WebView与ScrollView嵌套使用,并且WebView有字体放大缩小的功能时,当切换webview的字体后,webview的高度并不能很好的计算出来,这时候可以通过注入的方式,让js算出高度,经测试,这样是最可靠的,代码地址:http://blog.csdn.net/jys1115/article/details/43525979\nContext类中的createPackageContext(packageName, flags)方法，可用来获取指定包名应用程序的Context对象。\nTextView类的setKeyListener(KeyListener)方法； 其中DigitsKeyListener类，使用getInstance(String accepted)方法即可指定EditText可输入字符集；\nView类中的getLocationInWindow(int[])方法和getLocationOnScreen(int[])方法，获取View在窗口/屏幕中的位置；\nContext.getCacheDir() - 可以获取到app默认的缓存路径。\nStaticLayout 在自定义控件绘制文本的时候很有用。\nAndroid中的四大组件千万不要通过new的方式创建出来。\n测试app的时候,我们大都想要将debug和release版本同时安装到手机里,可以通过在gradle中修改applicationid来实现:\n\n1234567891011android &#123;    buildTypes &#123;        debug &#123;            applicationIdSuffix &apos;.debug&apos;            versionNameSuffix &apos;-DEBUG&apos;        &#125;        release &#123;            //...        &#125;    &#125;&#125;\n\n在大多数的登陆界面中，都提供了用户是否让密码可见的选项，Support Library 24.2.0 提供了官方的实现，TextInputLayout 中添加了 passwordToggleEnabled 属性来开启此功能，并且可以通过 passwordToggleDrawable 设置图标。(摘自:Android笔记的微博)\n同样,在Support Library 24.2.0中增加RecyclerView 在快速滚动时的回调接口,SnapHelper是官方的一个实现OnFlingListener 的 一个抽象类,LinearSnapHelper 则是一个完整的实现.LinearSnapHelper默认实现的功能是类似ViewPager,在滚动结束后,会选择列表某一条居中展示(这里有开始位置展示,或者结束位置显示点我).例如:\n\n1234LinearLayoutManager linearLayoutManager = new LinearLayoutManager(getContext(), LinearLayoutManager.HORIZONTAL, false);recyclerView.setLayoutManager(linearLayoutManager);LinearSnapHelper snapHelper = new LinearSnapHelper();snapHelper.attachToRecyclerView(recyclerView);\n\nAndroid中推荐使用的数据结构 :\n\n1234567ArrayMap&lt;K,V&gt; in place of HashMap&lt;K,V&gt; ArraySet&lt;K,V&gt; in place of HashSet&lt;K,V&gt; SparseArray&lt;V&gt; in place of HashMap&lt;Integer,V&gt; SparseBooleanArray in place of HashMap&lt;Integer,Boolean&gt; SparseIntArray in place of HashMap&lt;Integer,Integer&gt;  SparseLongArray in place of HashMap&lt;Integer,Long&gt;  LongSparseArray&lt;V&gt; in place of HashMap&lt;Long,V&gt;\n\n生成GUID(由于java中只能生成UUID,所以这里要转换一下):\n\n1return UUID.randomUUID().toString().toUpperCase().replaceAll(\"-\", \"\");\n\n业务场景：需要定时后台扫描数据库，上传本地照片至云端，定时任务采用何种模式: 1.Handler或者Timer定时一般为秒级别的任务,Timer会启动额外线程，而Handler可以不用。 2.无论是Handler还是Timer都需要依赖于进程存活 3.利用Handler实现定时任务的类:HandlerTimer 4.如果时间较长，则需要使用AlarmManager 5.另外，我们对于这种业务应该优先考虑是否可以基于事件通知。 6.如果是加入媒体库的文件，我们可以使用registerContentObserver监听媒体库文件变化。\n把Activity作为参数传给一个静态方法,会影响这个Activity的正常销毁吗? 1.内存泄露与方法是否是静态与否无关，与内部的方法体实现有关系。 2.内存泄露可以简单理解成：生命周期长的对象不正确持有了持有了生命周期短的对象，导致生命周期短的对象无法回收。 3.比如Activity实例被Application对象持有，Activity实例被静态变量持有。\n在assert文件夹下存放单个文件的大小不能超过1M，如果读取超过1M的文件会报 “Data exceeds UNCOMPRESS_DATA_MAX (1314625 vs 1048576)” 的IOException。如果一定要存储，可以分割文件，再去合并文件\n在Android library中不能使用switch-case语句访问资源ID，因为case分支后面跟的参数必须是常数，而library中的每一个资源ID都没有被声明为final。\n当前Activity的onPause方法执行结束后才会执行下一个Activity的onCreate方法，所以在onPause方法中不适合做耗时较长的工作，这会影响到页面之间的跳转效率；\n不要通过Bundle传递大块的数据，否则会报TransactionTooLargeException异常\n（AnimationDrawable在Android5.0及以上的版本已有明显的优化）尽量不要使用AnimationDrawable，它在初始化的时候就将所有图片加载到内存中，特别占内存，并且还不能释放，释放之后下次进入再次加载时会报错；\n.9图不能通过tinypng压缩，不然会有问题；\ngenymotion模拟器快是因为它是基于x86架构的，如果你的应用中用到了so，但没有x86架构的so，只能放弃使用它；Android Studio的模拟器也一样；\n使用Toast时，建议定义一个全局的Toast对象，这样可以避免连续显示Toast时不能取消上一次Toast消息的情况（如果你有连续弹出Toast的情况，避免使用Toast.makeText）；\n尽量避免给window和Activity同时都设置了背景，这样会造成过渡绘制，可以通过在给Activity设置主题时，去掉windowBackground背景的方式减少一层过渡绘制，有时候为了避免进入Activity时会黑屏或者白屏（和主题有关），会在给Activity设置主题的时候给window设置背景，如果这种情况下给Activity也设置了背景，是会增加一倍内存的：\n\n1&lt;item name=\"android:windowBackground\"&gt;@null&lt;/item&gt;\n\n设置中更改字体为特大之类的会影响到app的字体样式，解决方法有: \n\n1234567891.将所有字体使用的单位换成dp，不再使用sp.这样不是很靠谱，并不是所有人都能做到。2. Configuration configuration = getResources().getConfiguration();  configuration.fontScale = (float) 1;   //0.85 小, 1 标准大小, 1.15 大，1.3 超大 ，1.45 特大   DisplayMetrics metrics = new DisplayMetrics();  getWindowManager().getDefaultDisplay().getMetrics(metrics);   metrics.scaledDensity = configuration.fontScale * metrics.density;  getBaseContext().getResources().updateConfiguration(configuration, metrics);   //（ps:dialog popupwindow 除外,这两种需要在控件中重新设置fontScale)\n\nAndroid中新引入的替代枚举的注解有IntDef和StringDef,这里以IntDef做例子说明一下.\n\n1234567891011121314151617public class Colors &#123;    @IntDef(&#123;RED, GREEN, YELLOW&#125;)    //声明必要的int常量,使用@IntDef修饰LightColors,参数设置为待枚举的集合    @Retention(RetentionPolicy.SOURCE)    //使用@Retention(RetentionPolicy.SOURCE)指定注解仅存在与源码中,不加入到class文件中    public @interface LightColors&#123;&#125;    //声明一个注解为LightColors    public static final int RED = 0;    public static final int GREEN = 1;    public static final int YELLOW = 2;&#125;//用法private void setColor(@Colors.LightColors int color) &#123;        Log.d(\"MainActivity\", \"setColor color=\" + color);&#125;//调用的该方法的时候setColor(Colors.GREEN);\n\nPathInterpolatorCompat 很方便的使用它来创建各种插值曲线，举个非常简单的例子：\n\n123456Path path = new Path();path.cubicTo(0.2f, 0f, 0.1f, 1f, 0.5f, 1f);path.lineTo(1f, 1f);ObjectAnimator animator = ObjectAnimator.ofFloat(view, View.TRANSLATION_X, 500);animator.setInterpolator(PathInterpolatorCompat.create(path));animator.start();\n\n检测当前网络能否访问远程服务器(国内通过ping百度来检测)\n\n1234567891011public static boolean isNetWorkAvailable(final Context context) &#123;        try &#123;            Runtime runtime = Runtime.getRuntime();            Process pingProcess = runtime.exec(\"/system/bin/ping -c 1 www.baidu.com\");            int exitCode = pingProcess.waitFor(); //0 代表连通，2代表不通            return (exitCode == 0);        &#125; catch (Exception e) &#123;            e.printStackTrace();        &#125;        return false;    &#125;\n\n拦截系统返回键(onBackPressed())，使App不退出，而是进入后台运行\n\n1234@Override  public void onBackPressed() &#123;    moveTaskToBack(false);  &#125;\n\nview.performClick() 自动调用 View 点击事件。通常按钮等控件只有在用户点击时才能触发其点击事件，该方法可以由某些特殊条件触发模拟用户点击行为。类似的还有 performLongClick() 方法。\nLinkify.addLinks() 通过 android:autoLink 属性可以为其添加诸如 web、phone 等固定模版的超链接点击事件。但毕竟系统模版有限，而利用 Linkify.addLinks() 方法可以添加一些应用内自定义模版，比如新浪微博中的 “@XXX” 格式的超链接跳转等，都可以通过自定义正则表达式来匹配处理。\ngetWindow().addFlags(WindowManager.LayoutParams.FLAG_SECURE) 设置安全窗口，禁用系统截屏。防止 App 中的一些界面被截屏，并显示在其他设备中造成信息泄漏。（常见手机设备系统截屏操作方式为：同时按下电源键和音量键。）\n有些时候不能使用Application的Context，不然会报错（比如启动Activity，显示Dialog等）\n\n\n数字1：启动Activity在这些类中是可以的，但是需要创建一个新的task，一般情况不推荐；\n数字2：在这些类中去layout inflate是合法的，但是会使用系统默认的主题样式，如果你自定义了某些样式可能不会被使用；\n数字3：在Receiver为null时允许，在4.2或以上的版本中，用于获取黏性广播的当前值。（可以无视）；\nContentProvider、BroadcastReceiver之所以在上述表格中，是因为在其内部方法中都有一个context用于使用。\n\n","dateCreated":"2015-03-04T16:10:00+08:00","dateModified":"2020-11-20T08:50:05+08:00","datePublished":"2015-03-04T16:10:00+08:00","description":"系列四 ","headline":"Android Tips(4)","image":[],"mainEntityOfPage":{"@type":"WebPage","@id":"https://xiaoo.ml/2015/03/04/Android Tips(4)/"},"publisher":{"@type":"Organization","name":"AndrewWang","sameAs":["https://github.com/AndrewWang1993","https://stackoverflow.com/users/4209302/andrewwang","mailto:fernando_caudill@outlook.com"],"image":"https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png","logo":{"@type":"ImageObject","url":"https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png"}},"url":"https://xiaoo.ml/2015/03/04/Android Tips(4)/","keywords":"Tips"}</script>
+    <meta name="description" content="系列四">
+<meta name="keywords" content="Tips">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="Android Tips(4)">
+<meta property="og:url" content="https://xiaoo.ml/2015/03/04/Android Tips(4)/index.html">
+<meta property="og:site_name" content="AndrewWang&#39;s Blog">
+<meta property="og:description" content="系列四">
+<meta property="og:locale" content="en">
+<meta property="og:image" content="https://raw.githubusercontent.com/jiang111/awesome-android-tips/master/img/context_usage.png">
+<meta property="og:updated_time" content="2020-11-20T00:50:05.779Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Android Tips(4)">
+<meta name="twitter:description" content="系列四">
+<meta name="twitter:image" content="https://raw.githubusercontent.com/jiang111/awesome-android-tips/master/img/context_usage.png">
+<meta name="twitter:creator" content="@https:&#x2F;&#x2F;twitter.com&#x2F;JamesMcMurr">
+    
+    
+        
+    
+    
+        <meta property="og:image" content="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png"/>
+    
+    
+    
+    
+    <!--STYLES-->
+    <link rel="stylesheet" href="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/css/style-c4ozcsklz4kht2pebhp44xorvyverh23toayhn7i6ubrpyedak24hv1v0hyd.min.css">
+    <!--STYLES END-->
+    
+
+    
+</head>
+
+    <body>
+        <div id="blog">
+            <!-- Define author's picture -->
+
+
+    
+        
+            
+        
+    
+
+<header id="header" data-behavior="2">
+    <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
+    <div class="header-title">
+        <a class="header-title-link" href="/ ">AndrewWang&#39;s Blog</a>
+    </div>
+    
+        
+            <a class="header-right-picture " href="#about">
+        
+        
+            <img class="header-picture" src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png" alt="Author&#39;s picture">
+        
+        </a>
+    
+</header>
+
+            <!-- Define author's picture -->
+
+
+
+        
+    
+
+<nav id="sidebar" data-behavior="2">
+    <div class="sidebar-container">
+        
+            <div class="sidebar-profile">
+                <a href="/#about">
+                    <img class="sidebar-profile-picture" src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png" alt="Author&#39;s picture">
+                </a>
+                <h4 class="sidebar-profile-name">AndrewWang</h4>
+                
+                    <h5 class="sidebar-profile-bio"><p>凡是过去，皆为序章<br>须知参差百态，乃是幸福本源<br>邮箱：<a href="mailto:fernando_caudill@outlook.com" target="_blank">fernando_caudill@outlook.com</a></p>
+</h5>
+                
+            </div>
+        
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/ " title="Home">
+                    
+                        <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Home</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/all-categories" title="Categories">
+                    
+                        <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Categories</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/all-tags" title="Tags">
+                    
+                        <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Tags</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/all-archives" title="Archives">
+                    
+                        <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Archives</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link open-algolia-search" href="#search" title="Search">
+                    
+                        <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Search</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="#about" title="About">
+                    
+                        <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">About</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="https://github.com/AndrewWang1993" target="_blank" rel="noopener" title="GitHub">
+                    
+                        <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">GitHub</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="https://stackoverflow.com/users/4209302/andrewwang" target="_blank" rel="noopener" title="Stack Overflow">
+                    
+                        <i class="sidebar-button-icon fab fa-stack-overflow" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Stack Overflow</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="mailto:fernando_caudill@outlook.com" target="_blank" rel="noopener" title="Mail">
+                    
+                        <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Mail</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/atom.xml" title="RSS">
+                    
+                        <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">RSS</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+    </div>
+</nav>
+
+            
+            <div id="main" data-behavior="2"
+                 class="
+                        hasCoverMetaIn
+                        ">
+                
+<article class="post">
+    
+    
+        <div class="post-header main-content-wrap text-left">
+    
+        <h1 class="post-title">
+            Android Tips(4)
+        </h1>
+    
+    
+        <div class="post-meta">
+    <time datetime="2015-03-04T16:10:00+08:00">
+	
+		    Mar 04, 2015
+    	
+    </time>
+    
+        <span>in </span>
+        
+    <a class="category-link" href="/categories/Android/">Android</a>
+
+
+    
+</div>
+
+    
+</div>
+
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
+            <ni>系列四 </ni>
+
+<a id="more"></a>
+<ul>
+<li>当app的theme用的是NoActionBar,但是在layout中仍然用到toolbar的时候,不要在style文件中加fitsSystemWindows属性,而是在用到toolbar的layout最外层加fitsSystemWindows,否则当你使用EditText,在小米手机上长按EditText调出系统粘贴功能的时候,粘贴的layout的布局会错位.</li>
+<li>当WebView与ScrollView嵌套使用,并且WebView有字体放大缩小的功能时,当切换webview的字体后,webview的高度并不能很好的计算出来,这时候可以通过注入的方式,让js算出高度,经测试,这样是最可靠的,代码地址:<a href="http://blog.csdn.net/jys1115/article/details/43525979" target="_blank" rel="noopener">http://blog.csdn.net/jys1115/article/details/43525979</a></li>
+<li>Context类中的createPackageContext(packageName, flags)方法，可用来获取指定包名应用程序的Context对象。</li>
+<li>TextView类的setKeyListener(KeyListener)方法； 其中DigitsKeyListener类，使用getInstance(String accepted)方法即可指定EditText可输入字符集；</li>
+<li>View类中的getLocationInWindow(int[])方法和getLocationOnScreen(int[])方法，获取View在窗口/屏幕中的位置；</li>
+<li>Context.getCacheDir() - 可以获取到app默认的缓存路径。</li>
+<li>StaticLayout 在自定义控件绘制文本的时候很有用。</li>
+<li>Android中的四大组件千万不要通过new的方式创建出来。</li>
+<li>测试app的时候,我们大都想要将debug和release版本同时安装到手机里,可以通过在gradle中修改applicationid来实现:</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">android &#123;</span><br><span class="line">    buildTypes &#123;</span><br><span class="line">        debug &#123;</span><br><span class="line">            applicationIdSuffix &apos;.debug&apos;</span><br><span class="line">            versionNameSuffix &apos;-DEBUG&apos;</span><br><span class="line">        &#125;</span><br><span class="line">        release &#123;</span><br><span class="line">            //...</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<ul>
+<li>在大多数的登陆界面中，都提供了用户是否让密码可见的选项，Support Library 24.2.0 提供了官方的实现，TextInputLayout 中添加了 passwordToggleEnabled 属性来开启此功能，并且可以通过 passwordToggleDrawable 设置图标。(摘自:Android笔记的微博)</li>
+<li>同样,在Support Library 24.2.0中增加RecyclerView 在快速滚动时的回调接口,SnapHelper是官方的一个实现OnFlingListener 的 一个抽象类,LinearSnapHelper 则是一个完整的实现.LinearSnapHelper默认实现的功能是类似ViewPager,在滚动结束后,会选择列表某一条居中展示(这里有开始位置展示,或者结束位置显示点我).例如:</li>
+</ul>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">LinearLayoutManager linearLayoutManager = <span class="keyword">new</span> LinearLayoutManager(getContext(), LinearLayoutManager.HORIZONTAL, <span class="keyword">false</span>);</span><br><span class="line">recyclerView.setLayoutManager(linearLayoutManager);</span><br><span class="line">LinearSnapHelper snapHelper = <span class="keyword">new</span> LinearSnapHelper();</span><br><span class="line">snapHelper.attachToRecyclerView(recyclerView);</span><br></pre></td></tr></table></figure>
+<ul>
+<li>Android中推荐使用的数据结构 :</li>
+</ul>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">ArrayMap&lt;K,V&gt; in place of HashMap&lt;K,V&gt; </span><br><span class="line">ArraySet&lt;K,V&gt; in place of HashSet&lt;K,V&gt; </span><br><span class="line">SparseArray&lt;V&gt; in place of HashMap&lt;Integer,V&gt; </span><br><span class="line">SparseBooleanArray in place of HashMap&lt;Integer,Boolean&gt; </span><br><span class="line">SparseIntArray in place of HashMap&lt;Integer,Integer&gt;  </span><br><span class="line">SparseLongArray in place of HashMap&lt;Integer,Long&gt;  </span><br><span class="line">LongSparseArray&lt;V&gt; in place of HashMap&lt;Long,V&gt;</span><br></pre></td></tr></table></figure>
+<ul>
+<li>生成GUID(由于java中只能生成UUID,所以这里要转换一下):</li>
+</ul>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">return</span> UUID.randomUUID().toString().toUpperCase().replaceAll(<span class="string">"-"</span>, <span class="string">""</span>);</span><br></pre></td></tr></table></figure>
+<ul>
+<li>业务场景：需要定时后台扫描数据库，上传本地照片至云端，定时任务采用何种模式: 1.Handler或者Timer定时一般为秒级别的任务,Timer会启动额外线程，而Handler可以不用。 2.无论是Handler还是Timer都需要依赖于进程存活 3.利用Handler实现定时任务的类:HandlerTimer 4.如果时间较长，则需要使用AlarmManager 5.另外，我们对于这种业务应该优先考虑是否可以基于事件通知。 6.如果是加入媒体库的文件，我们可以使用registerContentObserver监听媒体库文件变化。</li>
+<li>把Activity作为参数传给一个静态方法,会影响这个Activity的正常销毁吗? 1.内存泄露与方法是否是静态与否无关，与内部的方法体实现有关系。 2.内存泄露可以简单理解成：生命周期长的对象不正确持有了持有了生命周期短的对象，导致生命周期短的对象无法回收。 3.比如Activity实例被Application对象持有，Activity实例被静态变量持有。</li>
+<li>在assert文件夹下存放单个文件的大小不能超过1M，如果读取超过1M的文件会报 “Data exceeds UNCOMPRESS_DATA_MAX (1314625 vs 1048576)” 的IOException。如果一定要存储，可以分割文件，再去合并文件</li>
+<li>在Android library中不能使用switch-case语句访问资源ID，因为case分支后面跟的参数必须是常数，而library中的每一个资源ID都没有被声明为final。</li>
+<li>当前Activity的onPause方法执行结束后才会执行下一个Activity的onCreate方法，所以在onPause方法中不适合做耗时较长的工作，这会影响到页面之间的跳转效率；</li>
+<li>不要通过Bundle传递大块的数据，否则会报TransactionTooLargeException异常</li>
+<li>（AnimationDrawable在Android5.0及以上的版本已有明显的优化）尽量不要使用AnimationDrawable，它在初始化的时候就将所有图片加载到内存中，特别占内存，并且还不能释放，释放之后下次进入再次加载时会报错；</li>
+<li>.9图不能通过tinypng压缩，不然会有问题；</li>
+<li>genymotion模拟器快是因为它是基于x86架构的，如果你的应用中用到了so，但没有x86架构的so，只能放弃使用它；Android Studio的模拟器也一样；</li>
+<li>使用Toast时，建议定义一个全局的Toast对象，这样可以避免连续显示Toast时不能取消上一次Toast消息的情况（如果你有连续弹出Toast的情况，避免使用Toast.makeText）；</li>
+<li>尽量避免给window和Activity同时都设置了背景，这样会造成过渡绘制，可以通过在给Activity设置主题时，去掉windowBackground背景的方式减少一层过渡绘制，有时候为了避免进入Activity时会黑屏或者白屏（和主题有关），会在给Activity设置主题的时候给window设置背景，如果这种情况下给Activity也设置了背景，是会增加一倍内存的：</li>
+</ul>
+<figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">item</span> <span class="attr">name</span>=<span class="string">"android:windowBackground"</span>&gt;</span>@null<span class="tag">&lt;/<span class="name">item</span>&gt;</span></span><br></pre></td></tr></table></figure>
+<ul>
+<li>设置中更改字体为特大之类的会影响到app的字体样式，解决方法有: </li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">1.将所有字体使用的单位换成dp，不再使用sp.这样不是很靠谱，并不是所有人都能做到。</span><br><span class="line">2. Configuration configuration = getResources().getConfiguration();</span><br><span class="line">  configuration.fontScale = (float) 1; </span><br><span class="line">  //0.85 小, 1 标准大小, 1.15 大，1.3 超大 ，1.45 特大 </span><br><span class="line">  DisplayMetrics metrics = new DisplayMetrics();</span><br><span class="line">  getWindowManager().getDefaultDisplay().getMetrics(metrics); </span><br><span class="line">  metrics.scaledDensity = configuration.fontScale * metrics.density;</span><br><span class="line">  getBaseContext().getResources().updateConfiguration(configuration, metrics); </span><br><span class="line">  //（ps:dialog popupwindow 除外,这两种需要在控件中重新设置fontScale)</span><br></pre></td></tr></table></figure>
+<ul>
+<li>Android中新引入的替代枚举的注解有IntDef和StringDef,这里以IntDef做例子说明一下.</li>
+</ul>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">Colors</span> </span>&#123;</span><br><span class="line">    <span class="meta">@IntDef</span>(&#123;RED, GREEN, YELLOW&#125;)</span><br><span class="line">    <span class="comment">//声明必要的int常量,使用@IntDef修饰LightColors,参数设置为待枚举的集合</span></span><br><span class="line">    <span class="meta">@Retention</span>(RetentionPolicy.SOURCE)</span><br><span class="line">    <span class="comment">//使用@Retention(RetentionPolicy.SOURCE)指定注解仅存在与源码中,不加入到class文件中</span></span><br><span class="line">    <span class="keyword">public</span> <span class="meta">@interface</span> LightColors&#123;&#125;</span><br><span class="line">    <span class="comment">//声明一个注解为LightColors</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">int</span> RED = <span class="number">0</span>;</span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">int</span> GREEN = <span class="number">1</span>;</span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">int</span> YELLOW = <span class="number">2</span>;</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">//用法</span></span><br><span class="line"><span class="function"><span class="keyword">private</span> <span class="keyword">void</span> <span class="title">setColor</span><span class="params">(@Colors.LightColors <span class="keyword">int</span> color)</span> </span>&#123;</span><br><span class="line">        Log.d(<span class="string">"MainActivity"</span>, <span class="string">"setColor color="</span> + color);</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">//调用的该方法的时候</span></span><br><span class="line">setColor(Colors.GREEN);</span><br></pre></td></tr></table></figure>
+<ul>
+<li>PathInterpolatorCompat 很方便的使用它来创建各种插值曲线，举个非常简单的例子：</li>
+</ul>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">Path path = <span class="keyword">new</span> Path();</span><br><span class="line">path.cubicTo(<span class="number">0.2f</span>, <span class="number">0f</span>, <span class="number">0.1f</span>, <span class="number">1f</span>, <span class="number">0.5f</span>, <span class="number">1f</span>);</span><br><span class="line">path.lineTo(<span class="number">1f</span>, <span class="number">1f</span>);</span><br><span class="line">ObjectAnimator animator = ObjectAnimator.ofFloat(view, View.TRANSLATION_X, <span class="number">500</span>);</span><br><span class="line">animator.setInterpolator(PathInterpolatorCompat.create(path));</span><br><span class="line">animator.start();</span><br></pre></td></tr></table></figure>
+<ul>
+<li>检测当前网络能否访问远程服务器(国内通过ping百度来检测)</li>
+</ul>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">boolean</span> <span class="title">isNetWorkAvailable</span><span class="params">(<span class="keyword">final</span> Context context)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            Runtime runtime = Runtime.getRuntime();</span><br><span class="line">            Process pingProcess = runtime.exec(<span class="string">"/system/bin/ping -c 1 www.baidu.com"</span>);</span><br><span class="line">            <span class="keyword">int</span> exitCode = pingProcess.waitFor(); <span class="comment">//0 代表连通，2代表不通</span></span><br><span class="line">            <span class="keyword">return</span> (exitCode == <span class="number">0</span>);</span><br><span class="line">        &#125; <span class="keyword">catch</span> (Exception e) &#123;</span><br><span class="line">            e.printStackTrace();</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">false</span>;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<ul>
+<li>拦截系统返回键(onBackPressed())，使App不退出，而是进入后台运行</li>
+</ul>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Override</span></span><br><span class="line">  <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">onBackPressed</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    moveTaskToBack(<span class="keyword">false</span>);</span><br><span class="line">  &#125;</span><br></pre></td></tr></table></figure>
+<ul>
+<li>view.performClick() 自动调用 View 点击事件。通常按钮等控件只有在用户点击时才能触发其点击事件，该方法可以由某些特殊条件触发模拟用户点击行为。类似的还有 performLongClick() 方法。</li>
+<li>Linkify.addLinks() 通过 android:autoLink 属性可以为其添加诸如 web、phone 等固定模版的超链接点击事件。但毕竟系统模版有限，而利用 Linkify.addLinks() 方法可以添加一些应用内自定义模版，比如新浪微博中的 “@XXX” 格式的超链接跳转等，都可以通过自定义正则表达式来匹配处理。</li>
+<li>getWindow().addFlags(WindowManager.LayoutParams.FLAG_SECURE) 设置安全窗口，禁用系统截屏。防止 App 中的一些界面被截屏，并显示在其他设备中造成信息泄漏。（常见手机设备系统截屏操作方式为：同时按下电源键和音量键。）</li>
+<li>有些时候不能使用Application的Context，不然会报错（比如启动Activity，显示Dialog等）<br><img src="https://raw.githubusercontent.com/jiang111/awesome-android-tips/master/img/context_usage.png" alt=""></li>
+</ul>
+<ol>
+<li>数字1：启动Activity在这些类中是可以的，但是需要创建一个新的task，一般情况不推荐；</li>
+<li>数字2：在这些类中去layout inflate是合法的，但是会使用系统默认的主题样式，如果你自定义了某些样式可能不会被使用；</li>
+<li>数字3：在Receiver为null时允许，在4.2或以上的版本中，用于获取黏性广播的当前值。（可以无视）；</li>
+<li>ContentProvider、BroadcastReceiver之所以在上述表格中，是因为在其内部方法中都有一个context用于使用。</li>
+</ol>
+
+            
+
+        </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
+        
+            <div class="post-footer-tags">
+                <span class="text-color-light text-small">TAGGED IN</span><br>
+                
+    <a class="tag tag--primary tag--small t-link" href="/tags/Tips/">Tips</a>
+
+            </div>
+        
+        
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2015/04/02/控制RecyclerView item的宽度/" data-tooltip="控制RecyclerView item的宽度" aria-label="PREVIOUS: 控制RecyclerView item的宽度">
+                
+                    <i class="fa fa-angle-left" aria-hidden="true"></i>
+                    <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2015/03/03/Android Tips(3)/" data-tooltip="Android Tips &lt;3&gt;" aria-label="NEXT: Android Tips &lt;3&gt;">
+                
+                    <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                    <i class="fa fa-angle-right" aria-hidden="true"></i>
+                </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a class="post-action-btn btn btn--default btn-open-shareoptions" href="#btn-open-shareoptions" aria-label="Share this post">
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://xiaoo.ml/2015/03/04/Android Tips(4)/" title="Share on Facebook">
+                    <i class="fab fa-facebook" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://twitter.com/intent/tweet?text=https://xiaoo.ml/2015/03/04/Android Tips(4)/" title="Share on Twitter">
+                    <i class="fab fa-twitter" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://xiaoo.ml/2015/03/04/Android Tips(4)/" title="Share on Weibo">
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://xiaoo.ml/2015/03/04/Android Tips(4)/&amp;title=Android Tips(4)" title="Share on QQ">
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#" aria-label="Back to top">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+        
+        
+            
+        
+    </div>
+</article>
+
+
+
+
+
+                
+
+                
+                <footer id="footer" class="main-content-wrap">
+    <span class="copyrights">
+		Copyrights &copy; 2020 AndrewWang. All Rights Reserved.
+    </span>
+</footer>
+
+                
+
+            </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="2">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2015/04/02/控制RecyclerView item的宽度/" data-tooltip="控制RecyclerView item的宽度" aria-label="PREVIOUS: 控制RecyclerView item的宽度">
+                
+                    <i class="fa fa-angle-left" aria-hidden="true"></i>
+                    <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2015/03/03/Android Tips(3)/" data-tooltip="Android Tips &lt;3&gt;" aria-label="NEXT: Android Tips &lt;3&gt;">
+                
+                    <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                    <i class="fa fa-angle-right" aria-hidden="true"></i>
+                </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a class="post-action-btn btn btn--default btn-open-shareoptions" href="#btn-open-shareoptions" aria-label="Share this post">
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://xiaoo.ml/2015/03/04/Android Tips(4)/" title="Share on Facebook">
+                    <i class="fab fa-facebook" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://twitter.com/intent/tweet?text=https://xiaoo.ml/2015/03/04/Android Tips(4)/" title="Share on Twitter">
+                    <i class="fab fa-twitter" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://xiaoo.ml/2015/03/04/Android Tips(4)/" title="Share on Weibo">
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://xiaoo.ml/2015/03/04/Android Tips(4)/&amp;title=Android Tips(4)" title="Share on QQ">
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#" aria-label="Back to top">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                
+    <div id="share-options-bar" class="share-options-bar" data-behavior="2">
+        <i id="btn-close-shareoptions" class="fa fa-times"></i>
+        <ul class="share-options">
+            
+                
+                
+                <li class="share-option">
+                    <a class="share-option-btn" target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://xiaoo.ml/2015/03/04/Android Tips(4)/">
+                        <i class="fab fa-facebook" aria-hidden="true"></i><span>Share on Facebook</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a class="share-option-btn" target="new" href="https://twitter.com/intent/tweet?text=https://xiaoo.ml/2015/03/04/Android Tips(4)/">
+                        <i class="fab fa-twitter" aria-hidden="true"></i><span>Share on Twitter</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a class="share-option-btn" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://xiaoo.ml/2015/03/04/Android Tips(4)/">
+                        <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a class="share-option-btn" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://xiaoo.ml/2015/03/04/Android Tips(4)/&amp;title=Android Tips(4)">
+                        <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
+                    </a>
+                </li>
+            
+        </ul>
+    </div>
+
+
+            
+        </div>
+        
+
+
+    
+        
+    
+
+<div id="about">
+    <div id="about-card">
+        <div id="about-btn-close">
+            <i class="fa fa-times"></i>
+        </div>
+        
+            <img id="about-card-picture" src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png" alt="Author&#39;s picture">
+        
+            <h4 id="about-card-name">AndrewWang</h4>
+        
+            <div id="about-card-bio"><p>凡是过去，皆为序章<br>须知参差百态，乃是幸福本源<br>邮箱：<a href="mailto:fernando_caudill@outlook.com" target="_blank">fernando_caudill@outlook.com</a></p>
+</div>
+        
+        
+            <div id="about-card-job">
+                <i class="fa fa-briefcase"></i>
+                <br>
+                <p>Android+Python</p>
+
+            </div>
+        
+        
+            <div id="about-card-location">
+                <i class="fa fa-map-marker-alt"></i>
+                <br>
+                Zhangzhou Fujian
+            </div>
+        
+    </div>
+</div>
+
+        
+            <div id="algolia-search-modal" class="modal-container">
+    <div class="modal">
+        <div class="modal-header">
+            <span class="close-button"><i class="fa fa-times"></i></span>
+            <a href="https://algolia.com" target="_blank" rel="noopener" class="searchby-algolia text-color-light link-unstyled">
+                <span class="searchby-algolia-text text-color-light text-small">by</span>
+                <img class="searchby-algolia-logo" src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/others/algolia-light.svg">
+            </a>
+            <i class="search-icon fa fa-search"></i>
+            <form id="algolia-search-form">
+                <input type="text" id="algolia-search-input" name="search" class="form-control input--large search-input" placeholder="Search ">
+            </form>
+        </div>
+        <div class="modal-body">
+            <div class="no-result text-color-light text-center">no post found</div>
+            <div class="results">
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2013/01/22/Cloneable和clone的使用，以及深复制与浅复制的区别/">
+                            <h3 class="media-heading">Cloneable和clone的使用，以及深复制与浅复制的区别</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Jan 22, 2013
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><ni>深浅复制总结下</ni></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2013/02/04/Ubuntu Problem/">
+                            <h3 class="media-heading">Ubuntu Problem</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Feb 4, 2013
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><ni>记录最近几年使用Ubuntu有用的Tips</ni></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2013/08/18/婚后，你一定会遇到更喜欢的人/">
+                            <h3 class="media-heading">婚后，你一定会遇到更喜欢的人</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Aug 18, 2013
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p>结婚后，你一定会遇到更喜欢的人。这件事几乎是肯定的。倒不是说先前结婚的人有多糟糕，也不是说后来出现的人有多美好。而是，你更了解自己了。</p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2013/11/09/ImageLoader must be init with configuration before using 错误解决方法/">
+                            <h3 class="media-heading">ImageLoader must be init with configuration before using 错误解决方法</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Nov 9, 2013
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p>最近开发过程中用到了开源项目Android-Universal-Image-Loader。<br></p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2013/12/14/把WordPress放在根目录而地址显示子目录的方法/">
+                            <h3 class="media-heading">把WordPress放在根目录而地址显示子目录的方法</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Dec 14, 2013
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p> 今天在狗爹（GoDaddy）随便买了个域名，想建个个人博客耍耍。<br></p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2014/02/15/越是聪明人，越容易在这件事上栽跟头/">
+                            <h3 class="media-heading">越是聪明人，越容易在这件事上栽跟头zt</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Feb 15, 2014
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p>一篇名为《李开复：聪明人创业为何容易失败》的商业报道里写道，记者问李开复，如何在短时间内对一个创业者或项目进行判断，有哪些指标或者投资方法论？<br></p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2014/04/02/Java中普通代码块，构造代码块，静态代码块区别及代码示例/">
+                            <h3 class="media-heading">Java中普通代码块，构造代码块，静态代码块区别及代码示例</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Apr 2, 2014
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p>执行顺序：（优先级从高到低）静态代码块&gt;main方法&gt;构造代码块&gt;构造方法。其中静态代码块只执行一次。构造代码块在每次创建对象是都会执行。<br></p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2014/04/14/getApplicationContext()、getBasecontext()、getApplication() 区别/">
+                            <h3 class="media-heading">getApplicationContext()、getBasecontext()、getApplication() 区别</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Apr 14, 2014
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><ni>搞清区别联系很重要，虽然好多情况下能通用的。</ni></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2014/04/24/使用注解来统计算法时间/">
+                            <h3 class="media-heading">使用注解统计算法运行时间</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Apr 24, 2014
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p>一直以为注解并没有什么卵用，后来用了butterknift和spring组件后才知道自定义组件可以完成很多任务。<br></p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2014/05/22/git merge和rebase的区别/">
+                            <h3 class="media-heading">git merge和rebase的区别</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    May 22, 2014
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><ni>一直以来都以为rebase是合并冲突的一种手段，和merge一样的，用哪个都行。</ni></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+            </div>
+        </div>
+        <div class="modal-footer">
+            <p class="results-count text-medium" data-message-zero="no post found" data-message-one="1 post found" data-message-other="{n} posts found">
+                80 posts found
+            </p>
+        </div>
+    </div>
+</div>
+
+        
+        
+<div id="cover" style="background-image:url('https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/cover.jpg');"></div>
+        <!--SCRIPTS-->
+<script src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/js/script-dbd16rvloemmuxdzniplmnxxvwoz24eya9wol0b7vvmlokgqsjivmb8dnscy.min.js"></script>
+<!--SCRIPTS END-->
+
+    
+
+
+    <script src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/js/moment-with-locales.min.js"></script>
+    <script src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/js/algoliasearch.min.js"></script>
+    <script>
+        var algoliaClient = algoliasearch('NPCJXUJXHV', '519d0ecd5f05b733ac031d89154c7bbb');
+        var algoliaIndex = algoliaClient.initIndex('my-hexo-blog');
+    </script>
+
+
+    </body>
+</html>

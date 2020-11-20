@@ -1,0 +1,761 @@
+
+<!DOCTYPE html>
+<html lang="en">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="AndrewWang&#39;s Blog">
+    <title>Python端极光推送超时的解决办法 - AndrewWang&#39;s Blog</title>
+    <meta name="author" content="AndrewWang">
+    
+        <meta name="keywords" content="hexo,javascript,android,java,JS,Python,">
+    
+    
+        <link rel="icon" href="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/favicon(8).png">
+    
+    
+        <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+    
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"AndrewWang","sameAs":["https://github.com/AndrewWang1993","https://stackoverflow.com/users/4209302/andrewwang","mailto:fernando_caudill@outlook.com"],"image":"https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png"},"articleBody":"因为VPS在国外，极光推送使用官方的代码老是超时~~~\n\n\n一般来说服务器推送是尽力而为不需要返回结果的，所以可以默认返回成功，使用极光推送3次不成功再用微信推送。\n1234567891011121314151617181920212223242526272829303132333435363738394041def post_to_iOS(code, vendor, phone_num, content, remark='短信内容Remark'):    \"\"\"        调用极光推送发送到iOS        :param phone_num:        :param vendor:        :param code:        :param remark: 消息内容        :return:        \"\"\"    app_key = '3333333333333333'    master_secret = '44444444444444444444'    is_junk_msg = check_junk_msg(msg=content)    _jpush = jpush.JPush(app_key, master_secret)    _jpush.set_logging(\"ERROR\")    push = _jpush.create_push()    push.audience = jpush.all_    push.options = &#123;\"apns_production\": False&#125;    push.platform = 'ios'    custom_alias = [\"5555555555555555\"]    aliast_d = &#123;\"alias\": custom_alias&#125;    push.audience = jpush.audience(        aliast_d    )    ios_msg = jpush.ios(alert=title, sound=\"msgring.caf\", badge=\"+1\")    push.notification = jpush.notification(alert=\"Hello, JPush!\", ios=ios_msg)    DBUtil.insert_data(tag=DBUtil.I, online=False, msg=remark, code=code, vendor=vendor,                       transfer='ios_apn')    # 由于短时间多次推送高概率会在此方法卡死，所以写入线程，牺牲部分到达率    # 如果是垃圾短信就不弹出提醒了    if is_junk_msg is True:        log_show('垃圾短信不进行推送')    else:        _thread.start_new_thread(post_to_jiguang, (push, remark, code, vendor, 3))    # 这里直接返回True并没有实际意义    return True\n下面代码在线程中执行，执行失败进行3次重试123456789101112131415def post_to_jiguang(push, remark, code, vendor, remain_count):    if remain_count &lt;= 0:        # 极光不通就用微信推送        log_show(\"@@@@@@@@@@@@@@@@尝试使用Server酱推送@@@@@@@@@@@@@@@@@\")        post_to_server_jiang(code=code, vendor=vendor, remark=remark)        return    try:  # 重试两次        if push.send(timeout=3).get_status_code() == 200:            log_show('极光推送成功')            return        else:            log_show('极光推送失败')    except Exception:        log_show(\"@@@@@@@@@@@@@@@@极光推送超时,尝试重试@@@@@@@@@@@@@@@@@\")        _thread.start_new_thread(post_to_jiguang, (push, remark, code, vendor, remain_count - 1))\n三次都失败选择微信推送1234567891011121314151617181920212223242526272829303132333435# http://sc.ftqq.com/?c=codedef post_to_server_jiang(code, vendor,                         url='https://sc.ftqq.com/AAAAAAAAAAAAAAAAAAAAAAA.send',                         remark='短信内容Remark'):    \"\"\"    调用server酱接口发送消息，每天500条,重复消息一分钟只能发一次    :param url: 服务器地址    :param remark: 消息内容    :return:    \"\"\"    if code == 'CODE':        title = '短消息'    else:        title = vendor + '@ ' + code    global previous_time, retry_count, append    now_time = time.time()    remark = remark.replace('\\n', 'XXX')    # 每人每天发送上限500条，相同内容5分钟内不能重复发送，不同内容一分钟只能发送30条    if previous_time != 0 and now_time &lt; (previous_time + 5 * 60 + 1):        append = ' --- 第' + str(retry_count) + '个小尾巴'        retry_count += 1    else:        append = ''        previous_time = now_time        retry_count = 1    remark += append    r = requests.post(url, data=&#123;'text': title, 'desp': remark&#125;)    if r.status_code == 200 and get_errno(r.content) == 0:        DBUtil.insert_data(tag=DBUtil.I, online=False, msg=remark, code=code, vendor=vendor,                           transfer='serverjiang')        return True    return False    \n","dateCreated":"2019-02-12T12:10:00+08:00","dateModified":"2020-11-20T08:50:05+08:00","datePublished":"2019-02-12T12:10:00+08:00","description":"因为VPS在国外，极光推送使用官方的代码老是超时~~~","headline":"Python端极光推送超时的解决办法","image":[],"mainEntityOfPage":{"@type":"WebPage","@id":"https://xiaoo.ml/2019/02/12/Python端极光推送超时的解决办法/"},"publisher":{"@type":"Organization","name":"AndrewWang","sameAs":["https://github.com/AndrewWang1993","https://stackoverflow.com/users/4209302/andrewwang","mailto:fernando_caudill@outlook.com"],"image":"https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png","logo":{"@type":"ImageObject","url":"https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png"}},"url":"https://xiaoo.ml/2019/02/12/Python端极光推送超时的解决办法/","keywords":"Python, 极光推送"}</script>
+    <meta name="description" content="因为VPS在国外，极光推送使用官方的代码老是超时~~~">
+<meta name="keywords" content="Python,极光推送">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="Python端极光推送超时的解决办法">
+<meta property="og:url" content="https://xiaoo.ml/2019/02/12/Python端极光推送超时的解决办法/index.html">
+<meta property="og:site_name" content="AndrewWang&#39;s Blog">
+<meta property="og:description" content="因为VPS在国外，极光推送使用官方的代码老是超时~~~">
+<meta property="og:locale" content="en">
+<meta property="og:updated_time" content="2020-11-20T00:50:05.786Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Python端极光推送超时的解决办法">
+<meta name="twitter:description" content="因为VPS在国外，极光推送使用官方的代码老是超时~~~">
+<meta name="twitter:creator" content="@https:&#x2F;&#x2F;twitter.com&#x2F;JamesMcMurr">
+    
+    
+        
+    
+    
+        <meta property="og:image" content="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png"/>
+    
+    
+    
+    
+    <!--STYLES-->
+    <link rel="stylesheet" href="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/css/style-c4ozcsklz4kht2pebhp44xorvyverh23toayhn7i6ubrpyedak24hv1v0hyd.min.css">
+    <!--STYLES END-->
+    
+
+    
+</head>
+
+    <body>
+        <div id="blog">
+            <!-- Define author's picture -->
+
+
+    
+        
+            
+        
+    
+
+<header id="header" data-behavior="2">
+    <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
+    <div class="header-title">
+        <a class="header-title-link" href="/ ">AndrewWang&#39;s Blog</a>
+    </div>
+    
+        
+            <a class="header-right-picture " href="#about">
+        
+        
+            <img class="header-picture" src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png" alt="Author&#39;s picture">
+        
+        </a>
+    
+</header>
+
+            <!-- Define author's picture -->
+
+
+
+        
+    
+
+<nav id="sidebar" data-behavior="2">
+    <div class="sidebar-container">
+        
+            <div class="sidebar-profile">
+                <a href="/#about">
+                    <img class="sidebar-profile-picture" src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png" alt="Author&#39;s picture">
+                </a>
+                <h4 class="sidebar-profile-name">AndrewWang</h4>
+                
+                    <h5 class="sidebar-profile-bio"><p>凡是过去，皆为序章<br>须知参差百态，乃是幸福本源<br>邮箱：<a href="mailto:fernando_caudill@outlook.com" target="_blank">fernando_caudill@outlook.com</a></p>
+</h5>
+                
+            </div>
+        
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/ " title="Home">
+                    
+                        <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Home</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/all-categories" title="Categories">
+                    
+                        <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Categories</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/all-tags" title="Tags">
+                    
+                        <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Tags</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/all-archives" title="Archives">
+                    
+                        <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Archives</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link open-algolia-search" href="#search" title="Search">
+                    
+                        <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Search</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="#about" title="About">
+                    
+                        <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">About</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="https://github.com/AndrewWang1993" target="_blank" rel="noopener" title="GitHub">
+                    
+                        <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">GitHub</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="https://stackoverflow.com/users/4209302/andrewwang" target="_blank" rel="noopener" title="Stack Overflow">
+                    
+                        <i class="sidebar-button-icon fab fa-stack-overflow" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Stack Overflow</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="mailto:fernando_caudill@outlook.com" target="_blank" rel="noopener" title="Mail">
+                    
+                        <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Mail</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/atom.xml" title="RSS">
+                    
+                        <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">RSS</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+    </div>
+</nav>
+
+            
+            <div id="main" data-behavior="2"
+                 class="
+                        hasCoverMetaIn
+                        ">
+                
+<article class="post">
+    
+    
+        <div class="post-header main-content-wrap text-left">
+    
+        <h1 class="post-title">
+            Python端极光推送超时的解决办法
+        </h1>
+    
+    
+        <div class="post-meta">
+    <time datetime="2019-02-12T12:10:00+08:00">
+	
+		    Feb 12, 2019
+    	
+    </time>
+    
+        <span>in </span>
+        
+    <a class="category-link" href="/categories/编程/">编程</a>
+
+
+    
+</div>
+
+    
+</div>
+
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
+            <ni>因为VPS在国外，极光推送使用官方的代码老是超时~~~</ni>
+
+<a id="more"></a>
+<p>一般来说服务器推送是尽力而为不需要返回结果的，所以可以默认返回成功，使用极光推送3次不成功再用微信推送。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">post_to_iOS</span><span class="params">(code, vendor, phone_num, content, remark=<span class="string">'短信内容Remark'</span>)</span>:</span></span><br><span class="line">    <span class="string">"""</span></span><br><span class="line"><span class="string">        调用极光推送发送到iOS</span></span><br><span class="line"><span class="string">        :param phone_num:</span></span><br><span class="line"><span class="string">        :param vendor:</span></span><br><span class="line"><span class="string">        :param code:</span></span><br><span class="line"><span class="string">        :param remark: 消息内容</span></span><br><span class="line"><span class="string">        :return:</span></span><br><span class="line"><span class="string">        """</span></span><br><span class="line">    app_key = <span class="string">'3333333333333333'</span></span><br><span class="line">    master_secret = <span class="string">'44444444444444444444'</span></span><br><span class="line">    is_junk_msg = check_junk_msg(msg=content)</span><br><span class="line"></span><br><span class="line">    _jpush = jpush.JPush(app_key, master_secret)</span><br><span class="line">    _jpush.set_logging(<span class="string">"ERROR"</span>)</span><br><span class="line"></span><br><span class="line">    push = _jpush.create_push()</span><br><span class="line">    push.audience = jpush.all_</span><br><span class="line">    push.options = &#123;<span class="string">"apns_production"</span>: <span class="keyword">False</span>&#125;</span><br><span class="line">    push.platform = <span class="string">'ios'</span></span><br><span class="line"></span><br><span class="line">    custom_alias = [<span class="string">"5555555555555555"</span>]</span><br><span class="line">    aliast_d = &#123;<span class="string">"alias"</span>: custom_alias&#125;</span><br><span class="line">    push.audience = jpush.audience(</span><br><span class="line">        aliast_d</span><br><span class="line">    )</span><br><span class="line"></span><br><span class="line">    ios_msg = jpush.ios(alert=title, sound=<span class="string">"msgring.caf"</span>, badge=<span class="string">"+1"</span>)</span><br><span class="line">    push.notification = jpush.notification(alert=<span class="string">"Hello, JPush!"</span>, ios=ios_msg)</span><br><span class="line"></span><br><span class="line">    DBUtil.insert_data(tag=DBUtil.I, online=<span class="keyword">False</span>, msg=remark, code=code, vendor=vendor,</span><br><span class="line">                       transfer=<span class="string">'ios_apn'</span>)</span><br><span class="line">    <span class="comment"># 由于短时间多次推送高概率会在此方法卡死，所以写入线程，牺牲部分到达率</span></span><br><span class="line">    <span class="comment"># 如果是垃圾短信就不弹出提醒了</span></span><br><span class="line">    <span class="keyword">if</span> is_junk_msg <span class="keyword">is</span> <span class="keyword">True</span>:</span><br><span class="line">        log_show(<span class="string">'垃圾短信不进行推送'</span>)</span><br><span class="line">    <span class="keyword">else</span>:</span><br><span class="line">        _thread.start_new_thread(post_to_jiguang, (push, remark, code, vendor, <span class="number">3</span>))</span><br><span class="line"></span><br><span class="line">    <span class="comment"># 这里直接返回True并没有实际意义</span></span><br><span class="line">    <span class="keyword">return</span> <span class="keyword">True</span></span><br></pre></td></tr></table></figure>
+<h4 id="下面代码在线程中执行，执行失败进行3次重试"><a href="#下面代码在线程中执行，执行失败进行3次重试" class="headerlink" title="下面代码在线程中执行，执行失败进行3次重试"></a>下面代码在线程中执行，执行失败进行3次重试</h4><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">post_to_jiguang</span><span class="params">(push, remark, code, vendor, remain_count)</span>:</span></span><br><span class="line">    <span class="keyword">if</span> remain_count &lt;= <span class="number">0</span>:</span><br><span class="line">        <span class="comment"># 极光不通就用微信推送</span></span><br><span class="line">        log_show(<span class="string">"@@@@@@@@@@@@@@@@尝试使用Server酱推送@@@@@@@@@@@@@@@@@"</span>)</span><br><span class="line">        post_to_server_jiang(code=code, vendor=vendor, remark=remark)</span><br><span class="line">        <span class="keyword">return</span></span><br><span class="line">    <span class="keyword">try</span>:  <span class="comment"># 重试两次</span></span><br><span class="line">        <span class="keyword">if</span> push.send(timeout=<span class="number">3</span>).get_status_code() == <span class="number">200</span>:</span><br><span class="line">            log_show(<span class="string">'极光推送成功'</span>)</span><br><span class="line">            <span class="keyword">return</span></span><br><span class="line">        <span class="keyword">else</span>:</span><br><span class="line">            log_show(<span class="string">'极光推送失败'</span>)</span><br><span class="line">    <span class="keyword">except</span> Exception:</span><br><span class="line">        log_show(<span class="string">"@@@@@@@@@@@@@@@@极光推送超时,尝试重试@@@@@@@@@@@@@@@@@"</span>)</span><br><span class="line">        _thread.start_new_thread(post_to_jiguang, (push, remark, code, vendor, remain_count - <span class="number">1</span>))</span><br></pre></td></tr></table></figure>
+<h4 id="三次都失败选择微信推送"><a href="#三次都失败选择微信推送" class="headerlink" title="三次都失败选择微信推送"></a>三次都失败选择微信推送</h4><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># http://sc.ftqq.com/?c=code</span></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">post_to_server_jiang</span><span class="params">(code, vendor,</span></span></span><br><span class="line"><span class="function"><span class="params">                         url=<span class="string">'https://sc.ftqq.com/AAAAAAAAAAAAAAAAAAAAAAA.send'</span>,</span></span></span><br><span class="line"><span class="function"><span class="params">                         remark=<span class="string">'短信内容Remark'</span>)</span>:</span></span><br><span class="line">    <span class="string">"""</span></span><br><span class="line"><span class="string">    调用server酱接口发送消息，每天500条,重复消息一分钟只能发一次</span></span><br><span class="line"><span class="string">    :param url: 服务器地址</span></span><br><span class="line"><span class="string">    :param remark: 消息内容</span></span><br><span class="line"><span class="string">    :return:</span></span><br><span class="line"><span class="string">    """</span></span><br><span class="line">    <span class="keyword">if</span> code == <span class="string">'CODE'</span>:</span><br><span class="line">        title = <span class="string">'短消息'</span></span><br><span class="line">    <span class="keyword">else</span>:</span><br><span class="line">        title = vendor + <span class="string">'@ '</span> + code</span><br><span class="line"></span><br><span class="line">    <span class="keyword">global</span> previous_time, retry_count, append</span><br><span class="line">    now_time = time.time()</span><br><span class="line">    remark = remark.replace(<span class="string">'\n'</span>, <span class="string">'XXX'</span>)</span><br><span class="line">    <span class="comment"># 每人每天发送上限500条，相同内容5分钟内不能重复发送，不同内容一分钟只能发送30条</span></span><br><span class="line">    <span class="keyword">if</span> previous_time != <span class="number">0</span> <span class="keyword">and</span> now_time &lt; (previous_time + <span class="number">5</span> * <span class="number">60</span> + <span class="number">1</span>):</span><br><span class="line">        append = <span class="string">' --- 第'</span> + str(retry_count) + <span class="string">'个小尾巴'</span></span><br><span class="line">        retry_count += <span class="number">1</span></span><br><span class="line">    <span class="keyword">else</span>:</span><br><span class="line">        append = <span class="string">''</span></span><br><span class="line">        previous_time = now_time</span><br><span class="line">        retry_count = <span class="number">1</span></span><br><span class="line"></span><br><span class="line">    remark += append</span><br><span class="line">    r = requests.post(url, data=&#123;<span class="string">'text'</span>: title, <span class="string">'desp'</span>: remark&#125;)</span><br><span class="line">    <span class="keyword">if</span> r.status_code == <span class="number">200</span> <span class="keyword">and</span> get_errno(r.content) == <span class="number">0</span>:</span><br><span class="line">        DBUtil.insert_data(tag=DBUtil.I, online=<span class="keyword">False</span>, msg=remark, code=code, vendor=vendor,</span><br><span class="line">                           transfer=<span class="string">'serverjiang'</span>)</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">True</span></span><br><span class="line">    <span class="keyword">return</span> <span class="keyword">False</span></span><br><span class="line">    </span><br></pre></td></tr></table></figure>
+
+            
+
+        </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
+        
+            <div class="post-footer-tags">
+                <span class="text-color-light text-small">TAGGED IN</span><br>
+                
+    <a class="tag tag--primary tag--small t-link" href="/tags/Python/">Python</a> <a class="tag tag--primary tag--small t-link" href="/tags/极光推送/">极光推送</a>
+
+            </div>
+        
+        
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2019/02/12/DNS缓存的清理方法/" data-tooltip="DNS缓存的清理方法" aria-label="PREVIOUS: DNS缓存的清理方法">
+                
+                    <i class="fa fa-angle-left" aria-hidden="true"></i>
+                    <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2019/02/12/Swift、Java、Python的AES加密/" data-tooltip="Swift、Java、Python的AES加密" aria-label="NEXT: Swift、Java、Python的AES加密">
+                
+                    <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                    <i class="fa fa-angle-right" aria-hidden="true"></i>
+                </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a class="post-action-btn btn btn--default btn-open-shareoptions" href="#btn-open-shareoptions" aria-label="Share this post">
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://xiaoo.ml/2019/02/12/Python端极光推送超时的解决办法/" title="Share on Facebook">
+                    <i class="fab fa-facebook" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://twitter.com/intent/tweet?text=https://xiaoo.ml/2019/02/12/Python端极光推送超时的解决办法/" title="Share on Twitter">
+                    <i class="fab fa-twitter" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://xiaoo.ml/2019/02/12/Python端极光推送超时的解决办法/" title="Share on Weibo">
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://xiaoo.ml/2019/02/12/Python端极光推送超时的解决办法/&amp;title=Python端极光推送超时的解决办法" title="Share on QQ">
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#" aria-label="Back to top">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+        
+        
+            
+        
+    </div>
+</article>
+
+
+
+
+
+                
+
+                
+                <footer id="footer" class="main-content-wrap">
+    <span class="copyrights">
+		Copyrights &copy; 2020 AndrewWang. All Rights Reserved.
+    </span>
+</footer>
+
+                
+
+            </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="2">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2019/02/12/DNS缓存的清理方法/" data-tooltip="DNS缓存的清理方法" aria-label="PREVIOUS: DNS缓存的清理方法">
+                
+                    <i class="fa fa-angle-left" aria-hidden="true"></i>
+                    <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2019/02/12/Swift、Java、Python的AES加密/" data-tooltip="Swift、Java、Python的AES加密" aria-label="NEXT: Swift、Java、Python的AES加密">
+                
+                    <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                    <i class="fa fa-angle-right" aria-hidden="true"></i>
+                </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a class="post-action-btn btn btn--default btn-open-shareoptions" href="#btn-open-shareoptions" aria-label="Share this post">
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://xiaoo.ml/2019/02/12/Python端极光推送超时的解决办法/" title="Share on Facebook">
+                    <i class="fab fa-facebook" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://twitter.com/intent/tweet?text=https://xiaoo.ml/2019/02/12/Python端极光推送超时的解决办法/" title="Share on Twitter">
+                    <i class="fab fa-twitter" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://xiaoo.ml/2019/02/12/Python端极光推送超时的解决办法/" title="Share on Weibo">
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://xiaoo.ml/2019/02/12/Python端极光推送超时的解决办法/&amp;title=Python端极光推送超时的解决办法" title="Share on QQ">
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#" aria-label="Back to top">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                
+    <div id="share-options-bar" class="share-options-bar" data-behavior="2">
+        <i id="btn-close-shareoptions" class="fa fa-times"></i>
+        <ul class="share-options">
+            
+                
+                
+                <li class="share-option">
+                    <a class="share-option-btn" target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://xiaoo.ml/2019/02/12/Python端极光推送超时的解决办法/">
+                        <i class="fab fa-facebook" aria-hidden="true"></i><span>Share on Facebook</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a class="share-option-btn" target="new" href="https://twitter.com/intent/tweet?text=https://xiaoo.ml/2019/02/12/Python端极光推送超时的解决办法/">
+                        <i class="fab fa-twitter" aria-hidden="true"></i><span>Share on Twitter</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a class="share-option-btn" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://xiaoo.ml/2019/02/12/Python端极光推送超时的解决办法/">
+                        <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a class="share-option-btn" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://xiaoo.ml/2019/02/12/Python端极光推送超时的解决办法/&amp;title=Python端极光推送超时的解决办法">
+                        <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
+                    </a>
+                </li>
+            
+        </ul>
+    </div>
+
+
+            
+        </div>
+        
+
+
+    
+        
+    
+
+<div id="about">
+    <div id="about-card">
+        <div id="about-btn-close">
+            <i class="fa fa-times"></i>
+        </div>
+        
+            <img id="about-card-picture" src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png" alt="Author&#39;s picture">
+        
+            <h4 id="about-card-name">AndrewWang</h4>
+        
+            <div id="about-card-bio"><p>凡是过去，皆为序章<br>须知参差百态，乃是幸福本源<br>邮箱：<a href="mailto:fernando_caudill@outlook.com" target="_blank">fernando_caudill@outlook.com</a></p>
+</div>
+        
+        
+            <div id="about-card-job">
+                <i class="fa fa-briefcase"></i>
+                <br>
+                <p>Android+Python</p>
+
+            </div>
+        
+        
+            <div id="about-card-location">
+                <i class="fa fa-map-marker-alt"></i>
+                <br>
+                Zhangzhou Fujian
+            </div>
+        
+    </div>
+</div>
+
+        
+            <div id="algolia-search-modal" class="modal-container">
+    <div class="modal">
+        <div class="modal-header">
+            <span class="close-button"><i class="fa fa-times"></i></span>
+            <a href="https://algolia.com" target="_blank" rel="noopener" class="searchby-algolia text-color-light link-unstyled">
+                <span class="searchby-algolia-text text-color-light text-small">by</span>
+                <img class="searchby-algolia-logo" src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/others/algolia-light.svg">
+            </a>
+            <i class="search-icon fa fa-search"></i>
+            <form id="algolia-search-form">
+                <input type="text" id="algolia-search-input" name="search" class="form-control input--large search-input" placeholder="Search ">
+            </form>
+        </div>
+        <div class="modal-body">
+            <div class="no-result text-color-light text-center">no post found</div>
+            <div class="results">
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2013/01/22/Cloneable和clone的使用，以及深复制与浅复制的区别/">
+                            <h3 class="media-heading">Cloneable和clone的使用，以及深复制与浅复制的区别</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Jan 22, 2013
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><ni>深浅复制总结下</ni></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2013/02/04/Ubuntu Problem/">
+                            <h3 class="media-heading">Ubuntu Problem</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Feb 4, 2013
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><ni>记录最近几年使用Ubuntu有用的Tips</ni></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2013/08/18/婚后，你一定会遇到更喜欢的人/">
+                            <h3 class="media-heading">婚后，你一定会遇到更喜欢的人</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Aug 18, 2013
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p>结婚后，你一定会遇到更喜欢的人。这件事几乎是肯定的。倒不是说先前结婚的人有多糟糕，也不是说后来出现的人有多美好。而是，你更了解自己了。</p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2013/11/09/ImageLoader must be init with configuration before using 错误解决方法/">
+                            <h3 class="media-heading">ImageLoader must be init with configuration before using 错误解决方法</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Nov 9, 2013
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p>最近开发过程中用到了开源项目Android-Universal-Image-Loader。<br></p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2013/12/14/把WordPress放在根目录而地址显示子目录的方法/">
+                            <h3 class="media-heading">把WordPress放在根目录而地址显示子目录的方法</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Dec 14, 2013
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p> 今天在狗爹（GoDaddy）随便买了个域名，想建个个人博客耍耍。<br></p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2014/02/15/越是聪明人，越容易在这件事上栽跟头/">
+                            <h3 class="media-heading">越是聪明人，越容易在这件事上栽跟头zt</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Feb 15, 2014
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p>一篇名为《李开复：聪明人创业为何容易失败》的商业报道里写道，记者问李开复，如何在短时间内对一个创业者或项目进行判断，有哪些指标或者投资方法论？<br></p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2014/04/02/Java中普通代码块，构造代码块，静态代码块区别及代码示例/">
+                            <h3 class="media-heading">Java中普通代码块，构造代码块，静态代码块区别及代码示例</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Apr 2, 2014
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p>执行顺序：（优先级从高到低）静态代码块&gt;main方法&gt;构造代码块&gt;构造方法。其中静态代码块只执行一次。构造代码块在每次创建对象是都会执行。<br></p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2014/04/14/getApplicationContext()、getBasecontext()、getApplication() 区别/">
+                            <h3 class="media-heading">getApplicationContext()、getBasecontext()、getApplication() 区别</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Apr 14, 2014
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><ni>搞清区别联系很重要，虽然好多情况下能通用的。</ni></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2014/04/24/使用注解来统计算法时间/">
+                            <h3 class="media-heading">使用注解统计算法运行时间</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Apr 24, 2014
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p>一直以为注解并没有什么卵用，后来用了butterknift和spring组件后才知道自定义组件可以完成很多任务。<br></p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2014/05/22/git merge和rebase的区别/">
+                            <h3 class="media-heading">git merge和rebase的区别</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    May 22, 2014
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><ni>一直以来都以为rebase是合并冲突的一种手段，和merge一样的，用哪个都行。</ni></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+            </div>
+        </div>
+        <div class="modal-footer">
+            <p class="results-count text-medium" data-message-zero="no post found" data-message-one="1 post found" data-message-other="{n} posts found">
+                80 posts found
+            </p>
+        </div>
+    </div>
+</div>
+
+        
+        
+<div id="cover" style="background-image:url('https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/cover.jpg');"></div>
+        <!--SCRIPTS-->
+<script src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/js/script-dbd16rvloemmuxdzniplmnxxvwoz24eya9wol0b7vvmlokgqsjivmb8dnscy.min.js"></script>
+<!--SCRIPTS END-->
+
+    
+
+
+    <script src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/js/moment-with-locales.min.js"></script>
+    <script src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/js/algoliasearch.min.js"></script>
+    <script>
+        var algoliaClient = algoliasearch('NPCJXUJXHV', '519d0ecd5f05b733ac031d89154c7bbb');
+        var algoliaIndex = algoliaClient.initIndex('my-hexo-blog');
+    </script>
+
+
+    </body>
+</html>

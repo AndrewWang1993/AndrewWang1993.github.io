@@ -1,0 +1,803 @@
+
+<!DOCTYPE html>
+<html lang="en">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="AndrewWang&#39;s Blog">
+    <title>Looper,Handler,HandlerThread - AndrewWang&#39;s Blog</title>
+    <meta name="author" content="AndrewWang">
+    
+        <meta name="keywords" content="hexo,javascript,android,java,JS,Python,">
+    
+    
+        <link rel="icon" href="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/favicon(8).png">
+    
+    
+        <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+    
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"AndrewWang","sameAs":["https://github.com/AndrewWang1993","https://stackoverflow.com/users/4209302/andrewwang","mailto:fernando_caudill@outlook.com"],"image":"https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png"},"articleBody":"Looper,Handler,HandlerThread\nThis Article covers Android Looper, Handler, and HandlerThread. These are among the building blocks of Android OS.\nIn my own experience, I have used them in a very limited context until recently. My use case involved sending tasks to the main/ui thread, primarily to update the UI from any other thread. The other aspects of the multi-threaded operation were handled through alternate ways like ThreadPoolExecutor, IntentService, and AsyncTask.\nMultiThreading and task running are old subjects. Java itself has java.util.concurrent package and Fork/Join framework to facilitate it. Several libraries have been written to streamline asynchronous operations. RxJava is the most popular library today for reactive programming and designing an asynchronous application.\nSo, why am I writing about the old school?\nLooper, Handler, and HandlerThread are the Android’s way of solving the problems of asynchronous programming. They are not old school, but a neat structure on which a complex android framework is built.\nFor new developers, it’s highly recommended to understand the principles behind them and experienced one’s should revisit this topic to recollect the minor details.Use Cases:\nThe main thread in Android is built with a Looper and Handlers. So, the understanding of it is essential to create an unblocked responsive UI.\nThe developers writing libraries cannot afford to use third party libraries because of the library size. So, for them, the best option is to utilize the existing available resource. Writing own solution for it may not always get that level of efficiency and optimization.\nThe same argument can also be made for companies/individuals shipping out SDKs. The clients can have varied implementations, but all of them will share the common android framework APIs.\nUnderstanding them fully will enhance the capacity to follow the Android SDK and package classes in general.\nLet’s start the exploration/revision with a questionnaire.\nI expect the reader to have the basic understanding of java threads. If you need, then get a quick overview of java Thread and Runnable.\nWhat is the problem with java thread?\nJava threads are one-time use only and die after executing its run method.\nCan we improve upon it?\nThe Thread is a double edged sword. We can speed up the execution by distributing the tasks among threads of execution, but can also slow it down when threads are in excess. Thread creation in itself is an overhead. So, the best option is to have an optimum number of threads and reuse them for tasks execution.\nModel for thread reusability:\nThe thread is kept alive, in a loop via it’s run() method.\nThe task is executed serially by that thread and is maintained in a queue (MessageQueue).\nThe thread must be terminated when done.\nWhat is the Android’s way of doing it?\nThe above model is implemented in the Android via Looper, Handler, and HandlerThread. The System can be visualized to be a vehicle as in the article’s cover.\nMessageQueue is a queue that has tasks called messages which should be processed.\nHandler enqueues task in the MessageQueue using Looper and also executes them when the task comes out of the MessageQueue.\nLooper is a worker that keeps a thread alive, loops through MessageQueue and sends messages to the corresponding handler to process.\nFinally Thread gets terminated by calling Looper’s quit() method.\nOne thread can have only one unique Looper and can have many unique Handlers associated with it.\nCreating Looper and MessageQueue for a Thread:\nA thread gets a Looper and MessageQueue by calling Looper.prepare() after its running. Looper.prepare() identifies the calling thread, creates a Looper and MessageQueue object and associate the thread with them in ThreadLocal storage class. Looper.loop() must be called to start the associated looper. Similarly, the looper must be terminated explicitly through looper.quit().12345678910111213141516class LooperThread extends Thread &#123;      public Handler mHandler;        public void run() &#123;           Looper.prepare();           mHandler = new Handler() &#123;               public void handleMessage(Message msg) &#123;                  // process incoming messages here                 // this will run in non-ui/background thread              &#125;           &#125;;            Looper.loop();      &#125;   &#125;\nCreating Handler for a Thread:\nA Handler gets implicitly associated with the thread that instantiates it via thread’s Looper, but we can explicitly tie it to a thread by passing the thread’s looper in the constructor of the Handler.1234567handler = new Handler() &#123;    @Override    public void handleMessage(Message msg) &#123;        // process incoming messages here        // this will run in the thread, which instantiates it    &#125;&#125;;\nSending messages to the MessageQueue via Handler can be done by two modes:Message: It is a class that defines various useful methods to deal with message data. To send an object we set the obj variable.123Message msg = new Message();msg.obj = &quot;Ali send message&quot;;handler.sendMessage(msg);\nDetailed overview of Message class can be found here: https://developer.android.com/reference/android/os/Message.html\n\nRunnable: A runnable can also be posted in the MessageQueue. Ex: posting and running a task in the main thread.123456new Handler(Looper.getMainLooper()).post(new Runnable() &#123;    @Override    public void run() &#123;        // this will run in the main thread    &#125;&#125;);\n\n\nIn the above example, we create a Handler and provide Looper associated with the main thread. This associate this handler to the main thread. When we post the Runnable, it gets queued in the main thread’s MessageQueue and then executed in the main thread.\nHandler is capable of message manipulation in a wide variety of ways, which can found here: https://developer.android.com/reference/android/os/Handler.html\nCreating an own thread and providing Lopper and MessageQueue is not the right way to deal with the problem. So, Android has provided HandlerThread (subclass of Thread) to streamline the process. Internally it does the same things that we have done but in a robust way. So, always use HandlerThread.\nOne of the ways to create the HandlerThread is to subclass it and most of the time you will be using this method.12345678910111213141516171819private class MyHandlerThread extends HandlerThread &#123;    Handler handler;    public MyHandlerThread(String name) &#123;        super(name);    &#125;    @Override    protected void onLooperPrepared() &#123;        handler = new Handler(getLooper()) &#123;            @Override            public void handleMessage(Message msg) &#123;                // process incoming messages here                // this will run in non-ui/background thread            &#125;        &#125;;    &#125;&#125;\nNote: We have instantiated the Handler when the onLooperPrepared() is called. So, that Handler can be associated with that Looper.\nLooper is only prepared after HandlerThread’s start() is called i.e. after the thread is running.\nA Handler can be associated with a HandlerThread, only after it’s Looper is prepared.\nOther way to create the HandlerThread:123HandlerThread handlerThread = new HandlerThread(&quot;MyHandlerThread&quot;);handlerThread.start();Handler handler = new Handler(handlerThread.getLooper());\nNote: HandlerThread needs to call myHandlerThread.quit() to free the resources and stop the execution of the thread.\nI would suggest practicing the above codes, so you can grasp their little details.\nI have created an example project for Post Office simulation. Post Office is built upon HandlerThread and Clients communicate with the help of the Post Office. A Simulator class creates few Client Bots and delegate their communication to the MainActivity, which renders it in a live feed.\nLink: https://blog.mindorks.com/android-core-looper-handler-and-handlerthread-bd54d69fe91a#.bvh8nbqzk","dateCreated":"2016-04-04T16:10:00+08:00","dateModified":"2020-11-20T08:50:05+08:00","datePublished":"2016-04-04T16:10:00+08:00","description":"Looper,Handler,HandlerThread","headline":"Looper,Handler,HandlerThread","image":[],"mainEntityOfPage":{"@type":"WebPage","@id":"https://xiaoo.ml/2016/04/04/Looper,Handler,HandlerThread/"},"publisher":{"@type":"Organization","name":"AndrewWang","sameAs":["https://github.com/AndrewWang1993","https://stackoverflow.com/users/4209302/andrewwang","mailto:fernando_caudill@outlook.com"],"image":"https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png","logo":{"@type":"ImageObject","url":"https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png"}},"url":"https://xiaoo.ml/2016/04/04/Looper,Handler,HandlerThread/","keywords":"Handler"}</script>
+    <meta name="description" content="Looper,Handler,HandlerThread">
+<meta name="keywords" content="Handler">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="Looper,Handler,HandlerThread">
+<meta property="og:url" content="https://xiaoo.ml/2016/04/04/Looper,Handler,HandlerThread/index.html">
+<meta property="og:site_name" content="AndrewWang&#39;s Blog">
+<meta property="og:description" content="Looper,Handler,HandlerThread">
+<meta property="og:locale" content="en">
+<meta property="og:updated_time" content="2020-11-20T00:50:05.785Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Looper,Handler,HandlerThread">
+<meta name="twitter:description" content="Looper,Handler,HandlerThread">
+<meta name="twitter:creator" content="@https:&#x2F;&#x2F;twitter.com&#x2F;JamesMcMurr">
+    
+    
+        
+    
+    
+        <meta property="og:image" content="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png"/>
+    
+    
+    
+    
+    <!--STYLES-->
+    <link rel="stylesheet" href="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/css/style-c4ozcsklz4kht2pebhp44xorvyverh23toayhn7i6ubrpyedak24hv1v0hyd.min.css">
+    <!--STYLES END-->
+    
+
+    
+</head>
+
+    <body>
+        <div id="blog">
+            <!-- Define author's picture -->
+
+
+    
+        
+            
+        
+    
+
+<header id="header" data-behavior="2">
+    <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
+    <div class="header-title">
+        <a class="header-title-link" href="/ ">AndrewWang&#39;s Blog</a>
+    </div>
+    
+        
+            <a class="header-right-picture " href="#about">
+        
+        
+            <img class="header-picture" src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png" alt="Author&#39;s picture">
+        
+        </a>
+    
+</header>
+
+            <!-- Define author's picture -->
+
+
+
+        
+    
+
+<nav id="sidebar" data-behavior="2">
+    <div class="sidebar-container">
+        
+            <div class="sidebar-profile">
+                <a href="/#about">
+                    <img class="sidebar-profile-picture" src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png" alt="Author&#39;s picture">
+                </a>
+                <h4 class="sidebar-profile-name">AndrewWang</h4>
+                
+                    <h5 class="sidebar-profile-bio"><p>凡是过去，皆为序章<br>须知参差百态，乃是幸福本源<br>邮箱：<a href="mailto:fernando_caudill@outlook.com" target="_blank">fernando_caudill@outlook.com</a></p>
+</h5>
+                
+            </div>
+        
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/ " title="Home">
+                    
+                        <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Home</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/all-categories" title="Categories">
+                    
+                        <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Categories</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/all-tags" title="Tags">
+                    
+                        <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Tags</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/all-archives" title="Archives">
+                    
+                        <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Archives</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link open-algolia-search" href="#search" title="Search">
+                    
+                        <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Search</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="#about" title="About">
+                    
+                        <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">About</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="https://github.com/AndrewWang1993" target="_blank" rel="noopener" title="GitHub">
+                    
+                        <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">GitHub</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="https://stackoverflow.com/users/4209302/andrewwang" target="_blank" rel="noopener" title="Stack Overflow">
+                    
+                        <i class="sidebar-button-icon fab fa-stack-overflow" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Stack Overflow</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="mailto:fernando_caudill@outlook.com" target="_blank" rel="noopener" title="Mail">
+                    
+                        <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Mail</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/atom.xml" title="RSS">
+                    
+                        <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">RSS</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+    </div>
+</nav>
+
+            
+            <div id="main" data-behavior="2"
+                 class="
+                        hasCoverMetaIn
+                        ">
+                
+<article class="post">
+    
+    
+        <div class="post-header main-content-wrap text-left">
+    
+        <h1 class="post-title">
+            Looper,Handler,HandlerThread
+        </h1>
+    
+    
+        <div class="post-meta">
+    <time datetime="2016-04-04T16:10:00+08:00">
+	
+		    Apr 04, 2016
+    	
+    </time>
+    
+        <span>in </span>
+        
+    <a class="category-link" href="/categories/Android/">Android</a>
+
+
+    
+</div>
+
+    
+</div>
+
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
+            <p>Looper,Handler,HandlerThread<br><a id="more"></a></p>
+<p>This Article covers Android Looper, Handler, and HandlerThread. These are among the building blocks of Android OS.</p>
+<p>In my own experience, I have used them in a very limited context until recently. My use case involved sending tasks to the main/ui thread, primarily to update the UI from any other thread. The other aspects of the multi-threaded operation were handled through alternate ways like ThreadPoolExecutor, IntentService, and AsyncTask.</p>
+<p>MultiThreading and task running are old subjects. Java itself has java.util.concurrent package and Fork/Join framework to facilitate it. Several libraries have been written to streamline asynchronous operations. RxJava is the most popular library today for reactive programming and designing an asynchronous application.</p>
+<p>So, why am I writing about the old school?</p>
+<p>Looper, Handler, and HandlerThread are the Android’s way of solving the problems of asynchronous programming. They are not old school, but a neat structure on which a complex android framework is built.</p>
+<p>For new developers, it’s highly recommended to understand the principles behind them and experienced one’s should revisit this topic to recollect the minor details.<br>Use Cases:</p>
+<p>The main thread in Android is built with a Looper and Handlers. So, the understanding of it is essential to create an unblocked responsive UI.</p>
+<p>The developers writing libraries cannot afford to use third party libraries because of the library size. So, for them, the best option is to utilize the existing available resource. Writing own solution for it may not always get that level of efficiency and optimization.</p>
+<p>The same argument can also be made for companies/individuals shipping out SDKs. The clients can have varied implementations, but all of them will share the common android framework APIs.</p>
+<p>Understanding them fully will enhance the capacity to follow the Android SDK and package classes in general.</p>
+<p>Let’s start the exploration/revision with a questionnaire.</p>
+<p>I expect the reader to have the basic understanding of java threads. If you need, then get a quick overview of java Thread and Runnable.</p>
+<p>What is the problem with java thread?</p>
+<p>Java threads are one-time use only and die after executing its run method.</p>
+<p>Can we improve upon it?</p>
+<p>The Thread is a double edged sword. We can speed up the execution by distributing the tasks among threads of execution, but can also slow it down when threads are in excess. Thread creation in itself is an overhead. So, the best option is to have an optimum number of threads and reuse them for tasks execution.</p>
+<p>Model for thread reusability:</p>
+<p>The thread is kept alive, in a loop via it’s run() method.</p>
+<p>The task is executed serially by that thread and is maintained in a queue (MessageQueue).</p>
+<p>The thread must be terminated when done.</p>
+<p>What is the Android’s way of doing it?</p>
+<p>The above model is implemented in the Android via Looper, Handler, and HandlerThread. The System can be visualized to be a vehicle as in the article’s cover.</p>
+<p>MessageQueue is a queue that has tasks called messages which should be processed.</p>
+<p>Handler enqueues task in the MessageQueue using Looper and also executes them when the task comes out of the MessageQueue.</p>
+<p>Looper is a worker that keeps a thread alive, loops through MessageQueue and sends messages to the corresponding handler to process.</p>
+<p>Finally Thread gets terminated by calling Looper’s quit() method.</p>
+<p>One thread can have only one unique Looper and can have many unique Handlers associated with it.</p>
+<p>Creating Looper and MessageQueue for a Thread:</p>
+<p>A thread gets a Looper and MessageQueue by calling Looper.prepare() after its running. Looper.prepare() identifies the calling thread, creates a Looper and MessageQueue object and associate the thread with them in ThreadLocal storage class. Looper.loop() must be called to start the associated looper. Similarly, the looper must be terminated explicitly through looper.quit().<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">class LooperThread extends Thread &#123;</span><br><span class="line">      public Handler mHandler; </span><br><span class="line"> </span><br><span class="line">      public void run() &#123; </span><br><span class="line">          Looper.prepare();</span><br><span class="line"> </span><br><span class="line">          mHandler = new Handler() &#123; </span><br><span class="line">              public void handleMessage(Message msg) &#123; </span><br><span class="line">                 // process incoming messages here</span><br><span class="line">                 // this will run in non-ui/background thread</span><br><span class="line">              &#125; </span><br><span class="line">          &#125;; </span><br><span class="line"> </span><br><span class="line">          Looper.loop();</span><br><span class="line">      &#125; </span><br><span class="line">  &#125;</span><br></pre></td></tr></table></figure></p>
+<p>Creating Handler for a Thread:</p>
+<p>A Handler gets implicitly associated with the thread that instantiates it via thread’s Looper, but we can explicitly tie it to a thread by passing the thread’s looper in the constructor of the Handler.<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">handler = new Handler() &#123;</span><br><span class="line">    @Override</span><br><span class="line">    public void handleMessage(Message msg) &#123;</span><br><span class="line">        // process incoming messages here</span><br><span class="line">        // this will run in the thread, which instantiates it</span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></p>
+<p>Sending messages to the MessageQueue via Handler can be done by two modes:<br>Message: It is a class that defines various useful methods to deal with message data. To send an object we set the obj variable.<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">Message msg = new Message();</span><br><span class="line">msg.obj = &quot;Ali send message&quot;;</span><br><span class="line">handler.sendMessage(msg);</span><br></pre></td></tr></table></figure></p>
+<p>Detailed overview of Message class can be found here: <a href="https://developer.android.com/reference/android/os/Message.html" target="_blank" rel="noopener">https://developer.android.com/reference/android/os/Message.html</a></p>
+<ol start="2">
+<li>Runnable: A runnable can also be posted in the MessageQueue. Ex: posting and running a task in the main thread.<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">new Handler(Looper.getMainLooper()).post(new Runnable() &#123;</span><br><span class="line">    @Override</span><br><span class="line">    public void run() &#123;</span><br><span class="line">        // this will run in the main thread</span><br><span class="line">    &#125;</span><br><span class="line">&#125;);</span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+<p>In the above example, we create a Handler and provide Looper associated with the main thread. This associate this handler to the main thread. When we post the Runnable, it gets queued in the main thread’s MessageQueue and then executed in the main thread.</p>
+<p>Handler is capable of message manipulation in a wide variety of ways, which can found here: <a href="https://developer.android.com/reference/android/os/Handler.html" target="_blank" rel="noopener">https://developer.android.com/reference/android/os/Handler.html</a></p>
+<p>Creating an own thread and providing Lopper and MessageQueue is not the right way to deal with the problem. So, Android has provided HandlerThread (subclass of Thread) to streamline the process. Internally it does the same things that we have done but in a robust way. So, always use HandlerThread.</p>
+<p>One of the ways to create the HandlerThread is to subclass it and most of the time you will be using this method.<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">private class MyHandlerThread extends HandlerThread &#123;</span><br><span class="line"></span><br><span class="line">    Handler handler;</span><br><span class="line"></span><br><span class="line">    public MyHandlerThread(String name) &#123;</span><br><span class="line">        super(name);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    @Override</span><br><span class="line">    protected void onLooperPrepared() &#123;</span><br><span class="line">        handler = new Handler(getLooper()) &#123;</span><br><span class="line">            @Override</span><br><span class="line">            public void handleMessage(Message msg) &#123;</span><br><span class="line">                // process incoming messages here</span><br><span class="line">                // this will run in non-ui/background thread</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>Note: We have instantiated the Handler when the onLooperPrepared() is called. So, that Handler can be associated with that Looper.</p>
+<p>Looper is only prepared after HandlerThread’s start() is called i.e. after the thread is running.</p>
+<p>A Handler can be associated with a HandlerThread, only after it’s Looper is prepared.</p>
+<p>Other way to create the HandlerThread:<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">HandlerThread handlerThread = new HandlerThread(&quot;MyHandlerThread&quot;);</span><br><span class="line">handlerThread.start();</span><br><span class="line">Handler handler = new Handler(handlerThread.getLooper());</span><br></pre></td></tr></table></figure></p>
+<p>Note: HandlerThread needs to call myHandlerThread.quit() to free the resources and stop the execution of the thread.</p>
+<p>I would suggest practicing the above codes, so you can grasp their little details.</p>
+<p>I have created an example project for Post Office simulation. Post Office is built upon HandlerThread and Clients communicate with the help of the Post Office. A Simulator class creates few Client Bots and delegate their communication to the MainActivity, which renders it in a live feed.<br><br></p>
+<ni>Link: <a href="https://blog.mindorks.com/android-core-looper-handler-and-handlerthread-bd54d69fe91a#.bvh8nbqzk" target="_blank" rel="noopener">https://blog.mindorks.com/android-core-looper-handler-and-handlerthread-bd54d69fe91a#.bvh8nbqzk</a></ni>
+            
+
+        </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
+        
+            <div class="post-footer-tags">
+                <span class="text-color-light text-small">TAGGED IN</span><br>
+                
+    <a class="tag tag--primary tag--small t-link" href="/tags/Handler/">Handler</a>
+
+            </div>
+        
+        
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2016/05/11/Android应用内存泄露分析、改善经验总结/" data-tooltip="Android应用内存泄露分析、改善经验总结" aria-label="PREVIOUS: Android应用内存泄露分析、改善经验总结">
+                
+                    <i class="fa fa-angle-left" aria-hidden="true"></i>
+                    <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2016/02/15/如何能找到一份越老越值钱，不轻易被淘汰的工作？zt/" data-tooltip="如何能找到一份越老越值钱，不轻易被淘汰的工作？zt" aria-label="NEXT: 如何能找到一份越老越值钱，不轻易被淘汰的工作？zt">
+                
+                    <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                    <i class="fa fa-angle-right" aria-hidden="true"></i>
+                </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a class="post-action-btn btn btn--default btn-open-shareoptions" href="#btn-open-shareoptions" aria-label="Share this post">
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://xiaoo.ml/2016/04/04/Looper,Handler,HandlerThread/" title="Share on Facebook">
+                    <i class="fab fa-facebook" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://twitter.com/intent/tweet?text=https://xiaoo.ml/2016/04/04/Looper,Handler,HandlerThread/" title="Share on Twitter">
+                    <i class="fab fa-twitter" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://xiaoo.ml/2016/04/04/Looper,Handler,HandlerThread/" title="Share on Weibo">
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://xiaoo.ml/2016/04/04/Looper,Handler,HandlerThread/&amp;title=Looper,Handler,HandlerThread" title="Share on QQ">
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#" aria-label="Back to top">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+        
+        
+            
+        
+    </div>
+</article>
+
+
+
+
+
+                
+
+                
+                <footer id="footer" class="main-content-wrap">
+    <span class="copyrights">
+		Copyrights &copy; 2020 AndrewWang. All Rights Reserved.
+    </span>
+</footer>
+
+                
+
+            </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="2">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2016/05/11/Android应用内存泄露分析、改善经验总结/" data-tooltip="Android应用内存泄露分析、改善经验总结" aria-label="PREVIOUS: Android应用内存泄露分析、改善经验总结">
+                
+                    <i class="fa fa-angle-left" aria-hidden="true"></i>
+                    <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2016/02/15/如何能找到一份越老越值钱，不轻易被淘汰的工作？zt/" data-tooltip="如何能找到一份越老越值钱，不轻易被淘汰的工作？zt" aria-label="NEXT: 如何能找到一份越老越值钱，不轻易被淘汰的工作？zt">
+                
+                    <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                    <i class="fa fa-angle-right" aria-hidden="true"></i>
+                </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a class="post-action-btn btn btn--default btn-open-shareoptions" href="#btn-open-shareoptions" aria-label="Share this post">
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://xiaoo.ml/2016/04/04/Looper,Handler,HandlerThread/" title="Share on Facebook">
+                    <i class="fab fa-facebook" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://twitter.com/intent/tweet?text=https://xiaoo.ml/2016/04/04/Looper,Handler,HandlerThread/" title="Share on Twitter">
+                    <i class="fab fa-twitter" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://xiaoo.ml/2016/04/04/Looper,Handler,HandlerThread/" title="Share on Weibo">
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://xiaoo.ml/2016/04/04/Looper,Handler,HandlerThread/&amp;title=Looper,Handler,HandlerThread" title="Share on QQ">
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#" aria-label="Back to top">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                
+    <div id="share-options-bar" class="share-options-bar" data-behavior="2">
+        <i id="btn-close-shareoptions" class="fa fa-times"></i>
+        <ul class="share-options">
+            
+                
+                
+                <li class="share-option">
+                    <a class="share-option-btn" target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://xiaoo.ml/2016/04/04/Looper,Handler,HandlerThread/">
+                        <i class="fab fa-facebook" aria-hidden="true"></i><span>Share on Facebook</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a class="share-option-btn" target="new" href="https://twitter.com/intent/tweet?text=https://xiaoo.ml/2016/04/04/Looper,Handler,HandlerThread/">
+                        <i class="fab fa-twitter" aria-hidden="true"></i><span>Share on Twitter</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a class="share-option-btn" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://xiaoo.ml/2016/04/04/Looper,Handler,HandlerThread/">
+                        <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a class="share-option-btn" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://xiaoo.ml/2016/04/04/Looper,Handler,HandlerThread/&amp;title=Looper,Handler,HandlerThread">
+                        <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
+                    </a>
+                </li>
+            
+        </ul>
+    </div>
+
+
+            
+        </div>
+        
+
+
+    
+        
+    
+
+<div id="about">
+    <div id="about-card">
+        <div id="about-btn-close">
+            <i class="fa fa-times"></i>
+        </div>
+        
+            <img id="about-card-picture" src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png" alt="Author&#39;s picture">
+        
+            <h4 id="about-card-name">AndrewWang</h4>
+        
+            <div id="about-card-bio"><p>凡是过去，皆为序章<br>须知参差百态，乃是幸福本源<br>邮箱：<a href="mailto:fernando_caudill@outlook.com" target="_blank">fernando_caudill@outlook.com</a></p>
+</div>
+        
+        
+            <div id="about-card-job">
+                <i class="fa fa-briefcase"></i>
+                <br>
+                <p>Android+Python</p>
+
+            </div>
+        
+        
+            <div id="about-card-location">
+                <i class="fa fa-map-marker-alt"></i>
+                <br>
+                Zhangzhou Fujian
+            </div>
+        
+    </div>
+</div>
+
+        
+            <div id="algolia-search-modal" class="modal-container">
+    <div class="modal">
+        <div class="modal-header">
+            <span class="close-button"><i class="fa fa-times"></i></span>
+            <a href="https://algolia.com" target="_blank" rel="noopener" class="searchby-algolia text-color-light link-unstyled">
+                <span class="searchby-algolia-text text-color-light text-small">by</span>
+                <img class="searchby-algolia-logo" src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/others/algolia-light.svg">
+            </a>
+            <i class="search-icon fa fa-search"></i>
+            <form id="algolia-search-form">
+                <input type="text" id="algolia-search-input" name="search" class="form-control input--large search-input" placeholder="Search ">
+            </form>
+        </div>
+        <div class="modal-body">
+            <div class="no-result text-color-light text-center">no post found</div>
+            <div class="results">
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2013/01/22/Cloneable和clone的使用，以及深复制与浅复制的区别/">
+                            <h3 class="media-heading">Cloneable和clone的使用，以及深复制与浅复制的区别</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Jan 22, 2013
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><ni>深浅复制总结下</ni></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2013/02/04/Ubuntu Problem/">
+                            <h3 class="media-heading">Ubuntu Problem</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Feb 4, 2013
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><ni>记录最近几年使用Ubuntu有用的Tips</ni></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2013/08/18/婚后，你一定会遇到更喜欢的人/">
+                            <h3 class="media-heading">婚后，你一定会遇到更喜欢的人</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Aug 18, 2013
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p>结婚后，你一定会遇到更喜欢的人。这件事几乎是肯定的。倒不是说先前结婚的人有多糟糕，也不是说后来出现的人有多美好。而是，你更了解自己了。</p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2013/11/09/ImageLoader must be init with configuration before using 错误解决方法/">
+                            <h3 class="media-heading">ImageLoader must be init with configuration before using 错误解决方法</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Nov 9, 2013
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p>最近开发过程中用到了开源项目Android-Universal-Image-Loader。<br></p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2013/12/14/把WordPress放在根目录而地址显示子目录的方法/">
+                            <h3 class="media-heading">把WordPress放在根目录而地址显示子目录的方法</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Dec 14, 2013
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p> 今天在狗爹（GoDaddy）随便买了个域名，想建个个人博客耍耍。<br></p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2014/02/15/越是聪明人，越容易在这件事上栽跟头/">
+                            <h3 class="media-heading">越是聪明人，越容易在这件事上栽跟头zt</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Feb 15, 2014
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p>一篇名为《李开复：聪明人创业为何容易失败》的商业报道里写道，记者问李开复，如何在短时间内对一个创业者或项目进行判断，有哪些指标或者投资方法论？<br></p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2014/04/02/Java中普通代码块，构造代码块，静态代码块区别及代码示例/">
+                            <h3 class="media-heading">Java中普通代码块，构造代码块，静态代码块区别及代码示例</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Apr 2, 2014
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p>执行顺序：（优先级从高到低）静态代码块&gt;main方法&gt;构造代码块&gt;构造方法。其中静态代码块只执行一次。构造代码块在每次创建对象是都会执行。<br></p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2014/04/14/getApplicationContext()、getBasecontext()、getApplication() 区别/">
+                            <h3 class="media-heading">getApplicationContext()、getBasecontext()、getApplication() 区别</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Apr 14, 2014
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><ni>搞清区别联系很重要，虽然好多情况下能通用的。</ni></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2014/04/24/使用注解来统计算法时间/">
+                            <h3 class="media-heading">使用注解统计算法运行时间</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Apr 24, 2014
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p>一直以为注解并没有什么卵用，后来用了butterknift和spring组件后才知道自定义组件可以完成很多任务。<br></p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2014/05/22/git merge和rebase的区别/">
+                            <h3 class="media-heading">git merge和rebase的区别</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    May 22, 2014
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><ni>一直以来都以为rebase是合并冲突的一种手段，和merge一样的，用哪个都行。</ni></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+            </div>
+        </div>
+        <div class="modal-footer">
+            <p class="results-count text-medium" data-message-zero="no post found" data-message-one="1 post found" data-message-other="{n} posts found">
+                80 posts found
+            </p>
+        </div>
+    </div>
+</div>
+
+        
+        
+<div id="cover" style="background-image:url('https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/cover.jpg');"></div>
+        <!--SCRIPTS-->
+<script src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/js/script-dbd16rvloemmuxdzniplmnxxvwoz24eya9wol0b7vvmlokgqsjivmb8dnscy.min.js"></script>
+<!--SCRIPTS END-->
+
+    
+
+
+    <script src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/js/moment-with-locales.min.js"></script>
+    <script src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/js/algoliasearch.min.js"></script>
+    <script>
+        var algoliaClient = algoliasearch('NPCJXUJXHV', '519d0ecd5f05b733ac031d89154c7bbb');
+        var algoliaIndex = algoliaClient.initIndex('my-hexo-blog');
+    </script>
+
+
+    </body>
+</html>

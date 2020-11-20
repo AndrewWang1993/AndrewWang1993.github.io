@@ -1,0 +1,767 @@
+
+<!DOCTYPE html>
+<html lang="en">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="AndrewWang&#39;s Blog">
+    <title>Swift、Java、Python的AES加密 - AndrewWang&#39;s Blog</title>
+    <meta name="author" content="AndrewWang">
+    
+        <meta name="keywords" content="hexo,javascript,android,java,JS,Python,">
+    
+    
+        <link rel="icon" href="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/favicon(8).png">
+    
+    
+        <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+    
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"AndrewWang","sameAs":["https://github.com/AndrewWang1993","https://stackoverflow.com/users/4209302/andrewwang","mailto:fernando_caudill@outlook.com"],"image":"https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png"},"articleBody":"项目需要搞了一个不同端能通用加解密的工具类\n\n\n加密算法使用AES CBC 256位，为了简单起见秘钥和偏移量IV分别固定位为32位和16位。\n\nSwift12345678910111213141516171819202122232425262728293031323334353637383940414243444546474849import Foundationimport CryptoSwiftvar AES_KEY:String = \"88888888888888888888888888888888\"let aes_cbc_iv = \"6666666666666666\"func aesEncryptBase64(plainStr:String,aes_key:String) -&gt; String &#123;    do &#123;        let aes = try AES(key: aes_key, iv: aes_cbc_iv, padding: .pkcs7)        let ciphertext = try aes.encrypt(Array(plainStr.utf8))        return Data(ciphertext).base64EncodedString()    &#125; catch &#123;        return \"error\"    &#125;&#125; func aesEncryptHex(plain_str:String,aes_key:String) -&gt; String &#123;     do &#123;         let aes = try AES(key: aes_key, iv: aes_cbc_iv, padding: .pkcs7)         let ciphertext = try aes.encrypt(Array(plain_str.utf8))         return Data(ciphertext).toHexString()     &#125; catch &#123;         return \"error\"     &#125; &#125;func aesDecryptBase64(encrypt_base64 : String,aes_key:String) -&gt; String &#123;    do &#123;        guard let data = Data(base64Encoded: encrypt_base64) else &#123; return \"\" &#125;        let aes = try AES(key: aes_key, iv: aes_cbc_iv, padding: .pkcs7)        let ciphertext = try aes.decrypt([UInt8](data))        return String(bytes: Data(ciphertext).bytes, encoding: .utf8) ?? \"Could not decrypt\"    &#125; catch &#123;        return \"error\"    &#125;&#125; func aesDecryptHex(encrypt_hex : String,aes_key:String) -&gt; String &#123;     do &#123;         let data = Array&lt;UInt8&gt;(hex: encrypt_hex)         let aes = try AES(key: aes_key, iv: aes_cbc_iv, padding: .pkcs7)         let ciphertext = try aes.decrypt([UInt8](data))         return String(bytes: Data(ciphertext).bytes, encoding: .utf8) ?? \"Could not decrypt\"     &#125; catch &#123;         return \"error\"     &#125; &#125;\nJava12345678910111213141516171819202122232425262728293031323334    private static String s_AES_KEY = \"88888888888888888888888888888888\";    private static String a_AES_IV = \"6666666666666666\";        private static String aesEncrypt(String sSrc) throws Exception &#123;        Cipher cipher = Cipher.getInstance(\"AES/CBC/PKCS5Padding\");        byte[] raw = s_AES_KEY.getBytes();        SecretKeySpec skeySpec = new SecretKeySpec(raw, \"AES\");        IvParameterSpec iv = new IvParameterSpec(a_AES_IV.getBytes());//使用CBC模式，需要一个向量iv，可增加加密算法的强度        cipher.init(Cipher.ENCRYPT_MODE, skeySpec, iv);        byte[] encrypted = cipher.doFinal(sSrc.getBytes(\"utf-8\"));//        return new BASE64Encoder().encode(encrypted);//此处使用BASE64做转码。        StringBuilder sb = new StringBuilder();  //此处使用十六进制转码。        for (byte b : encrypted) &#123;            sb.append(String.format(\"%02X\", b));        &#125;        return sb.toString();    &#125;    public static String aesDecrypt(String sSrc) throws Exception &#123;       try &#123;           byte[] raw = sKey.getBytes(\"ASCII\");           SecretKeySpec skeySpec = new SecretKeySpec(raw, \"AES\");           Cipher cipher = Cipher.getInstance(\"AES/CBC/PKCS5Padding\");           IvParameterSpec iv = new IvParameterSpec(ivParameter.getBytes());           cipher.init(Cipher.DECRYPT_MODE, skeySpec, iv);           byte[] encrypted1 = new BASE64Decoder().decodeBuffer(sSrc);//先用base64解密           byte[] original = cipher.doFinal(encrypted1);           String originalString = new String(original, \"utf-8\");           return originalString;       &#125; catch (Exception ex) &#123;           return null;       &#125;        return null;    &#125;\nPython3需要安装pycryptodome模块，cipher每次加解密必须初始化也就是说只能用一次，并且不能又加密又解密。\n工具类1234567891011121314151617181920212223242526272829303132333435363738394041424344454647484950515253from Crypto.Cipher import AESfrom Crypto.Util.Padding import padfrom Crypto.Util.Padding import unpad__aes_key = b'88888888888888888888888888888888'__aes_cbc_iv = b'6666666666666666'def aes_cbc_256_encrypt_base64(plain_data):    \"\"\"    AES加密数据    :param plain_data: 待加密数据    :return: Base64格式加密数据    \"\"\"    __aes_cipher_e = AES.new(__aes_key, AES.MODE_CBC, iv=__aes_cbc_iv)    ct_bytes = __aes_cipher_e.encrypt(pad(plain_data.encode('utf-8'), AES.block_size))    return base64.b64encode(ct_bytes).decode(\"utf-8\")def aes_cbc_256_decrypt_base64(base64_string):    \"\"\"    AES解密数据    :param base64_string: Base64格式加密数据    :return: 原始数据    \"\"\"    encrypted_bytes = base64.b64decode(base64_string)    # cipher必须每次解密必须初始化也就是说只能用一次，并且不能又加密又解密。    __aes_cipher_d = AES.new(__aes_key, AES.MODE_CBC, iv=__aes_cbc_iv)    pt = unpad(__aes_cipher_d.decrypt(encrypted_bytes), AES.block_size)    return pt.decode(\"utf-8\")def aes_cbc_256_encrypt_hex(plain_data):    \"\"\"    AES加密数据    :param plain_data: plain_data: 待加密数据    :return: 十六进制格式加密数据    \"\"\"    __aes_cipher_e = AES.new(__aes_key, AES.MODE_CBC, iv=__aes_cbc_iv)    ct_bytes = __aes_cipher_e.encrypt(pad(plain_data.encode('utf-8'), AES.block_size))    return ct_bytes.hex().upper()def aes_cbc_256_decrypt_hex(hex_string):    \"\"\"    AES解密数据    :param hex_string: 十六进制加密数据    :return: 原始数据    \"\"\"    encrypted_bytes = binascii.unhexlify(hex_string)    # cipher必须每次解密必须初始化也就是说只能用一次，并且不能又加密又解密。    __aes_cipher_d = AES.new(__aes_key, AES.MODE_CBC, iv=__aes_cbc_iv)    pt = unpad(__aes_cipher_d.decrypt(encrypted_bytes), AES.block_size)    return pt.decode(\"utf-8\")\n测试类1234567891011121314151617181920import Decryptdata = \"bilibili哔哩哔哩666\"print(data)hex= Decrypt.aes_cbc_256_encrypt_base64(data)print(hex)plain=Decrypt.aes_cbc_256_decrypt_base64(hex)print(plain)print(\"------------------------\")print(data)hex= Decrypt.aes_cbc_256_encrypt_hex(data)print(hex)plain=Decrypt.aes_cbc_256_decrypt_hex(hex)print(plain)\n","dateCreated":"2019-02-12T10:10:00+08:00","dateModified":"2020-11-20T08:50:05+08:00","datePublished":"2019-02-12T10:10:00+08:00","description":"项目需要搞了一个不同端能通用加解密的工具类","headline":"Swift、Java、Python的AES加密","image":["https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/512x512bb.png"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://xiaoo.ml/2019/02/12/Swift、Java、Python的AES加密/"},"publisher":{"@type":"Organization","name":"AndrewWang","sameAs":["https://github.com/AndrewWang1993","https://stackoverflow.com/users/4209302/andrewwang","mailto:fernando_caudill@outlook.com"],"image":"https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png","logo":{"@type":"ImageObject","url":"https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png"}},"url":"https://xiaoo.ml/2019/02/12/Swift、Java、Python的AES加密/","keywords":"Python, Java, Swift","thumbnailUrl":"https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/512x512bb.png"}</script>
+    <meta name="description" content="项目需要搞了一个不同端能通用加解密的工具类">
+<meta name="keywords" content="Python,Java,Swift">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="Swift、Java、Python的AES加密">
+<meta property="og:url" content="https://xiaoo.ml/2019/02/12/Swift、Java、Python的AES加密/index.html">
+<meta property="og:site_name" content="AndrewWang&#39;s Blog">
+<meta property="og:description" content="项目需要搞了一个不同端能通用加解密的工具类">
+<meta property="og:locale" content="en">
+<meta property="og:updated_time" content="2020-11-20T00:50:05.788Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Swift、Java、Python的AES加密">
+<meta name="twitter:description" content="项目需要搞了一个不同端能通用加解密的工具类">
+<meta name="twitter:creator" content="@https:&#x2F;&#x2F;twitter.com&#x2F;JamesMcMurr">
+    
+    
+        
+    
+    
+        <meta property="og:image" content="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png"/>
+    
+    
+        <meta property="og:image" content="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/512x512bb.png"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/512x512bb.png" />
+    
+    
+    
+    <!--STYLES-->
+    <link rel="stylesheet" href="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/css/style-c4ozcsklz4kht2pebhp44xorvyverh23toayhn7i6ubrpyedak24hv1v0hyd.min.css">
+    <!--STYLES END-->
+    
+
+    
+</head>
+
+    <body>
+        <div id="blog">
+            <!-- Define author's picture -->
+
+
+    
+        
+            
+        
+    
+
+<header id="header" data-behavior="2">
+    <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
+    <div class="header-title">
+        <a class="header-title-link" href="/ ">AndrewWang&#39;s Blog</a>
+    </div>
+    
+        
+            <a class="header-right-picture " href="#about">
+        
+        
+            <img class="header-picture" src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png" alt="Author&#39;s picture">
+        
+        </a>
+    
+</header>
+
+            <!-- Define author's picture -->
+
+
+
+        
+    
+
+<nav id="sidebar" data-behavior="2">
+    <div class="sidebar-container">
+        
+            <div class="sidebar-profile">
+                <a href="/#about">
+                    <img class="sidebar-profile-picture" src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png" alt="Author&#39;s picture">
+                </a>
+                <h4 class="sidebar-profile-name">AndrewWang</h4>
+                
+                    <h5 class="sidebar-profile-bio"><p>凡是过去，皆为序章<br>须知参差百态，乃是幸福本源<br>邮箱：<a href="mailto:fernando_caudill@outlook.com" target="_blank">fernando_caudill@outlook.com</a></p>
+</h5>
+                
+            </div>
+        
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/ " title="Home">
+                    
+                        <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Home</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/all-categories" title="Categories">
+                    
+                        <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Categories</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/all-tags" title="Tags">
+                    
+                        <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Tags</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/all-archives" title="Archives">
+                    
+                        <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Archives</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link open-algolia-search" href="#search" title="Search">
+                    
+                        <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Search</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="#about" title="About">
+                    
+                        <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">About</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="https://github.com/AndrewWang1993" target="_blank" rel="noopener" title="GitHub">
+                    
+                        <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">GitHub</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="https://stackoverflow.com/users/4209302/andrewwang" target="_blank" rel="noopener" title="Stack Overflow">
+                    
+                        <i class="sidebar-button-icon fab fa-stack-overflow" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Stack Overflow</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="mailto:fernando_caudill@outlook.com" target="_blank" rel="noopener" title="Mail">
+                    
+                        <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Mail</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/atom.xml" title="RSS">
+                    
+                        <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">RSS</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+    </div>
+</nav>
+
+            
+            <div id="main" data-behavior="2"
+                 class="
+                        hasCoverMetaIn
+                        ">
+                
+<article class="post">
+    
+    
+        <div class="post-header main-content-wrap text-left">
+    
+        <h1 class="post-title">
+            Swift、Java、Python的AES加密
+        </h1>
+    
+    
+        <div class="post-meta">
+    <time datetime="2019-02-12T10:10:00+08:00">
+	
+		    Feb 12, 2019
+    	
+    </time>
+    
+        <span>in </span>
+        
+    <a class="category-link" href="/categories/编程/">编程</a>
+
+
+    
+</div>
+
+    
+</div>
+
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
+            <ni>项目需要搞了一个不同端能通用加解密的工具类</ni>
+
+<a id="more"></a>
+<p>加密算法使用AES CBC 256位，为了简单起见秘钥和偏移量IV分别固定位为32位和16位。</p>
+<h1 id="table-of-contents">Table of Contents</h1><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#Swift"><span class="toc-text">Swift</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#Java"><span class="toc-text">Java</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#Python3"><span class="toc-text">Python3</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#工具类"><span class="toc-text">工具类</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#测试类"><span class="toc-text">测试类</span></a></li></ol></li></ol>
+<h1 id="Swift"><a href="#Swift" class="headerlink" title="Swift"></a>Swift</h1><figure class="highlight swift"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> Foundation</span><br><span class="line"><span class="keyword">import</span> CryptoSwift</span><br><span class="line"></span><br><span class="line"><span class="keyword">var</span> <span class="type">AES_KEY</span>:<span class="type">String</span> = <span class="string">"88888888888888888888888888888888"</span></span><br><span class="line"><span class="keyword">let</span> aes_cbc_iv = <span class="string">"6666666666666666"</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">aesEncryptBase64</span><span class="params">(plainStr:String,aes_key:String)</span></span> -&gt; <span class="type">String</span> &#123;</span><br><span class="line">    <span class="keyword">do</span> &#123;</span><br><span class="line">        <span class="keyword">let</span> aes = <span class="keyword">try</span> <span class="type">AES</span>(key: aes_key, iv: aes_cbc_iv, padding: .pkcs7)</span><br><span class="line">        <span class="keyword">let</span> ciphertext = <span class="keyword">try</span> aes.encrypt(<span class="type">Array</span>(plainStr.utf8))</span><br><span class="line">        <span class="keyword">return</span> <span class="type">Data</span>(ciphertext).base64EncodedString()</span><br><span class="line">    &#125; <span class="keyword">catch</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="string">"error"</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"> <span class="function"><span class="keyword">func</span> <span class="title">aesEncryptHex</span><span class="params">(plain_str:String,aes_key:String)</span></span> -&gt; <span class="type">String</span> &#123;</span><br><span class="line">     <span class="keyword">do</span> &#123;</span><br><span class="line">         <span class="keyword">let</span> aes = <span class="keyword">try</span> <span class="type">AES</span>(key: aes_key, iv: aes_cbc_iv, padding: .pkcs7)</span><br><span class="line">         <span class="keyword">let</span> ciphertext = <span class="keyword">try</span> aes.encrypt(<span class="type">Array</span>(plain_str.utf8))</span><br><span class="line">         <span class="keyword">return</span> <span class="type">Data</span>(ciphertext).toHexString()</span><br><span class="line">     &#125; <span class="keyword">catch</span> &#123;</span><br><span class="line">         <span class="keyword">return</span> <span class="string">"error"</span></span><br><span class="line">     &#125;</span><br><span class="line"> &#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">aesDecryptBase64</span><span class="params">(encrypt_base64 : String,aes_key:String)</span></span> -&gt; <span class="type">String</span> &#123;</span><br><span class="line">    <span class="keyword">do</span> &#123;</span><br><span class="line">        <span class="keyword">guard</span> <span class="keyword">let</span> data = <span class="type">Data</span>(base64Encoded: encrypt_base64) <span class="keyword">else</span> &#123; <span class="keyword">return</span> <span class="string">""</span> &#125;</span><br><span class="line">        <span class="keyword">let</span> aes = <span class="keyword">try</span> <span class="type">AES</span>(key: aes_key, iv: aes_cbc_iv, padding: .pkcs7)</span><br><span class="line">        <span class="keyword">let</span> ciphertext = <span class="keyword">try</span> aes.decrypt([<span class="type">UInt8</span>](data))</span><br><span class="line">        <span class="keyword">return</span> <span class="type">String</span>(bytes: <span class="type">Data</span>(ciphertext).bytes, encoding: .utf8) ?? <span class="string">"Could not decrypt"</span></span><br><span class="line">    &#125; <span class="keyword">catch</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="string">"error"</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"> <span class="function"><span class="keyword">func</span> <span class="title">aesDecryptHex</span><span class="params">(encrypt_hex : String,aes_key:String)</span></span> -&gt; <span class="type">String</span> &#123;</span><br><span class="line">     <span class="keyword">do</span> &#123;</span><br><span class="line">         <span class="keyword">let</span> data = <span class="type">Array</span>&lt;<span class="type">UInt8</span>&gt;(hex: encrypt_hex)</span><br><span class="line">         <span class="keyword">let</span> aes = <span class="keyword">try</span> <span class="type">AES</span>(key: aes_key, iv: aes_cbc_iv, padding: .pkcs7)</span><br><span class="line">         <span class="keyword">let</span> ciphertext = <span class="keyword">try</span> aes.decrypt([<span class="type">UInt8</span>](data))</span><br><span class="line">         <span class="keyword">return</span> <span class="type">String</span>(bytes: <span class="type">Data</span>(ciphertext).bytes, encoding: .utf8) ?? <span class="string">"Could not decrypt"</span></span><br><span class="line">     &#125; <span class="keyword">catch</span> &#123;</span><br><span class="line">         <span class="keyword">return</span> <span class="string">"error"</span></span><br><span class="line">     &#125;</span><br><span class="line"> &#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<h1 id="Java"><a href="#Java" class="headerlink" title="Java"></a>Java</h1><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br></pre></td><td class="code"><pre><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> String s_AES_KEY = <span class="string">"88888888888888888888888888888888"</span>;</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> String a_AES_IV = <span class="string">"6666666666666666"</span>;</span><br><span class="line">    </span><br><span class="line">    <span class="function"><span class="keyword">private</span> <span class="keyword">static</span> String <span class="title">aesEncrypt</span><span class="params">(String sSrc)</span> <span class="keyword">throws</span> Exception </span>&#123;</span><br><span class="line">        Cipher cipher = Cipher.getInstance(<span class="string">"AES/CBC/PKCS5Padding"</span>);</span><br><span class="line">        <span class="keyword">byte</span>[] raw = s_AES_KEY.getBytes();</span><br><span class="line">        SecretKeySpec skeySpec = <span class="keyword">new</span> SecretKeySpec(raw, <span class="string">"AES"</span>);</span><br><span class="line">        IvParameterSpec iv = <span class="keyword">new</span> IvParameterSpec(a_AES_IV.getBytes());<span class="comment">//使用CBC模式，需要一个向量iv，可增加加密算法的强度</span></span><br><span class="line">        cipher.init(Cipher.ENCRYPT_MODE, skeySpec, iv);</span><br><span class="line">        <span class="keyword">byte</span>[] encrypted = cipher.doFinal(sSrc.getBytes(<span class="string">"utf-8"</span>));</span><br><span class="line"><span class="comment">//        return new BASE64Encoder().encode(encrypted);//此处使用BASE64做转码。</span></span><br><span class="line">        StringBuilder sb = <span class="keyword">new</span> StringBuilder();  <span class="comment">//此处使用十六进制转码。</span></span><br><span class="line">        <span class="keyword">for</span> (<span class="keyword">byte</span> b : encrypted) &#123;</span><br><span class="line">            sb.append(String.format(<span class="string">"%02X"</span>, b));</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> sb.toString();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> String <span class="title">aesDecrypt</span><span class="params">(String sSrc)</span> <span class="keyword">throws</span> Exception </span>&#123;</span><br><span class="line">       <span class="keyword">try</span> &#123;</span><br><span class="line">           <span class="keyword">byte</span>[] raw = sKey.getBytes(<span class="string">"ASCII"</span>);</span><br><span class="line">           SecretKeySpec skeySpec = <span class="keyword">new</span> SecretKeySpec(raw, <span class="string">"AES"</span>);</span><br><span class="line">           Cipher cipher = Cipher.getInstance(<span class="string">"AES/CBC/PKCS5Padding"</span>);</span><br><span class="line">           IvParameterSpec iv = <span class="keyword">new</span> IvParameterSpec(ivParameter.getBytes());</span><br><span class="line">           cipher.init(Cipher.DECRYPT_MODE, skeySpec, iv);</span><br><span class="line">           <span class="keyword">byte</span>[] encrypted1 = <span class="keyword">new</span> BASE64Decoder().decodeBuffer(sSrc);<span class="comment">//先用base64解密</span></span><br><span class="line">           <span class="keyword">byte</span>[] original = cipher.doFinal(encrypted1);</span><br><span class="line">           String originalString = <span class="keyword">new</span> String(original, <span class="string">"utf-8"</span>);</span><br><span class="line">           <span class="keyword">return</span> originalString;</span><br><span class="line">       &#125; <span class="keyword">catch</span> (Exception ex) &#123;</span><br><span class="line">           <span class="keyword">return</span> <span class="keyword">null</span>;</span><br><span class="line">       &#125;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">null</span>;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<h1 id="Python3"><a href="#Python3" class="headerlink" title="Python3"></a>Python3</h1><p>需要安装pycryptodome模块，cipher每次加解密必须初始化也就是说只能用一次，并且不能又加密又解密。</p>
+<h4 id="工具类"><a href="#工具类" class="headerlink" title="工具类"></a>工具类</h4><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> Crypto.Cipher <span class="keyword">import</span> AES</span><br><span class="line"><span class="keyword">from</span> Crypto.Util.Padding <span class="keyword">import</span> pad</span><br><span class="line"><span class="keyword">from</span> Crypto.Util.Padding <span class="keyword">import</span> unpad</span><br><span class="line"></span><br><span class="line">__aes_key = <span class="string">b'88888888888888888888888888888888'</span></span><br><span class="line">__aes_cbc_iv = <span class="string">b'6666666666666666'</span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">aes_cbc_256_encrypt_base64</span><span class="params">(plain_data)</span>:</span></span><br><span class="line">    <span class="string">"""</span></span><br><span class="line"><span class="string">    AES加密数据</span></span><br><span class="line"><span class="string">    :param plain_data: 待加密数据</span></span><br><span class="line"><span class="string">    :return: Base64格式加密数据</span></span><br><span class="line"><span class="string">    """</span></span><br><span class="line">    __aes_cipher_e = AES.new(__aes_key, AES.MODE_CBC, iv=__aes_cbc_iv)</span><br><span class="line">    ct_bytes = __aes_cipher_e.encrypt(pad(plain_data.encode(<span class="string">'utf-8'</span>), AES.block_size))</span><br><span class="line">    <span class="keyword">return</span> base64.b64encode(ct_bytes).decode(<span class="string">"utf-8"</span>)</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">aes_cbc_256_decrypt_base64</span><span class="params">(base64_string)</span>:</span></span><br><span class="line">    <span class="string">"""</span></span><br><span class="line"><span class="string">    AES解密数据</span></span><br><span class="line"><span class="string">    :param base64_string: Base64格式加密数据</span></span><br><span class="line"><span class="string">    :return: 原始数据</span></span><br><span class="line"><span class="string">    """</span></span><br><span class="line">    encrypted_bytes = base64.b64decode(base64_string)</span><br><span class="line">    <span class="comment"># cipher必须每次解密必须初始化也就是说只能用一次，并且不能又加密又解密。</span></span><br><span class="line">    __aes_cipher_d = AES.new(__aes_key, AES.MODE_CBC, iv=__aes_cbc_iv)</span><br><span class="line">    pt = unpad(__aes_cipher_d.decrypt(encrypted_bytes), AES.block_size)</span><br><span class="line">    <span class="keyword">return</span> pt.decode(<span class="string">"utf-8"</span>)</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">aes_cbc_256_encrypt_hex</span><span class="params">(plain_data)</span>:</span></span><br><span class="line">    <span class="string">"""</span></span><br><span class="line"><span class="string">    AES加密数据</span></span><br><span class="line"><span class="string">    :param plain_data: plain_data: 待加密数据</span></span><br><span class="line"><span class="string">    :return: 十六进制格式加密数据</span></span><br><span class="line"><span class="string">    """</span></span><br><span class="line">    __aes_cipher_e = AES.new(__aes_key, AES.MODE_CBC, iv=__aes_cbc_iv)</span><br><span class="line">    ct_bytes = __aes_cipher_e.encrypt(pad(plain_data.encode(<span class="string">'utf-8'</span>), AES.block_size))</span><br><span class="line">    <span class="keyword">return</span> ct_bytes.hex().upper()</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">aes_cbc_256_decrypt_hex</span><span class="params">(hex_string)</span>:</span></span><br><span class="line">    <span class="string">"""</span></span><br><span class="line"><span class="string">    AES解密数据</span></span><br><span class="line"><span class="string">    :param hex_string: 十六进制加密数据</span></span><br><span class="line"><span class="string">    :return: 原始数据</span></span><br><span class="line"><span class="string">    """</span></span><br><span class="line">    encrypted_bytes = binascii.unhexlify(hex_string)</span><br><span class="line">    <span class="comment"># cipher必须每次解密必须初始化也就是说只能用一次，并且不能又加密又解密。</span></span><br><span class="line">    __aes_cipher_d = AES.new(__aes_key, AES.MODE_CBC, iv=__aes_cbc_iv)</span><br><span class="line">    pt = unpad(__aes_cipher_d.decrypt(encrypted_bytes), AES.block_size)</span><br><span class="line">    <span class="keyword">return</span> pt.decode(<span class="string">"utf-8"</span>)</span><br></pre></td></tr></table></figure>
+<h4 id="测试类"><a href="#测试类" class="headerlink" title="测试类"></a>测试类</h4><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> Decrypt</span><br><span class="line"></span><br><span class="line">data = <span class="string">"bilibili哔哩哔哩666"</span></span><br><span class="line"></span><br><span class="line">print(data)</span><br><span class="line">hex= Decrypt.aes_cbc_256_encrypt_base64(data)</span><br><span class="line">print(hex)</span><br><span class="line">plain=Decrypt.aes_cbc_256_decrypt_base64(hex)</span><br><span class="line">print(plain)</span><br><span class="line"></span><br><span class="line">print(<span class="string">"------------------------"</span>)</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">print(data)</span><br><span class="line">hex= Decrypt.aes_cbc_256_encrypt_hex(data)</span><br><span class="line">print(hex)</span><br><span class="line">plain=Decrypt.aes_cbc_256_decrypt_hex(hex)</span><br><span class="line">print(plain)</span><br><span class="line"></span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+            
+
+        </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
+        
+            <div class="post-footer-tags">
+                <span class="text-color-light text-small">TAGGED IN</span><br>
+                
+    <a class="tag tag--primary tag--small t-link" href="/tags/Java/">Java</a> <a class="tag tag--primary tag--small t-link" href="/tags/Python/">Python</a> <a class="tag tag--primary tag--small t-link" href="/tags/Swift/">Swift</a>
+
+            </div>
+        
+        
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2019/02/12/Python端极光推送超时的解决办法/" data-tooltip="Python端极光推送超时的解决办法" aria-label="PREVIOUS: Python端极光推送超时的解决办法">
+                
+                    <i class="fa fa-angle-left" aria-hidden="true"></i>
+                    <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2019/02/11/添加SSL证书/" data-tooltip="添加SSL证书" aria-label="NEXT: 添加SSL证书">
+                
+                    <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                    <i class="fa fa-angle-right" aria-hidden="true"></i>
+                </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a class="post-action-btn btn btn--default btn-open-shareoptions" href="#btn-open-shareoptions" aria-label="Share this post">
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://xiaoo.ml/2019/02/12/Swift、Java、Python的AES加密/" title="Share on Facebook">
+                    <i class="fab fa-facebook" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://twitter.com/intent/tweet?text=https://xiaoo.ml/2019/02/12/Swift、Java、Python的AES加密/" title="Share on Twitter">
+                    <i class="fab fa-twitter" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://xiaoo.ml/2019/02/12/Swift、Java、Python的AES加密/" title="Share on Weibo">
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://xiaoo.ml/2019/02/12/Swift、Java、Python的AES加密/&amp;title=Swift、Java、Python的AES加密" title="Share on QQ">
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="Table of Contents">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+        
+        
+            
+        
+    </div>
+</article>
+
+
+
+
+
+                
+
+                
+                <footer id="footer" class="main-content-wrap">
+    <span class="copyrights">
+		Copyrights &copy; 2020 AndrewWang. All Rights Reserved.
+    </span>
+</footer>
+
+                
+
+            </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="2">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2019/02/12/Python端极光推送超时的解决办法/" data-tooltip="Python端极光推送超时的解决办法" aria-label="PREVIOUS: Python端极光推送超时的解决办法">
+                
+                    <i class="fa fa-angle-left" aria-hidden="true"></i>
+                    <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2019/02/11/添加SSL证书/" data-tooltip="添加SSL证书" aria-label="NEXT: 添加SSL证书">
+                
+                    <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                    <i class="fa fa-angle-right" aria-hidden="true"></i>
+                </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a class="post-action-btn btn btn--default btn-open-shareoptions" href="#btn-open-shareoptions" aria-label="Share this post">
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://xiaoo.ml/2019/02/12/Swift、Java、Python的AES加密/" title="Share on Facebook">
+                    <i class="fab fa-facebook" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://twitter.com/intent/tweet?text=https://xiaoo.ml/2019/02/12/Swift、Java、Python的AES加密/" title="Share on Twitter">
+                    <i class="fab fa-twitter" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://xiaoo.ml/2019/02/12/Swift、Java、Python的AES加密/" title="Share on Weibo">
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://xiaoo.ml/2019/02/12/Swift、Java、Python的AES加密/&amp;title=Swift、Java、Python的AES加密" title="Share on QQ">
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="Table of Contents">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                
+    <div id="share-options-bar" class="share-options-bar" data-behavior="2">
+        <i id="btn-close-shareoptions" class="fa fa-times"></i>
+        <ul class="share-options">
+            
+                
+                
+                <li class="share-option">
+                    <a class="share-option-btn" target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://xiaoo.ml/2019/02/12/Swift、Java、Python的AES加密/">
+                        <i class="fab fa-facebook" aria-hidden="true"></i><span>Share on Facebook</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a class="share-option-btn" target="new" href="https://twitter.com/intent/tweet?text=https://xiaoo.ml/2019/02/12/Swift、Java、Python的AES加密/">
+                        <i class="fab fa-twitter" aria-hidden="true"></i><span>Share on Twitter</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a class="share-option-btn" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://xiaoo.ml/2019/02/12/Swift、Java、Python的AES加密/">
+                        <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a class="share-option-btn" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://xiaoo.ml/2019/02/12/Swift、Java、Python的AES加密/&amp;title=Swift、Java、Python的AES加密">
+                        <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
+                    </a>
+                </li>
+            
+        </ul>
+    </div>
+
+
+            
+        </div>
+        
+
+
+    
+        
+    
+
+<div id="about">
+    <div id="about-card">
+        <div id="about-btn-close">
+            <i class="fa fa-times"></i>
+        </div>
+        
+            <img id="about-card-picture" src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png" alt="Author&#39;s picture">
+        
+            <h4 id="about-card-name">AndrewWang</h4>
+        
+            <div id="about-card-bio"><p>凡是过去，皆为序章<br>须知参差百态，乃是幸福本源<br>邮箱：<a href="mailto:fernando_caudill@outlook.com" target="_blank">fernando_caudill@outlook.com</a></p>
+</div>
+        
+        
+            <div id="about-card-job">
+                <i class="fa fa-briefcase"></i>
+                <br>
+                <p>Android+Python</p>
+
+            </div>
+        
+        
+            <div id="about-card-location">
+                <i class="fa fa-map-marker-alt"></i>
+                <br>
+                Zhangzhou Fujian
+            </div>
+        
+    </div>
+</div>
+
+        
+            <div id="algolia-search-modal" class="modal-container">
+    <div class="modal">
+        <div class="modal-header">
+            <span class="close-button"><i class="fa fa-times"></i></span>
+            <a href="https://algolia.com" target="_blank" rel="noopener" class="searchby-algolia text-color-light link-unstyled">
+                <span class="searchby-algolia-text text-color-light text-small">by</span>
+                <img class="searchby-algolia-logo" src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/others/algolia-light.svg">
+            </a>
+            <i class="search-icon fa fa-search"></i>
+            <form id="algolia-search-form">
+                <input type="text" id="algolia-search-input" name="search" class="form-control input--large search-input" placeholder="Search ">
+            </form>
+        </div>
+        <div class="modal-body">
+            <div class="no-result text-color-light text-center">no post found</div>
+            <div class="results">
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2013/01/22/Cloneable和clone的使用，以及深复制与浅复制的区别/">
+                            <h3 class="media-heading">Cloneable和clone的使用，以及深复制与浅复制的区别</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Jan 22, 2013
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><ni>深浅复制总结下</ni></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2013/02/04/Ubuntu Problem/">
+                            <h3 class="media-heading">Ubuntu Problem</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Feb 4, 2013
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><ni>记录最近几年使用Ubuntu有用的Tips</ni></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2013/08/18/婚后，你一定会遇到更喜欢的人/">
+                            <h3 class="media-heading">婚后，你一定会遇到更喜欢的人</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Aug 18, 2013
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p>结婚后，你一定会遇到更喜欢的人。这件事几乎是肯定的。倒不是说先前结婚的人有多糟糕，也不是说后来出现的人有多美好。而是，你更了解自己了。</p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2013/11/09/ImageLoader must be init with configuration before using 错误解决方法/">
+                            <h3 class="media-heading">ImageLoader must be init with configuration before using 错误解决方法</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Nov 9, 2013
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p>最近开发过程中用到了开源项目Android-Universal-Image-Loader。<br></p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2013/12/14/把WordPress放在根目录而地址显示子目录的方法/">
+                            <h3 class="media-heading">把WordPress放在根目录而地址显示子目录的方法</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Dec 14, 2013
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p> 今天在狗爹（GoDaddy）随便买了个域名，想建个个人博客耍耍。<br></p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2014/02/15/越是聪明人，越容易在这件事上栽跟头/">
+                            <h3 class="media-heading">越是聪明人，越容易在这件事上栽跟头zt</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Feb 15, 2014
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p>一篇名为《李开复：聪明人创业为何容易失败》的商业报道里写道，记者问李开复，如何在短时间内对一个创业者或项目进行判断，有哪些指标或者投资方法论？<br></p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2014/04/02/Java中普通代码块，构造代码块，静态代码块区别及代码示例/">
+                            <h3 class="media-heading">Java中普通代码块，构造代码块，静态代码块区别及代码示例</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Apr 2, 2014
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p>执行顺序：（优先级从高到低）静态代码块&gt;main方法&gt;构造代码块&gt;构造方法。其中静态代码块只执行一次。构造代码块在每次创建对象是都会执行。<br></p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2014/04/14/getApplicationContext()、getBasecontext()、getApplication() 区别/">
+                            <h3 class="media-heading">getApplicationContext()、getBasecontext()、getApplication() 区别</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Apr 14, 2014
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><ni>搞清区别联系很重要，虽然好多情况下能通用的。</ni></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2014/04/24/使用注解来统计算法时间/">
+                            <h3 class="media-heading">使用注解统计算法运行时间</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Apr 24, 2014
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p>一直以为注解并没有什么卵用，后来用了butterknift和spring组件后才知道自定义组件可以完成很多任务。<br></p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2014/05/22/git merge和rebase的区别/">
+                            <h3 class="media-heading">git merge和rebase的区别</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    May 22, 2014
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><ni>一直以来都以为rebase是合并冲突的一种手段，和merge一样的，用哪个都行。</ni></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+            </div>
+        </div>
+        <div class="modal-footer">
+            <p class="results-count text-medium" data-message-zero="no post found" data-message-one="1 post found" data-message-other="{n} posts found">
+                80 posts found
+            </p>
+        </div>
+    </div>
+</div>
+
+        
+        
+<div id="cover" style="background-image:url('https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/cover.jpg');"></div>
+        <!--SCRIPTS-->
+<script src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/js/script-dbd16rvloemmuxdzniplmnxxvwoz24eya9wol0b7vvmlokgqsjivmb8dnscy.min.js"></script>
+<!--SCRIPTS END-->
+
+    
+
+
+    <script src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/js/moment-with-locales.min.js"></script>
+    <script src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/js/algoliasearch.min.js"></script>
+    <script>
+        var algoliaClient = algoliasearch('NPCJXUJXHV', '519d0ecd5f05b733ac031d89154c7bbb');
+        var algoliaIndex = algoliaClient.initIndex('my-hexo-blog');
+    </script>
+
+
+    </body>
+</html>

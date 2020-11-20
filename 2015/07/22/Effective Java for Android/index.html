@@ -1,0 +1,761 @@
+
+<!DOCTYPE html>
+<html lang="en">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="AndrewWang&#39;s Blog">
+    <title>Effective Java for Android - AndrewWang&#39;s Blog</title>
+    <meta name="author" content="AndrewWang">
+    
+        <meta name="keywords" content="hexo,javascript,android,java,JS,Python,">
+    
+    
+        <link rel="icon" href="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/favicon(8).png">
+    
+    
+        <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+    
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"AndrewWang","sameAs":["https://github.com/AndrewWang1993","https://stackoverflow.com/users/4209302/andrewwang","mailto:fernando_caudill@outlook.com"],"image":"https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png"},"articleBody":"Effective java\nEffective Java for Android (cheatsheet).\nEffective Java is considered by many, one of the most important books for writing Java code that is maintainable in the long run and efficient at the same time. Android is using Java and that means that all of the advice given in the book must be applicable, right? Not exactly. Some people consider that most of the advice given by the book are not applicable in the Android development world. In my opinion, this is not the case. I believe that there are parts of the book that are not applicable, either because not all Java features are optimized to be used with Android (e.g. enums, serialization, etc) or due to the limitations that a mobile device has (e.g. Dalvik/ART behaves differently than a desktop JVM) . Nevertheless, most of the paradigms in the book can be used with little to no modification and can contribute to a healthier, cleaner and more maintainable code base.\nThis post is an attempt to concentrate what I consider the most important items from the book when developing an Android app. For those who read the book, this post might act as a reminder of the items/principles that are mentioned. For those who didn’t read it (yet), it can be used to give them a taste of what the book offers.\nForce non-instantiability\nIf you do not want an object to be created using the new keyword, enforce it using a private constructor. Especially useful for utility classes that contain only static functions.123456class MovieUtils &#123;    private MovieUtils() &#123;&#125;    static String titleAndYear(Movie movie) &#123;        [...]    &#125;&#125;\nStatic Factories\nInstead of using the new keyword and the constructor use a static factory method (and a private constructor). These factory methods are named, are not required to return a new instance of the object each time and can return a different subtype depending on what’s needed.123456class Movie &#123;    [...]    public static Movie create(String title) &#123;        return new Movie(title);    &#125;&#125;\n[Update] A useful tip by our reader @stsdema28: Using static factories can make testing difficult. If that’s the case, consider using non-static factories that you can mock during testing (or a factory interface that a fake can implement).\nBuilders\nWhen you have an object that requires more than ~3 constructor parameters, use a builder to construct the object. It might be a little more verbose to write but it scales well and it’s very readable. If you are creating a value class, consider AutoValue.123456789101112131415161718192021222324252627282930313233343536373839404142434445464748495051525354555657585960616263646566676869707172737475767778798081828384858687888990919293949596979899100101102103class Movie &#123;    static Builder newBuilder() &#123;        return new Builder();    &#125;    static class Builder &#123;        String title;        Builder withTitle(String title) &#123;            this.title = title;            return this;        &#125;        Movie build() &#123;            return new Movie(title);        &#125;    &#125;    private Movie(String title) &#123;    [...]        &#125;&#125;// Use like this:Movie matrix = Movie.newBuilder().withTitle(&quot;The Matrix&quot;).build();Avoid mutabilityImmutable is an object that stays the same for its entire lifetime. All the necessary data of the object are provided during its creation. There are various advantages to this approach like simplicity, thread-safety and shareability.class Movie &#123;    [...]    Movie sequel() &#123;        return Movie.create(this.title + &quot; 2&quot;);    &#125;&#125;// Use like this:Movie toyStory = Movie.create(&quot;Toy Story&quot;);Movie toyStory2 = toyStory.sequel();It might be difficult to make every class immutable. If that’s the case, make your class as immutable as possible (eg, fields private final and the class final). Object creation might be more expensive on mobile, therefore don’t over do it.Static member classesIf you define an inner class that does not depend on the outer class, don’t forget to define it as static. Failing to do so will result in each instance of the inner class to have references to the outer class.class Movie &#123;    [...]    static class MovieAward &#123;        [...]    &#125;&#125;Generics (almost) everywhereJava provides type-safety and we should be grateful for it (see JS). Try to avoid using raw types or the Object type when possible. Generics provide, most of the times the mechanism to make your code type safe on compile time.// DON&apos;TList movies = Lists.newArrayList();movies.add(&quot;Hello!&quot;);[...]String movie = (String) movies.get(0);// DOList&lt;String&gt; movies = Lists.newArrayList();movies.add(&quot;Hello!&quot;);[...]String movie = movies.get(0);Don’t forget that you can use generics and in your methods for parameters and returned values.// DON&apos;TList sort(List input) &#123;    [...]&#125;// DO&lt;T&gt; List&lt;T&gt; sort(List&lt;T&gt; input) &#123;    [...]&#125;To be a little more flexible you can use bounded wildcards to extend the range of types that you accept.// Read stuff from collection - use &quot;extends&quot;void readList(List&lt;? extends Movie&gt; movieList) &#123;    for (Movie movie : movieList) &#123;        System.out.print(movie.getTitle());        [...]    &#125;&#125;// Write stuff to collection - use &quot;super&quot;void writeList(List&lt;? super Movie&gt; movieList) &#123;    movieList.add(Movie.create(&quot;Se7en&quot;));    [...]&#125;Return emptyWhen having to return a list/collection with no result avoid null. Returning an empty collection leads to a simpler interface (no need to document and annotate the null-returning function) and avoids accidental NPE. Prefer to return the same empty collection rather than creating a new one.List&lt;Movie&gt; latestMovies() &#123;    if (db.query().isEmpty()) &#123;        return Collections.emptyList();    &#125;    [...]&#125;No + StringHaving to concatenate a few Strings, + operator might do. Never use it for a lot of String concatenations; the performance is really bad. Prefer a StringBuilder instead.String latestMovieOneLiner(List&lt;Movie&gt; movies) &#123;    StringBuilder sb = new StringBuilder();    for (Movie movie : movies) &#123;        sb.append(movie);    &#125;    return sb.toString();&#125;Recoverable exceptionsI am not in favor of throwing exceptions for indicating errors, but if you do so, make sure the exception is checked and the catcher of the exception is able to recover from the error.List&lt;Movie&gt; latestMovies() throws MoviesNotFoundException &#123;    if (db.query().isEmpty()) &#123;        throw new MoviesNotFoundException();    &#125;    [...]&#125;\nConclusion:This list is by no mean a complete list of the advice that is given in the book nor the short text explanations full-depth justifications. This was rather a cheat sheet for these useful tips :)\n\nLink: https://medium.com/rocknnull/effective-java-for-android-cheatsheet-bf4e3433889a#.72voej957\n","dateCreated":"2015-07-22T16:10:00+08:00","dateModified":"2020-11-20T08:50:05+08:00","datePublished":"2015-07-22T16:10:00+08:00","description":"Effective java","headline":"Effective Java for Android","image":[],"mainEntityOfPage":{"@type":"WebPage","@id":"https://xiaoo.ml/2015/07/22/Effective Java for Android/"},"publisher":{"@type":"Organization","name":"AndrewWang","sameAs":["https://github.com/AndrewWang1993","https://stackoverflow.com/users/4209302/andrewwang","mailto:fernando_caudill@outlook.com"],"image":"https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png","logo":{"@type":"ImageObject","url":"https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png"}},"url":"https://xiaoo.ml/2015/07/22/Effective Java for Android/"}</script>
+    <meta name="description" content="Effective java">
+<meta name="keywords" content="hexo,javascript,android,java,JS,Python">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="Effective Java for Android">
+<meta property="og:url" content="https://xiaoo.ml/2015/07/22/Effective Java for Android/index.html">
+<meta property="og:site_name" content="AndrewWang&#39;s Blog">
+<meta property="og:description" content="Effective java">
+<meta property="og:locale" content="en">
+<meta property="og:updated_time" content="2020-11-20T00:50:05.782Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Effective Java for Android">
+<meta name="twitter:description" content="Effective java">
+<meta name="twitter:creator" content="@https:&#x2F;&#x2F;twitter.com&#x2F;JamesMcMurr">
+    
+    
+        
+    
+    
+        <meta property="og:image" content="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png"/>
+    
+    
+    
+    
+    <!--STYLES-->
+    <link rel="stylesheet" href="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/css/style-c4ozcsklz4kht2pebhp44xorvyverh23toayhn7i6ubrpyedak24hv1v0hyd.min.css">
+    <!--STYLES END-->
+    
+
+    
+</head>
+
+    <body>
+        <div id="blog">
+            <!-- Define author's picture -->
+
+
+    
+        
+            
+        
+    
+
+<header id="header" data-behavior="2">
+    <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
+    <div class="header-title">
+        <a class="header-title-link" href="/ ">AndrewWang&#39;s Blog</a>
+    </div>
+    
+        
+            <a class="header-right-picture " href="#about">
+        
+        
+            <img class="header-picture" src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png" alt="Author&#39;s picture">
+        
+        </a>
+    
+</header>
+
+            <!-- Define author's picture -->
+
+
+
+        
+    
+
+<nav id="sidebar" data-behavior="2">
+    <div class="sidebar-container">
+        
+            <div class="sidebar-profile">
+                <a href="/#about">
+                    <img class="sidebar-profile-picture" src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png" alt="Author&#39;s picture">
+                </a>
+                <h4 class="sidebar-profile-name">AndrewWang</h4>
+                
+                    <h5 class="sidebar-profile-bio"><p>凡是过去，皆为序章<br>须知参差百态，乃是幸福本源<br>邮箱：<a href="mailto:fernando_caudill@outlook.com" target="_blank">fernando_caudill@outlook.com</a></p>
+</h5>
+                
+            </div>
+        
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/ " title="Home">
+                    
+                        <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Home</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/all-categories" title="Categories">
+                    
+                        <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Categories</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/all-tags" title="Tags">
+                    
+                        <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Tags</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/all-archives" title="Archives">
+                    
+                        <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Archives</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link open-algolia-search" href="#search" title="Search">
+                    
+                        <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Search</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="#about" title="About">
+                    
+                        <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">About</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="https://github.com/AndrewWang1993" target="_blank" rel="noopener" title="GitHub">
+                    
+                        <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">GitHub</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="https://stackoverflow.com/users/4209302/andrewwang" target="_blank" rel="noopener" title="Stack Overflow">
+                    
+                        <i class="sidebar-button-icon fab fa-stack-overflow" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Stack Overflow</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="mailto:fernando_caudill@outlook.com" target="_blank" rel="noopener" title="Mail">
+                    
+                        <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Mail</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/atom.xml" title="RSS">
+                    
+                        <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">RSS</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+    </div>
+</nav>
+
+            
+            <div id="main" data-behavior="2"
+                 class="
+                        hasCoverMetaIn
+                        ">
+                
+<article class="post">
+    
+    
+        <div class="post-header main-content-wrap text-left">
+    
+        <h1 class="post-title">
+            Effective Java for Android
+        </h1>
+    
+    
+        <div class="post-meta">
+    <time datetime="2015-07-22T16:10:00+08:00">
+	
+		    Jul 22, 2015
+    	
+    </time>
+    
+        <span>in </span>
+        
+    <a class="category-link" href="/categories/Android/">Android</a>, <a class="category-link" href="/categories/Android/Java/">Java</a>
+
+
+    
+</div>
+
+    
+</div>
+
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
+            <p>Effective java<br><a id="more"></a></p>
+<p>Effective Java for Android (cheatsheet).</p>
+<p>Effective Java is considered by many, one of the most important books for writing Java code that is maintainable in the long run and efficient at the same time. Android is using Java and that means that all of the advice given in the book must be applicable, right? Not exactly. Some people consider that most of the advice given by the book are not applicable in the Android development world. In my opinion, this is not the case. I believe that there are parts of the book that are not applicable, either because not all Java features are optimized to be used with Android (e.g. enums, serialization, etc) or due to the limitations that a mobile device has (e.g. Dalvik/ART behaves differently than a desktop JVM) . Nevertheless, most of the paradigms in the book can be used with little to no modification and can contribute to a healthier, cleaner and more maintainable code base.</p>
+<p>This post is an attempt to concentrate what I consider the most important items from the book when developing an Android app. For those who read the book, this post might act as a reminder of the items/principles that are mentioned. For those who didn’t read it (yet), it can be used to give them a taste of what the book offers.</p>
+<p>Force non-instantiability</p>
+<p>If you do not want an object to be created using the new keyword, enforce it using a private constructor. Especially useful for utility classes that contain only static functions.<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">class MovieUtils &#123;</span><br><span class="line">    private MovieUtils() &#123;&#125;</span><br><span class="line">    static String titleAndYear(Movie movie) &#123;</span><br><span class="line">        [...]</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>Static Factories</p>
+<p>Instead of using the new keyword and the constructor use a static factory method (and a private constructor). These factory methods are named, are not required to return a new instance of the object each time and can return a different subtype depending on what’s needed.<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">class Movie &#123;</span><br><span class="line">    [...]</span><br><span class="line">    public static Movie create(String title) &#123;</span><br><span class="line">        return new Movie(title);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>[Update] A useful tip by our reader @stsdema28: Using static factories can make testing difficult. If that’s the case, consider using non-static factories that you can mock during testing (or a factory interface that a fake can implement).</p>
+<p>Builders</p>
+<p>When you have an object that requires more than ~3 constructor parameters, use a builder to construct the object. It might be a little more verbose to write but it scales well and it’s very readable. If you are creating a value class, consider AutoValue.<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br></pre></td><td class="code"><pre><span class="line">class Movie &#123;</span><br><span class="line">    static Builder newBuilder() &#123;</span><br><span class="line">        return new Builder();</span><br><span class="line">    &#125;</span><br><span class="line">    static class Builder &#123;</span><br><span class="line">        String title;</span><br><span class="line">        Builder withTitle(String title) &#123;</span><br><span class="line">            this.title = title;</span><br><span class="line">            return this;</span><br><span class="line">        &#125;</span><br><span class="line">        Movie build() &#123;</span><br><span class="line">            return new Movie(title);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    private Movie(String title) &#123;</span><br><span class="line">    [...]    </span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line">// Use like this:</span><br><span class="line">Movie matrix = Movie.newBuilder().withTitle(&quot;The Matrix&quot;).build();</span><br><span class="line">Avoid mutability</span><br><span class="line">Immutable is an object that stays the same for its entire lifetime. All the necessary data of the object are provided during its creation. There are various advantages to this approach like simplicity, thread-safety and shareability.</span><br><span class="line">class Movie &#123;</span><br><span class="line">    [...]</span><br><span class="line">    Movie sequel() &#123;</span><br><span class="line">        return Movie.create(this.title + &quot; 2&quot;);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line">// Use like this:</span><br><span class="line">Movie toyStory = Movie.create(&quot;Toy Story&quot;);</span><br><span class="line">Movie toyStory2 = toyStory.sequel();</span><br><span class="line">It might be difficult to make every class immutable. If that’s the case, make your class as immutable as possible (eg, fields private final and the class final). Object creation might be more expensive on mobile, therefore don’t over do it.</span><br><span class="line">Static member classes</span><br><span class="line">If you define an inner class that does not depend on the outer class, don’t forget to define it as static. Failing to do so will result in each instance of the inner class to have references to the outer class.</span><br><span class="line">class Movie &#123;</span><br><span class="line">    [...]</span><br><span class="line">    static class MovieAward &#123;</span><br><span class="line">        [...]</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line">Generics (almost) everywhere</span><br><span class="line">Java provides type-safety and we should be grateful for it (see JS). Try to avoid using raw types or the Object type when possible. Generics provide, most of the times the mechanism to make your code type safe on compile time.</span><br><span class="line">// DON&apos;T</span><br><span class="line">List movies = Lists.newArrayList();</span><br><span class="line">movies.add(&quot;Hello!&quot;);</span><br><span class="line">[...]</span><br><span class="line">String movie = (String) movies.get(0);</span><br><span class="line"></span><br><span class="line">// DO</span><br><span class="line">List&lt;String&gt; movies = Lists.newArrayList();</span><br><span class="line">movies.add(&quot;Hello!&quot;);</span><br><span class="line">[...]</span><br><span class="line">String movie = movies.get(0);</span><br><span class="line">Don’t forget that you can use generics and in your methods for parameters and returned values.</span><br><span class="line">// DON&apos;T</span><br><span class="line">List sort(List input) &#123;</span><br><span class="line">    [...]</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">// DO</span><br><span class="line">&lt;T&gt; List&lt;T&gt; sort(List&lt;T&gt; input) &#123;</span><br><span class="line">    [...]</span><br><span class="line">&#125;</span><br><span class="line">To be a little more flexible you can use bounded wildcards to extend the range of types that you accept.</span><br><span class="line">// Read stuff from collection - use &quot;extends&quot;</span><br><span class="line">void readList(List&lt;? extends Movie&gt; movieList) &#123;</span><br><span class="line">    for (Movie movie : movieList) &#123;</span><br><span class="line">        System.out.print(movie.getTitle());</span><br><span class="line">        [...]</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">// Write stuff to collection - use &quot;super&quot;</span><br><span class="line">void writeList(List&lt;? super Movie&gt; movieList) &#123;</span><br><span class="line">    movieList.add(Movie.create(&quot;Se7en&quot;));</span><br><span class="line">    [...]</span><br><span class="line">&#125;</span><br><span class="line">Return empty</span><br><span class="line">When having to return a list/collection with no result avoid null. Returning an empty collection leads to a simpler interface (no need to document and annotate the null-returning function) and avoids accidental NPE. Prefer to return the same empty collection rather than creating a new one.</span><br><span class="line">List&lt;Movie&gt; latestMovies() &#123;</span><br><span class="line">    if (db.query().isEmpty()) &#123;</span><br><span class="line">        return Collections.emptyList();</span><br><span class="line">    &#125;</span><br><span class="line">    [...]</span><br><span class="line">&#125;</span><br><span class="line">No + String</span><br><span class="line">Having to concatenate a few Strings, + operator might do. Never use it for a lot of String concatenations; the performance is really bad. Prefer a StringBuilder instead.</span><br><span class="line">String latestMovieOneLiner(List&lt;Movie&gt; movies) &#123;</span><br><span class="line">    StringBuilder sb = new StringBuilder();</span><br><span class="line">    for (Movie movie : movies) &#123;</span><br><span class="line">        sb.append(movie);</span><br><span class="line">    &#125;</span><br><span class="line">    return sb.toString();</span><br><span class="line">&#125;</span><br><span class="line">Recoverable exceptions</span><br><span class="line">I am not in favor of throwing exceptions for indicating errors, but if you do so, make sure the exception is checked and the catcher of the exception is able to recover from the error.</span><br><span class="line">List&lt;Movie&gt; latestMovies() throws MoviesNotFoundException &#123;</span><br><span class="line">    if (db.query().isEmpty()) &#123;</span><br><span class="line">        throw new MoviesNotFoundException();</span><br><span class="line">    &#125;</span><br><span class="line">    [...]</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>Conclusion:This list is by no mean a complete list of the advice that is given in the book nor the short text explanations full-depth justifications. This was rather a cheat sheet for these useful tips :)</p>
+<p><br></p>
+<ni>Link: <a href="https://medium.com/rocknnull/effective-java-for-android-cheatsheet-bf4e3433889a#.72voej957" target="_blank" rel="noopener">https://medium.com/rocknnull/effective-java-for-android-cheatsheet-bf4e3433889a#.72voej957</a></ni>
+
+            
+
+        </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
+        
+        
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2015/08/04/RxJava的边边角角/" data-tooltip="RxJava的边边角角" aria-label="PREVIOUS: RxJava的边边角角">
+                
+                    <i class="fa fa-angle-left" aria-hidden="true"></i>
+                    <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2015/07/14/Python设置默认编码/" data-tooltip="Python设置默认编码" aria-label="NEXT: Python设置默认编码">
+                
+                    <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                    <i class="fa fa-angle-right" aria-hidden="true"></i>
+                </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a class="post-action-btn btn btn--default btn-open-shareoptions" href="#btn-open-shareoptions" aria-label="Share this post">
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://xiaoo.ml/2015/07/22/Effective Java for Android/" title="Share on Facebook">
+                    <i class="fab fa-facebook" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://twitter.com/intent/tweet?text=https://xiaoo.ml/2015/07/22/Effective Java for Android/" title="Share on Twitter">
+                    <i class="fab fa-twitter" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://xiaoo.ml/2015/07/22/Effective Java for Android/" title="Share on Weibo">
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://xiaoo.ml/2015/07/22/Effective Java for Android/&amp;title=Effective Java for Android" title="Share on QQ">
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#" aria-label="Back to top">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+        
+        
+            
+        
+    </div>
+</article>
+
+
+
+
+
+                
+
+                
+                <footer id="footer" class="main-content-wrap">
+    <span class="copyrights">
+		Copyrights &copy; 2020 AndrewWang. All Rights Reserved.
+    </span>
+</footer>
+
+                
+
+            </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="2">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2015/08/04/RxJava的边边角角/" data-tooltip="RxJava的边边角角" aria-label="PREVIOUS: RxJava的边边角角">
+                
+                    <i class="fa fa-angle-left" aria-hidden="true"></i>
+                    <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2015/07/14/Python设置默认编码/" data-tooltip="Python设置默认编码" aria-label="NEXT: Python设置默认编码">
+                
+                    <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                    <i class="fa fa-angle-right" aria-hidden="true"></i>
+                </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a class="post-action-btn btn btn--default btn-open-shareoptions" href="#btn-open-shareoptions" aria-label="Share this post">
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://xiaoo.ml/2015/07/22/Effective Java for Android/" title="Share on Facebook">
+                    <i class="fab fa-facebook" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://twitter.com/intent/tweet?text=https://xiaoo.ml/2015/07/22/Effective Java for Android/" title="Share on Twitter">
+                    <i class="fab fa-twitter" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://xiaoo.ml/2015/07/22/Effective Java for Android/" title="Share on Weibo">
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://xiaoo.ml/2015/07/22/Effective Java for Android/&amp;title=Effective Java for Android" title="Share on QQ">
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#" aria-label="Back to top">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                
+    <div id="share-options-bar" class="share-options-bar" data-behavior="2">
+        <i id="btn-close-shareoptions" class="fa fa-times"></i>
+        <ul class="share-options">
+            
+                
+                
+                <li class="share-option">
+                    <a class="share-option-btn" target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://xiaoo.ml/2015/07/22/Effective Java for Android/">
+                        <i class="fab fa-facebook" aria-hidden="true"></i><span>Share on Facebook</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a class="share-option-btn" target="new" href="https://twitter.com/intent/tweet?text=https://xiaoo.ml/2015/07/22/Effective Java for Android/">
+                        <i class="fab fa-twitter" aria-hidden="true"></i><span>Share on Twitter</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a class="share-option-btn" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://xiaoo.ml/2015/07/22/Effective Java for Android/">
+                        <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a class="share-option-btn" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://xiaoo.ml/2015/07/22/Effective Java for Android/&amp;title=Effective Java for Android">
+                        <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
+                    </a>
+                </li>
+            
+        </ul>
+    </div>
+
+
+            
+        </div>
+        
+
+
+    
+        
+    
+
+<div id="about">
+    <div id="about-card">
+        <div id="about-btn-close">
+            <i class="fa fa-times"></i>
+        </div>
+        
+            <img id="about-card-picture" src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png" alt="Author&#39;s picture">
+        
+            <h4 id="about-card-name">AndrewWang</h4>
+        
+            <div id="about-card-bio"><p>凡是过去，皆为序章<br>须知参差百态，乃是幸福本源<br>邮箱：<a href="mailto:fernando_caudill@outlook.com" target="_blank">fernando_caudill@outlook.com</a></p>
+</div>
+        
+        
+            <div id="about-card-job">
+                <i class="fa fa-briefcase"></i>
+                <br>
+                <p>Android+Python</p>
+
+            </div>
+        
+        
+            <div id="about-card-location">
+                <i class="fa fa-map-marker-alt"></i>
+                <br>
+                Zhangzhou Fujian
+            </div>
+        
+    </div>
+</div>
+
+        
+            <div id="algolia-search-modal" class="modal-container">
+    <div class="modal">
+        <div class="modal-header">
+            <span class="close-button"><i class="fa fa-times"></i></span>
+            <a href="https://algolia.com" target="_blank" rel="noopener" class="searchby-algolia text-color-light link-unstyled">
+                <span class="searchby-algolia-text text-color-light text-small">by</span>
+                <img class="searchby-algolia-logo" src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/others/algolia-light.svg">
+            </a>
+            <i class="search-icon fa fa-search"></i>
+            <form id="algolia-search-form">
+                <input type="text" id="algolia-search-input" name="search" class="form-control input--large search-input" placeholder="Search ">
+            </form>
+        </div>
+        <div class="modal-body">
+            <div class="no-result text-color-light text-center">no post found</div>
+            <div class="results">
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2013/01/22/Cloneable和clone的使用，以及深复制与浅复制的区别/">
+                            <h3 class="media-heading">Cloneable和clone的使用，以及深复制与浅复制的区别</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Jan 22, 2013
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><ni>深浅复制总结下</ni></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2013/02/04/Ubuntu Problem/">
+                            <h3 class="media-heading">Ubuntu Problem</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Feb 4, 2013
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><ni>记录最近几年使用Ubuntu有用的Tips</ni></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2013/08/18/婚后，你一定会遇到更喜欢的人/">
+                            <h3 class="media-heading">婚后，你一定会遇到更喜欢的人</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Aug 18, 2013
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p>结婚后，你一定会遇到更喜欢的人。这件事几乎是肯定的。倒不是说先前结婚的人有多糟糕，也不是说后来出现的人有多美好。而是，你更了解自己了。</p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2013/11/09/ImageLoader must be init with configuration before using 错误解决方法/">
+                            <h3 class="media-heading">ImageLoader must be init with configuration before using 错误解决方法</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Nov 9, 2013
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p>最近开发过程中用到了开源项目Android-Universal-Image-Loader。<br></p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2013/12/14/把WordPress放在根目录而地址显示子目录的方法/">
+                            <h3 class="media-heading">把WordPress放在根目录而地址显示子目录的方法</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Dec 14, 2013
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p> 今天在狗爹（GoDaddy）随便买了个域名，想建个个人博客耍耍。<br></p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2014/02/15/越是聪明人，越容易在这件事上栽跟头/">
+                            <h3 class="media-heading">越是聪明人，越容易在这件事上栽跟头zt</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Feb 15, 2014
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p>一篇名为《李开复：聪明人创业为何容易失败》的商业报道里写道，记者问李开复，如何在短时间内对一个创业者或项目进行判断，有哪些指标或者投资方法论？<br></p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2014/04/02/Java中普通代码块，构造代码块，静态代码块区别及代码示例/">
+                            <h3 class="media-heading">Java中普通代码块，构造代码块，静态代码块区别及代码示例</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Apr 2, 2014
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p>执行顺序：（优先级从高到低）静态代码块&gt;main方法&gt;构造代码块&gt;构造方法。其中静态代码块只执行一次。构造代码块在每次创建对象是都会执行。<br></p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2014/04/14/getApplicationContext()、getBasecontext()、getApplication() 区别/">
+                            <h3 class="media-heading">getApplicationContext()、getBasecontext()、getApplication() 区别</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Apr 14, 2014
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><ni>搞清区别联系很重要，虽然好多情况下能通用的。</ni></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2014/04/24/使用注解来统计算法时间/">
+                            <h3 class="media-heading">使用注解统计算法运行时间</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Apr 24, 2014
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p>一直以为注解并没有什么卵用，后来用了butterknift和spring组件后才知道自定义组件可以完成很多任务。<br></p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2014/05/22/git merge和rebase的区别/">
+                            <h3 class="media-heading">git merge和rebase的区别</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    May 22, 2014
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><ni>一直以来都以为rebase是合并冲突的一种手段，和merge一样的，用哪个都行。</ni></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+            </div>
+        </div>
+        <div class="modal-footer">
+            <p class="results-count text-medium" data-message-zero="no post found" data-message-one="1 post found" data-message-other="{n} posts found">
+                80 posts found
+            </p>
+        </div>
+    </div>
+</div>
+
+        
+        
+<div id="cover" style="background-image:url('https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/cover.jpg');"></div>
+        <!--SCRIPTS-->
+<script src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/js/script-dbd16rvloemmuxdzniplmnxxvwoz24eya9wol0b7vvmlokgqsjivmb8dnscy.min.js"></script>
+<!--SCRIPTS END-->
+
+    
+
+
+    <script src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/js/moment-with-locales.min.js"></script>
+    <script src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/js/algoliasearch.min.js"></script>
+    <script>
+        var algoliaClient = algoliasearch('NPCJXUJXHV', '519d0ecd5f05b733ac031d89154c7bbb');
+        var algoliaIndex = algoliaClient.initIndex('my-hexo-blog');
+    </script>
+
+
+    </body>
+</html>

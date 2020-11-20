@@ -1,0 +1,758 @@
+
+<!DOCTYPE html>
+<html lang="en">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="AndrewWang&#39;s Blog">
+    <title>用TextSwitcher实现文字切换动画 - AndrewWang&#39;s Blog</title>
+    <meta name="author" content="AndrewWang">
+    
+        <meta name="keywords" content="hexo,javascript,android,java,JS,Python,">
+    
+    
+        <link rel="icon" href="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/favicon(8).png">
+    
+    
+        <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+    
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"AndrewWang","sameAs":["https://github.com/AndrewWang1993","https://stackoverflow.com/users/4209302/andrewwang","mailto:fernando_caudill@outlook.com"],"image":"https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png"},"articleBody":"普通TextView更换信息都是瞬间变化的，动画效果制作起来也很简单。\n\n\n浏览信息，更换显示文字  会使用TextView，调用textview.setText(“  something”);更新TextView中的内容，但是TextView中的内容是立刻改变的，这种内容切换方式生硬，可以用TextSwitcher添加动画效果避免生硬的切换，TextSwitcher用于文本标签添加动画效果，这点和ImageSwitcher类似。123456789101112131415161718192021222324252627282930313233343536373839404142434445464748495051525354package com.manning.androidhacks.hack005;        import android.app.Activity;    import android.os.Bundle;    import android.view.Gravity;    import android.view.View;    import android.widget.TextSwitcher;    import android.widget.TextView;    import android.widget.ViewSwitcher.ViewFactory;        public class MainActivity extends Activity &#123;            private static final String[] TEXTS = &#123;\"First\", \"Second\", \"Third\"&#125;;        private int mTextsPosition = 0;        private TextSwitcher mTextSwitcher;        private TextView textview;            @Override        public void onCreate(Bundle savedInstanceState) &#123;            super.onCreate(savedInstanceState);            setContentView(R.layout.main);            textview = (TextView) findViewById(R.id.textview);            // 获得TextSwitch的引用，            mTextSwitcher = (TextSwitcher) findViewById(R.id.your_textview);          //指定TextSwitcher的viewFactory            mTextSwitcher.setFactory(new ViewFactory() &#123;                @Override                public View makeView() &#123;                    TextView t = new TextView(MainActivity.this);                    t.setGravity(Gravity.CENTER);                    return t;                &#125;            &#125;);            // 设置切入动画效果,使用系统的谈入效果，也可以自定义            mTextSwitcher.setInAnimation(this, android.R.anim.fade_in);            // 设置切出动画效果，使用系统的谈出效果，也可以自定义            mTextSwitcher.setOutAnimation(this, android.R.anim.fade_out);                onSwitchText(null);        &#125;        // 点击效果        public void onSwitchText(View v) &#123;            // 设置渐变切换文字            mTextSwitcher.setText(TEXTS[mTextsPosition]);            // 设置一般文字切换            textview.setText(TEXTS[mTextsPosition]);            //改变文字，待下一次显示            setNextPosition();        &#125;            private void setNextPosition() &#123;            mTextsPosition = (mTextsPosition + 1) % TEXTS.length;        &#125;    &#125;\n1234567891011121314151617181920212223242526272829303132&lt;?xml version=\"1.0\" encoding=\"utf-8\"?&gt;    &lt;!--      Copyright (c) 2012 Manning      See the file license.txt for copying permission.    --&gt;    &lt;RelativeLayout xmlns:android=\"http://schemas.android.com/apk/res/android\"        android:layout_width=\"fill_parent\"        android:layout_height=\"fill_parent\" &gt;            &lt;TextView            android:id=\"@+id/textview\"            android:layout_width=\"fill_parent\"            android:layout_height=\"wrap_content\"            android:gravity=\"center\"            android:textColor=\"#FF0000FF\"            android:layout_above=\"@+id/your_textview\"            android:layout_marginBottom=\"20dip\" /&gt;            &lt;TextSwitcher            android:id=\"@+id/your_textview\"            android:layout_width=\"fill_parent\"            android:layout_height=\"wrap_content\"            android:layout_centerInParent=\"true\" /&gt;            &lt;Button            android:layout_width=\"fill_parent\"            android:layout_height=\"wrap_content\"            android:layout_alignParentBottom=\"true\"            android:onClick=\"onSwitchText\"            android:text=\"Click me\" /&gt;        &lt;/RelativeLayout&gt;","dateCreated":"2015-01-09T16:10:00+08:00","dateModified":"2020-11-20T08:50:05+08:00","datePublished":"2015-01-09T16:10:00+08:00","description":"普通TextView更换信息都是瞬间变化的，动画效果制作起来也很简单。","headline":"用TextSwitcher实现文字切换动画","image":[],"mainEntityOfPage":{"@type":"WebPage","@id":"https://xiaoo.ml/2015/01/09/用TextSwitcher实现文字切换动画/"},"publisher":{"@type":"Organization","name":"AndrewWang","sameAs":["https://github.com/AndrewWang1993","https://stackoverflow.com/users/4209302/andrewwang","mailto:fernando_caudill@outlook.com"],"image":"https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png","logo":{"@type":"ImageObject","url":"https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png"}},"url":"https://xiaoo.ml/2015/01/09/用TextSwitcher实现文字切换动画/","keywords":"Tips"}</script>
+    <meta name="description" content="普通TextView更换信息都是瞬间变化的，动画效果制作起来也很简单。">
+<meta name="keywords" content="Tips">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="用TextSwitcher实现文字切换动画">
+<meta property="og:url" content="https://xiaoo.ml/2015/01/09/用TextSwitcher实现文字切换动画/index.html">
+<meta property="og:site_name" content="AndrewWang&#39;s Blog">
+<meta property="og:description" content="普通TextView更换信息都是瞬间变化的，动画效果制作起来也很简单。">
+<meta property="og:locale" content="en">
+<meta property="og:updated_time" content="2020-11-20T00:50:05.800Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="用TextSwitcher实现文字切换动画">
+<meta name="twitter:description" content="普通TextView更换信息都是瞬间变化的，动画效果制作起来也很简单。">
+<meta name="twitter:creator" content="@https:&#x2F;&#x2F;twitter.com&#x2F;JamesMcMurr">
+    
+    
+        
+    
+    
+        <meta property="og:image" content="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png"/>
+    
+    
+    
+    
+    <!--STYLES-->
+    <link rel="stylesheet" href="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/css/style-c4ozcsklz4kht2pebhp44xorvyverh23toayhn7i6ubrpyedak24hv1v0hyd.min.css">
+    <!--STYLES END-->
+    
+
+    
+</head>
+
+    <body>
+        <div id="blog">
+            <!-- Define author's picture -->
+
+
+    
+        
+            
+        
+    
+
+<header id="header" data-behavior="2">
+    <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
+    <div class="header-title">
+        <a class="header-title-link" href="/ ">AndrewWang&#39;s Blog</a>
+    </div>
+    
+        
+            <a class="header-right-picture " href="#about">
+        
+        
+            <img class="header-picture" src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png" alt="Author&#39;s picture">
+        
+        </a>
+    
+</header>
+
+            <!-- Define author's picture -->
+
+
+
+        
+    
+
+<nav id="sidebar" data-behavior="2">
+    <div class="sidebar-container">
+        
+            <div class="sidebar-profile">
+                <a href="/#about">
+                    <img class="sidebar-profile-picture" src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png" alt="Author&#39;s picture">
+                </a>
+                <h4 class="sidebar-profile-name">AndrewWang</h4>
+                
+                    <h5 class="sidebar-profile-bio"><p>凡是过去，皆为序章<br>须知参差百态，乃是幸福本源<br>邮箱：<a href="mailto:fernando_caudill@outlook.com" target="_blank">fernando_caudill@outlook.com</a></p>
+</h5>
+                
+            </div>
+        
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/ " title="Home">
+                    
+                        <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Home</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/all-categories" title="Categories">
+                    
+                        <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Categories</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/all-tags" title="Tags">
+                    
+                        <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Tags</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/all-archives" title="Archives">
+                    
+                        <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Archives</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link open-algolia-search" href="#search" title="Search">
+                    
+                        <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Search</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="#about" title="About">
+                    
+                        <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">About</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="https://github.com/AndrewWang1993" target="_blank" rel="noopener" title="GitHub">
+                    
+                        <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">GitHub</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="https://stackoverflow.com/users/4209302/andrewwang" target="_blank" rel="noopener" title="Stack Overflow">
+                    
+                        <i class="sidebar-button-icon fab fa-stack-overflow" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Stack Overflow</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="mailto:fernando_caudill@outlook.com" target="_blank" rel="noopener" title="Mail">
+                    
+                        <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Mail</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/atom.xml" title="RSS">
+                    
+                        <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">RSS</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+    </div>
+</nav>
+
+            
+            <div id="main" data-behavior="2"
+                 class="
+                        hasCoverMetaIn
+                        ">
+                
+<article class="post">
+    
+    
+        <div class="post-header main-content-wrap text-left">
+    
+        <h1 class="post-title">
+            用TextSwitcher实现文字切换动画
+        </h1>
+    
+    
+        <div class="post-meta">
+    <time datetime="2015-01-09T16:10:00+08:00">
+	
+		    Jan 09, 2015
+    	
+    </time>
+    
+        <span>in </span>
+        
+    <a class="category-link" href="/categories/Android/">Android</a>
+
+
+    
+</div>
+
+    
+</div>
+
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
+            <ni>普通TextView更换信息都是瞬间变化的，动画效果制作起来也很简单。</ni>
+
+<a id="more"></a>
+<p>浏览信息，更换显示文字  会使用TextView，调用textview.setText(“  something”);更新TextView中的内容，但是TextView中的内容是立刻改变的，这种内容切换方式生硬，可以用TextSwitcher添加动画效果避免生硬的切换，TextSwitcher用于文本标签添加动画效果，这点和ImageSwitcher类似。<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">package</span> com.manning.androidhacks.hack005;    </span><br><span class="line">    </span><br><span class="line"><span class="keyword">import</span> android.app.Activity;    </span><br><span class="line"><span class="keyword">import</span> android.os.Bundle;    </span><br><span class="line"><span class="keyword">import</span> android.view.Gravity;    </span><br><span class="line"><span class="keyword">import</span> android.view.View;    </span><br><span class="line"><span class="keyword">import</span> android.widget.TextSwitcher;    </span><br><span class="line"><span class="keyword">import</span> android.widget.TextView;    </span><br><span class="line"><span class="keyword">import</span> android.widget.ViewSwitcher.ViewFactory;    </span><br><span class="line">    </span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">MainActivity</span> <span class="keyword">extends</span> <span class="title">Activity</span> </span>&#123;    </span><br><span class="line">    </span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> String[] TEXTS = &#123;<span class="string">"First"</span>, <span class="string">"Second"</span>, <span class="string">"Third"</span>&#125;;    </span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">int</span> mTextsPosition = <span class="number">0</span>;    </span><br><span class="line">    <span class="keyword">private</span> TextSwitcher mTextSwitcher;    </span><br><span class="line">    <span class="keyword">private</span> TextView textview;    </span><br><span class="line">    </span><br><span class="line">    <span class="meta">@Override</span>    </span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">onCreate</span><span class="params">(Bundle savedInstanceState)</span> </span>&#123;    </span><br><span class="line">        <span class="keyword">super</span>.onCreate(savedInstanceState);    </span><br><span class="line">        setContentView(R.layout.main);    </span><br><span class="line">        textview = (TextView) findViewById(R.id.textview);    </span><br><span class="line">        <span class="comment">// 获得TextSwitch的引用，    </span></span><br><span class="line">        mTextSwitcher = (TextSwitcher) findViewById(R.id.your_textview);    </span><br><span class="line">      <span class="comment">//指定TextSwitcher的viewFactory    </span></span><br><span class="line">        mTextSwitcher.setFactory(<span class="keyword">new</span> ViewFactory() &#123;    </span><br><span class="line">            <span class="meta">@Override</span>    </span><br><span class="line">            <span class="function"><span class="keyword">public</span> View <span class="title">makeView</span><span class="params">()</span> </span>&#123;    </span><br><span class="line">                TextView t = <span class="keyword">new</span> TextView(MainActivity.<span class="keyword">this</span>);    </span><br><span class="line">                t.setGravity(Gravity.CENTER);    </span><br><span class="line">                <span class="keyword">return</span> t;    </span><br><span class="line">            &#125;    </span><br><span class="line">        &#125;);    </span><br><span class="line">        <span class="comment">// 设置切入动画效果,使用系统的谈入效果，也可以自定义    </span></span><br><span class="line">        mTextSwitcher.setInAnimation(<span class="keyword">this</span>, android.R.anim.fade_in);    </span><br><span class="line">        <span class="comment">// 设置切出动画效果，使用系统的谈出效果，也可以自定义    </span></span><br><span class="line">        mTextSwitcher.setOutAnimation(<span class="keyword">this</span>, android.R.anim.fade_out);    </span><br><span class="line">    </span><br><span class="line">        onSwitchText(<span class="keyword">null</span>);    </span><br><span class="line">    &#125;    </span><br><span class="line">    <span class="comment">// 点击效果    </span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">onSwitchText</span><span class="params">(View v)</span> </span>&#123;    </span><br><span class="line">        <span class="comment">// 设置渐变切换文字    </span></span><br><span class="line">        mTextSwitcher.setText(TEXTS[mTextsPosition]);    </span><br><span class="line">        <span class="comment">// 设置一般文字切换    </span></span><br><span class="line">        textview.setText(TEXTS[mTextsPosition]);    </span><br><span class="line">        <span class="comment">//改变文字，待下一次显示    </span></span><br><span class="line">        setNextPosition();    </span><br><span class="line">    &#125;    </span><br><span class="line">    </span><br><span class="line">    <span class="function"><span class="keyword">private</span> <span class="keyword">void</span> <span class="title">setNextPosition</span><span class="params">()</span> </span>&#123;    </span><br><span class="line">        mTextsPosition = (mTextsPosition + <span class="number">1</span>) % TEXTS.length;    </span><br><span class="line">    &#125;    </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">&lt;?xml version="1.0" encoding="utf-8"?&gt;</span>    </span><br><span class="line"><span class="comment">&lt;!--    </span></span><br><span class="line"><span class="comment">  Copyright (c) 2012 Manning    </span></span><br><span class="line"><span class="comment">  See the file license.txt for copying permission.    </span></span><br><span class="line"><span class="comment">--&gt;</span>    </span><br><span class="line"><span class="tag">&lt;<span class="name">RelativeLayout</span> <span class="attr">xmlns:android</span>=<span class="string">"http://schemas.android.com/apk/res/android"</span>    </span></span><br><span class="line"><span class="tag">    <span class="attr">android:layout_width</span>=<span class="string">"fill_parent"</span>    </span></span><br><span class="line"><span class="tag">    <span class="attr">android:layout_height</span>=<span class="string">"fill_parent"</span> &gt;</span>    </span><br><span class="line">    </span><br><span class="line">    <span class="tag">&lt;<span class="name">TextView</span>    </span></span><br><span class="line"><span class="tag">        <span class="attr">android:id</span>=<span class="string">"@+id/textview"</span>    </span></span><br><span class="line"><span class="tag">        <span class="attr">android:layout_width</span>=<span class="string">"fill_parent"</span>    </span></span><br><span class="line"><span class="tag">        <span class="attr">android:layout_height</span>=<span class="string">"wrap_content"</span>    </span></span><br><span class="line"><span class="tag">        <span class="attr">android:gravity</span>=<span class="string">"center"</span>    </span></span><br><span class="line"><span class="tag">        <span class="attr">android:textColor</span>=<span class="string">"#FF0000FF"</span>    </span></span><br><span class="line"><span class="tag">        <span class="attr">android:layout_above</span>=<span class="string">"@+id/your_textview"</span>    </span></span><br><span class="line"><span class="tag">        <span class="attr">android:layout_marginBottom</span>=<span class="string">"20dip"</span> /&gt;</span>    </span><br><span class="line">    </span><br><span class="line">    <span class="tag">&lt;<span class="name">TextSwitcher</span>    </span></span><br><span class="line"><span class="tag">        <span class="attr">android:id</span>=<span class="string">"@+id/your_textview"</span>    </span></span><br><span class="line"><span class="tag">        <span class="attr">android:layout_width</span>=<span class="string">"fill_parent"</span>    </span></span><br><span class="line"><span class="tag">        <span class="attr">android:layout_height</span>=<span class="string">"wrap_content"</span>    </span></span><br><span class="line"><span class="tag">        <span class="attr">android:layout_centerInParent</span>=<span class="string">"true"</span> /&gt;</span>    </span><br><span class="line">    </span><br><span class="line">    <span class="tag">&lt;<span class="name">Button</span>    </span></span><br><span class="line"><span class="tag">        <span class="attr">android:layout_width</span>=<span class="string">"fill_parent"</span>    </span></span><br><span class="line"><span class="tag">        <span class="attr">android:layout_height</span>=<span class="string">"wrap_content"</span>    </span></span><br><span class="line"><span class="tag">        <span class="attr">android:layout_alignParentBottom</span>=<span class="string">"true"</span>    </span></span><br><span class="line"><span class="tag">        <span class="attr">android:onClick</span>=<span class="string">"onSwitchText"</span>    </span></span><br><span class="line"><span class="tag">        <span class="attr">android:text</span>=<span class="string">"Click me"</span> /&gt;</span>    </span><br><span class="line">    </span><br><span class="line"><span class="tag">&lt;/<span class="name">RelativeLayout</span>&gt;</span></span><br></pre></td></tr></table></figure>
+            
+
+        </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
+        
+            <div class="post-footer-tags">
+                <span class="text-color-light text-small">TAGGED IN</span><br>
+                
+    <a class="tag tag--primary tag--small t-link" href="/tags/Tips/">Tips</a>
+
+            </div>
+        
+        
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2015/01/18/Rx1.x转Rx2.x的几个坑/" data-tooltip="Rx1.x转Rx2.x的几个坑" aria-label="PREVIOUS: Rx1.x转Rx2.x的几个坑">
+                
+                    <i class="fa fa-angle-left" aria-hidden="true"></i>
+                    <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2015/01/08/一些smali不常见的语法/" data-tooltip="一些smali不常见的语法" aria-label="NEXT: 一些smali不常见的语法">
+                
+                    <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                    <i class="fa fa-angle-right" aria-hidden="true"></i>
+                </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a class="post-action-btn btn btn--default btn-open-shareoptions" href="#btn-open-shareoptions" aria-label="Share this post">
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://xiaoo.ml/2015/01/09/用TextSwitcher实现文字切换动画/" title="Share on Facebook">
+                    <i class="fab fa-facebook" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://twitter.com/intent/tweet?text=https://xiaoo.ml/2015/01/09/用TextSwitcher实现文字切换动画/" title="Share on Twitter">
+                    <i class="fab fa-twitter" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://xiaoo.ml/2015/01/09/用TextSwitcher实现文字切换动画/" title="Share on Weibo">
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://xiaoo.ml/2015/01/09/用TextSwitcher实现文字切换动画/&amp;title=用TextSwitcher实现文字切换动画" title="Share on QQ">
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#" aria-label="Back to top">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+        
+        
+            
+        
+    </div>
+</article>
+
+
+
+
+
+                
+
+                
+                <footer id="footer" class="main-content-wrap">
+    <span class="copyrights">
+		Copyrights &copy; 2020 AndrewWang. All Rights Reserved.
+    </span>
+</footer>
+
+                
+
+            </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="2">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2015/01/18/Rx1.x转Rx2.x的几个坑/" data-tooltip="Rx1.x转Rx2.x的几个坑" aria-label="PREVIOUS: Rx1.x转Rx2.x的几个坑">
+                
+                    <i class="fa fa-angle-left" aria-hidden="true"></i>
+                    <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2015/01/08/一些smali不常见的语法/" data-tooltip="一些smali不常见的语法" aria-label="NEXT: 一些smali不常见的语法">
+                
+                    <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                    <i class="fa fa-angle-right" aria-hidden="true"></i>
+                </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a class="post-action-btn btn btn--default btn-open-shareoptions" href="#btn-open-shareoptions" aria-label="Share this post">
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://xiaoo.ml/2015/01/09/用TextSwitcher实现文字切换动画/" title="Share on Facebook">
+                    <i class="fab fa-facebook" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://twitter.com/intent/tweet?text=https://xiaoo.ml/2015/01/09/用TextSwitcher实现文字切换动画/" title="Share on Twitter">
+                    <i class="fab fa-twitter" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://xiaoo.ml/2015/01/09/用TextSwitcher实现文字切换动画/" title="Share on Weibo">
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://xiaoo.ml/2015/01/09/用TextSwitcher实现文字切换动画/&amp;title=用TextSwitcher实现文字切换动画" title="Share on QQ">
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#" aria-label="Back to top">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                
+    <div id="share-options-bar" class="share-options-bar" data-behavior="2">
+        <i id="btn-close-shareoptions" class="fa fa-times"></i>
+        <ul class="share-options">
+            
+                
+                
+                <li class="share-option">
+                    <a class="share-option-btn" target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://xiaoo.ml/2015/01/09/用TextSwitcher实现文字切换动画/">
+                        <i class="fab fa-facebook" aria-hidden="true"></i><span>Share on Facebook</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a class="share-option-btn" target="new" href="https://twitter.com/intent/tweet?text=https://xiaoo.ml/2015/01/09/用TextSwitcher实现文字切换动画/">
+                        <i class="fab fa-twitter" aria-hidden="true"></i><span>Share on Twitter</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a class="share-option-btn" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://xiaoo.ml/2015/01/09/用TextSwitcher实现文字切换动画/">
+                        <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a class="share-option-btn" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://xiaoo.ml/2015/01/09/用TextSwitcher实现文字切换动画/&amp;title=用TextSwitcher实现文字切换动画">
+                        <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
+                    </a>
+                </li>
+            
+        </ul>
+    </div>
+
+
+            
+        </div>
+        
+
+
+    
+        
+    
+
+<div id="about">
+    <div id="about-card">
+        <div id="about-btn-close">
+            <i class="fa fa-times"></i>
+        </div>
+        
+            <img id="about-card-picture" src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png" alt="Author&#39;s picture">
+        
+            <h4 id="about-card-name">AndrewWang</h4>
+        
+            <div id="about-card-bio"><p>凡是过去，皆为序章<br>须知参差百态，乃是幸福本源<br>邮箱：<a href="mailto:fernando_caudill@outlook.com" target="_blank">fernando_caudill@outlook.com</a></p>
+</div>
+        
+        
+            <div id="about-card-job">
+                <i class="fa fa-briefcase"></i>
+                <br>
+                <p>Android+Python</p>
+
+            </div>
+        
+        
+            <div id="about-card-location">
+                <i class="fa fa-map-marker-alt"></i>
+                <br>
+                Zhangzhou Fujian
+            </div>
+        
+    </div>
+</div>
+
+        
+            <div id="algolia-search-modal" class="modal-container">
+    <div class="modal">
+        <div class="modal-header">
+            <span class="close-button"><i class="fa fa-times"></i></span>
+            <a href="https://algolia.com" target="_blank" rel="noopener" class="searchby-algolia text-color-light link-unstyled">
+                <span class="searchby-algolia-text text-color-light text-small">by</span>
+                <img class="searchby-algolia-logo" src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/others/algolia-light.svg">
+            </a>
+            <i class="search-icon fa fa-search"></i>
+            <form id="algolia-search-form">
+                <input type="text" id="algolia-search-input" name="search" class="form-control input--large search-input" placeholder="Search ">
+            </form>
+        </div>
+        <div class="modal-body">
+            <div class="no-result text-color-light text-center">no post found</div>
+            <div class="results">
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2013/01/22/Cloneable和clone的使用，以及深复制与浅复制的区别/">
+                            <h3 class="media-heading">Cloneable和clone的使用，以及深复制与浅复制的区别</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Jan 22, 2013
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><ni>深浅复制总结下</ni></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2013/02/04/Ubuntu Problem/">
+                            <h3 class="media-heading">Ubuntu Problem</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Feb 4, 2013
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><ni>记录最近几年使用Ubuntu有用的Tips</ni></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2013/08/18/婚后，你一定会遇到更喜欢的人/">
+                            <h3 class="media-heading">婚后，你一定会遇到更喜欢的人</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Aug 18, 2013
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p>结婚后，你一定会遇到更喜欢的人。这件事几乎是肯定的。倒不是说先前结婚的人有多糟糕，也不是说后来出现的人有多美好。而是，你更了解自己了。</p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2013/11/09/ImageLoader must be init with configuration before using 错误解决方法/">
+                            <h3 class="media-heading">ImageLoader must be init with configuration before using 错误解决方法</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Nov 9, 2013
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p>最近开发过程中用到了开源项目Android-Universal-Image-Loader。<br></p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2013/12/14/把WordPress放在根目录而地址显示子目录的方法/">
+                            <h3 class="media-heading">把WordPress放在根目录而地址显示子目录的方法</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Dec 14, 2013
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p> 今天在狗爹（GoDaddy）随便买了个域名，想建个个人博客耍耍。<br></p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2014/02/15/越是聪明人，越容易在这件事上栽跟头/">
+                            <h3 class="media-heading">越是聪明人，越容易在这件事上栽跟头zt</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Feb 15, 2014
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p>一篇名为《李开复：聪明人创业为何容易失败》的商业报道里写道，记者问李开复，如何在短时间内对一个创业者或项目进行判断，有哪些指标或者投资方法论？<br></p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2014/04/02/Java中普通代码块，构造代码块，静态代码块区别及代码示例/">
+                            <h3 class="media-heading">Java中普通代码块，构造代码块，静态代码块区别及代码示例</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Apr 2, 2014
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p>执行顺序：（优先级从高到低）静态代码块&gt;main方法&gt;构造代码块&gt;构造方法。其中静态代码块只执行一次。构造代码块在每次创建对象是都会执行。<br></p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2014/04/14/getApplicationContext()、getBasecontext()、getApplication() 区别/">
+                            <h3 class="media-heading">getApplicationContext()、getBasecontext()、getApplication() 区别</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Apr 14, 2014
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><ni>搞清区别联系很重要，虽然好多情况下能通用的。</ni></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2014/04/24/使用注解来统计算法时间/">
+                            <h3 class="media-heading">使用注解统计算法运行时间</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Apr 24, 2014
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p>一直以为注解并没有什么卵用，后来用了butterknift和spring组件后才知道自定义组件可以完成很多任务。<br></p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2014/05/22/git merge和rebase的区别/">
+                            <h3 class="media-heading">git merge和rebase的区别</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    May 22, 2014
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><ni>一直以来都以为rebase是合并冲突的一种手段，和merge一样的，用哪个都行。</ni></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+            </div>
+        </div>
+        <div class="modal-footer">
+            <p class="results-count text-medium" data-message-zero="no post found" data-message-one="1 post found" data-message-other="{n} posts found">
+                80 posts found
+            </p>
+        </div>
+    </div>
+</div>
+
+        
+        
+<div id="cover" style="background-image:url('https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/cover.jpg');"></div>
+        <!--SCRIPTS-->
+<script src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/js/script-dbd16rvloemmuxdzniplmnxxvwoz24eya9wol0b7vvmlokgqsjivmb8dnscy.min.js"></script>
+<!--SCRIPTS END-->
+
+    
+
+
+    <script src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/js/moment-with-locales.min.js"></script>
+    <script src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/js/algoliasearch.min.js"></script>
+    <script>
+        var algoliaClient = algoliasearch('NPCJXUJXHV', '519d0ecd5f05b733ac031d89154c7bbb');
+        var algoliaIndex = algoliaClient.initIndex('my-hexo-blog');
+    </script>
+
+
+    </body>
+</html>
