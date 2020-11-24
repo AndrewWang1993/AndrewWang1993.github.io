@@ -361,6 +361,32 @@
             
         
     </div>
+    // 在文件最后面添加
+    <div class="main-content-wrap">
+        
+            <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
+<script src="//unpkg.com/valine/dist/Valine.min.js"></script>
+<div id="vcomments"></div>
+<script>
+    new Valine({
+        el: '#vcomments',  
+        appId: '',
+        appKey: '', 
+        placeholder: '欢迎交流讨论...' ,
+        notify: 'false',
+        verity: '',
+        path: window.location.pathname,
+        avatar: 'mm',
+        meta: ['nick','mail','link'],
+        pageSize: '10',
+        lang: '',
+        visitor: '',
+        highlight: ''
+
+    });
+</script>  
+        
+    </div>
 </article>
 
 
@@ -751,7 +777,7 @@
         </div>
         <div class="modal-footer">
             <p class="results-count text-medium" data-message-zero="no post found" data-message-one="1 post found" data-message-other="{n} posts found">
-                83 posts found
+                78 posts found
             </p>
         </div>
     </div>
