@@ -6,7 +6,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="generator" content="AndrewWang&#39;s Blog">
-    <title>旧手机短信转发的解决方案（三） - AndrewWang&#39;s Blog</title>
+    <title>旧手机短信转发的解决方案（一）概述 - AndrewWang&#39;s Blog</title>
     <meta name="author" content="AndrewWang">
     
         <meta name="keywords" content="hexo,javascript,android,java,JS,Python,">
@@ -17,19 +17,19 @@
     
         <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
     
-    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"AndrewWang","sameAs":["https://github.com/AndrewWang1993","https://stackoverflow.com/users/4209302/andrewwang","mailto:fernando_caudill@outlook.com"],"image":"https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png"},"articleBody":"系列一\n\nsetBackgroundResource(0) 可以移除 View 的背景色\n\n","dateCreated":"2017-05-22T16:20:00+08:00","dateModified":"2020-11-20T08:50:05+08:00","datePublished":"2017-05-22T16:20:00+08:00","description":"系列一","headline":"旧手机短信转发的解决方案（三）","image":[],"mainEntityOfPage":{"@type":"WebPage","@id":"https://xiaoo.ml/2017/05/22/旧手机短信转发的解决方案（三）/"},"publisher":{"@type":"Organization","name":"AndrewWang","sameAs":["https://github.com/AndrewWang1993","https://stackoverflow.com/users/4209302/andrewwang","mailto:fernando_caudill@outlook.com"],"image":"https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png","logo":{"@type":"ImageObject","url":"https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png"}},"url":"https://xiaoo.ml/2017/05/22/旧手机短信转发的解决方案（三）/","keywords":"Tips"}</script>
-    <meta name="description" content="系列一">
-<meta name="keywords" content="Tips">
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"AndrewWang","sameAs":["https://github.com/AndrewWang1993","https://stackoverflow.com/users/4209302/andrewwang","mailto:fernando_caudill@outlook.com"],"image":"https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png"},"articleBody":"鉴于用了五年的移动手机卡的上网套餐太贵，想再办个联通日租上网卡专门上网用，但手上的iPhone只能插单卡，于是我又要开始折腾了…\n短信转发思路: 旧Android手机插入移动卡在家一直插电作为转发机，iPhone在外插入联通日租卡日常上网，当移动卡收到短信就转发到服务器端，服务器端处理后再转发给iPhone。来电转发思路为:旧Android手机插入移动卡开通无条件来电转移功能\n\n\nAndroid端任务：在Android手机上开发一款可以转发所接收到短信的App技术：Java、Android SDK功能：转发短信、保活、开机启动、低能耗、无网络使用SMS转发、低电量提醒、数据库支持、按时间、类别分类列表查询、端对端加密、电量查询实现细节：注册短信拦截器，一旦收到短信就能拦截到短信信息，首先写入本地数据库，然后根据规则决定是否转发，如果决定转发，进行AES加密+替换加密，然后使用POST请求将消息发送给服务器端，并返回结果。\n\n\n服务器端任务：在Linux系统上开发可以中转短信的服务器程序技术：Python、Flask、gunicorn功能：中转短信、使用SQlite数据库、查询历史短信页面、设置垃圾短信过滤页面、SQlite数据库支持、按时间、类别分类网页查询、端对端解密、APN推送实现细节：收到Android端发送的Post请求后，将收到的短信解密，存入到数据库中并提供接口供iOS端查询，根据关键词和黑白名单判断是否为垃圾短信，如果不是垃圾短信调用极光推送集成的APN推送接口通知iOS端。\n\n\niOS端任务：在iOS系统上开发可以查看短信APP技术：Swift功能：接收推送提醒，查看短信列表、查询Android端手机电量、收藏短信、本地持久化数据。实现细节：下拉刷新即访问服务器端查询短信列表接口，获取最新的短消息列表。\n\n\nQ&amp;AQ：为何转发个短信还搞这么复杂？A：因为上班摸鱼也是摸鱼还不如折腾折腾呢😉Q：我不想折腾，有没有什么简单的转发途径？A：IFFTTT.com可解，如果你的旧手机是iOS系统的话更简单，直接开启短信转发功能即可。Q：可不可以省略服务器端直接由Android端发送到iOS端？A：可以但不建议，这样的话不符合C-S架构规范、无法在Web端查看短信列表、无法方便的设置垃圾短信过滤、也给APN推送带来难度。Q：APN推送什么？A：APN推送是iOS系统的统一推送服务，如果需要iOS端的实时短信提醒，需要注册苹果开发者账号申请证书才能配置推送。Q：如果我完整部署的话一年成本多少钱？A：APN推送是iOS系统的统一推送服务，需要注册苹果开发者账号申请证书才能推送。Q：安全性如何？A：3AES+自定义字符替换加密就算是商用应该也够了叭🤔Q：我如果想全部部署一套要多少钱？A：Android端免费，服务器端需要租一台VPS，建议放国内一个月50，iOS端需要注册开发者账号，一年会员费99刀，所以一年成本大概1200元Q：这么贵，你是不是石乐志？A：VPS有现成的，iOS开发者账号用的是公司账号申请的测试证书，所以你懂的~Q:我没钱搞iOS证书，也不想开发iOS端，有没有现成的iOS端实时推送服务？A:PushBullet（三方App）、Server 酱（借助微信），QQ邮箱（邮件提醒），缺点是这些服务有的被墙偶尔抽风，有的关键词会被屏蔽，有的推送次数有限制，可以根据自己实际需要集成。Q:开源吗？A:本文主要介绍上班摸鱼如何消磨时光，况且代码写的实在烂，所以仅展示关键代码，谢谢🤣","dateCreated":"2017-05-22T16:10:00+08:00","dateModified":"2020-11-25T08:18:20+08:00","datePublished":"2017-05-22T16:10:00+08:00","description":"鉴于用了五年的移动手机卡的上网套餐太贵，想再办个联通日租上网卡专门上网用，但手上的iPhone只能插单卡，于是我又要开始折腾了…","headline":"旧手机短信转发的解决方案（一）概述","image":["https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/sent_logo.png"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://xiaoo.ml/2017/05/22/旧手机短信转发的解决方案（一）概述/"},"publisher":{"@type":"Organization","name":"AndrewWang","sameAs":["https://github.com/AndrewWang1993","https://stackoverflow.com/users/4209302/andrewwang","mailto:fernando_caudill@outlook.com"],"image":"https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png","logo":{"@type":"ImageObject","url":"https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png"}},"url":"https://xiaoo.ml/2017/05/22/旧手机短信转发的解决方案（一）概述/","keywords":"双卡功能, 开发","thumbnailUrl":"https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/sent_logo.png"}</script>
+    <meta name="description" content="鉴于用了五年的移动手机卡的上网套餐太贵，想再办个联通日租上网卡专门上网用，但手上的iPhone只能插单卡，于是我又要开始折腾了…">
+<meta name="keywords" content="双卡功能,开发">
 <meta property="og:type" content="blog">
-<meta property="og:title" content="旧手机短信转发的解决方案（三）">
-<meta property="og:url" content="https://xiaoo.ml/2017/05/22/旧手机短信转发的解决方案（三）/index.html">
+<meta property="og:title" content="旧手机短信转发的解决方案（一）概述">
+<meta property="og:url" content="https://xiaoo.ml/2017/05/22/旧手机短信转发的解决方案（一）概述/index.html">
 <meta property="og:site_name" content="AndrewWang&#39;s Blog">
-<meta property="og:description" content="系列一">
+<meta property="og:description" content="鉴于用了五年的移动手机卡的上网套餐太贵，想再办个联通日租上网卡专门上网用，但手上的iPhone只能插单卡，于是我又要开始折腾了…">
 <meta property="og:locale" content="en">
-<meta property="og:updated_time" content="2020-11-20T00:50:05.797Z">
+<meta property="og:updated_time" content="2020-11-25T00:18:20.007Z">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="旧手机短信转发的解决方案（三）">
-<meta name="twitter:description" content="系列一">
+<meta name="twitter:title" content="旧手机短信转发的解决方案（一）概述">
+<meta name="twitter:description" content="鉴于用了五年的移动手机卡的上网套餐太贵，想再办个联通日租上网卡专门上网用，但手上的iPhone只能插单卡，于是我又要开始折腾了…">
 <meta name="twitter:creator" content="@https:&#x2F;&#x2F;twitter.com&#x2F;JamesMcMurr">
     
     
@@ -38,6 +38,9 @@
     
         <meta property="og:image" content="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png"/>
     
+    
+        <meta property="og:image" content="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/sent_logo.png"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/sent_logo.png" />
     
     
     
@@ -215,12 +218,12 @@
         <div class="post-header main-content-wrap text-left">
     
         <h1 class="post-title">
-            旧手机短信转发的解决方案（三）
+            旧手机短信转发的解决方案（一）概述
         </h1>
     
     
         <div class="post-meta">
-    <time datetime="2017-05-22T16:20:00+08:00">
+    <time datetime="2017-05-22T16:10:00+08:00">
 	
 		    May 22, 2017
     	
@@ -228,7 +231,7 @@
     
         <span>in </span>
         
-    <a class="category-link" href="/categories/Android/">Android</a>, <a class="category-link" href="/categories/Android/Python/">Python</a>, <a class="category-link" href="/categories/Android/Python/Wechat/">Wechat</a>
+    <a class="category-link" href="/categories/Android/">Android</a>, <a class="category-link" href="/categories/Android/Python/">Python</a>, <a class="category-link" href="/categories/Android/Python/Flask/">Flask</a>, <a class="category-link" href="/categories/Android/Python/Flask/iOS/">iOS</a>
 
 
     
@@ -240,11 +243,20 @@
     
     <div class="post-content markdown">
         <div class="main-content-wrap">
-            <p>系列一<br><a id="more"></a></p>
-<ul>
-<li>setBackgroundResource(0) 可以移除 View 的背景色</li>
-</ul>
+            <p>鉴于用了五年的移动手机卡的上网套餐太贵，想再办个联通日租上网卡专门上网用，但手上的iPhone只能插单卡，于是我又要开始折腾了…<br><a id="more"></a></p>
+<ni><br><strong>短信转发思路:</strong> 旧Android手机插入移动卡在家一直插电作为转发机，iPhone在外插入联通日租卡日常上网，当移动卡收到短信就转发到服务器端，服务器端处理后再转发给iPhone。<br><br><strong>来电转发思路为:</strong>旧Android手机插入移动卡开通无条件来电转移功能<br></ni>
 
+<p><br></p>
+<h3 id="Android端"><a href="#Android端" class="headerlink" title="Android端"></a>Android端</h3><ni><br><strong>任务</strong>：在Android手机上开发一款可以转发所接收到短信的App<br><strong>技术</strong>：Java、Android SDK<br><strong>功能</strong>：转发短信、保活、开机启动、低能耗、无网络使用SMS转发、低电量提醒、数据库支持、按时间、类别分类列表查询、端对端加密、电量查询<br><strong>实现细节</strong>：注册短信拦截器，一旦收到短信就能拦截到短信信息，首先写入本地数据库，然后根据规则决定是否转发，如果决定转发，进行AES加密+替换加密，然后使用POST请求将消息发送给服务器端，并返回结果。<br></ni>
+
+<p><br></p>
+<h3 id="服务器端"><a href="#服务器端" class="headerlink" title="服务器端"></a>服务器端</h3><ni><br><strong>任务</strong>：在Linux系统上开发可以中转短信的服务器程序<br><strong>技术</strong>：Python、Flask、gunicorn<br><strong>功能</strong>：中转短信、使用SQlite数据库、查询历史短信页面、设置垃圾短信过滤页面、SQlite数据库支持、按时间、类别分类网页查询、端对端解密、APN推送<br><strong>实现细节</strong>：收到Android端发送的Post请求后，将收到的短信解密，存入到数据库中并提供接口供iOS端查询，根据关键词和黑白名单判断是否为垃圾短信，如果不是垃圾短信调用极光推送集成的APN推送接口通知iOS端。<br></ni>
+
+<p><br></p>
+<h3 id="iOS端"><a href="#iOS端" class="headerlink" title="iOS端"></a>iOS端</h3><ni><br><strong>任务</strong>：在iOS系统上开发可以查看短信APP<br><strong>技术</strong>：Swift<br><strong>功能</strong>：接收推送提醒，查看短信列表、查询Android端手机电量、收藏短信、本地持久化数据。<br><strong>实现细节</strong>：下拉刷新即访问服务器端查询短信列表接口，获取最新的短消息列表。<br></ni>
+
+<p><br></p>
+<h3 id="Q-amp-A"><a href="#Q-amp-A" class="headerlink" title="Q&amp;A"></a>Q&amp;A</h3><ni><br>Q：为何转发个短信还搞这么复杂？<br>A：因为上班摸鱼也是摸鱼还不如折腾折腾呢😉<br><br>Q：我不想折腾，有没有什么简单的转发途径？<br>A：IFFTTT.com可解，如果你的旧手机是iOS系统的话更简单，直接开启短信转发功能即可。<br><br>Q：可不可以省略服务器端直接由Android端发送到iOS端？<br>A：可以但不建议，这样的话不符合C-S架构规范、无法在Web端查看短信列表、无法方便的设置垃圾短信过滤、也给APN推送带来难度。<br><br>Q：APN推送什么？<br>A：APN推送是iOS系统的统一推送服务，如果需要iOS端的实时短信提醒，需要注册苹果开发者账号申请证书才能配置推送。<br><br>Q：如果我完整部署的话一年成本多少钱？<br>A：APN推送是iOS系统的统一推送服务，需要注册苹果开发者账号申请证书才能推送。<br><br>Q：安全性如何？<br>A：3AES+自定义字符替换加密就算是商用应该也够了叭🤔<br><br>Q：我如果想全部部署一套要多少钱？<br>A：Android端免费，服务器端需要租一台VPS，建议放国内一个月50，iOS端需要注册开发者账号，一年会员费99刀，所以一年成本大概1200元<br><br>Q：这么贵，你是不是石乐志？<br>A：VPS有现成的，iOS开发者账号用的是公司账号申请的测试证书，所以你懂的~<br><br>Q:我没钱搞iOS证书，也不想开发iOS端，有没有现成的iOS端实时推送服务？<br>A:PushBullet（三方App）、Server 酱（借助微信），QQ邮箱（邮件提醒），缺点是这些服务有的被墙偶尔抽风，有的关键词会被屏蔽，有的推送次数有限制，可以根据自己实际需要集成。<br><br>Q:开源吗？<br>A:本文主要介绍上班摸鱼如何消磨时光，况且代码写的实在烂，所以仅展示关键代码，谢谢🤣<br></ni>
             
 
         </div>
@@ -254,7 +266,7 @@
             <div class="post-footer-tags">
                 <span class="text-color-light text-small">TAGGED IN</span><br>
                 
-    <a class="tag tag--primary tag--small t-link" href="/tags/Tips/">Tips</a>
+    <a class="tag tag--primary tag--small t-link" href="/tags/双卡功能/">双卡功能</a> <a class="tag tag--primary tag--small t-link" href="/tags/开发/">开发</a>
 
             </div>
         
@@ -265,7 +277,7 @@
             <li class="post-action">
                 
                     
-                    <a class="post-action-btn btn btn--default tooltip--top" href="/2017/06/11/使用Fiddle+Postman实现微信刷票小记/" data-tooltip="使用Fiddle+Postman实现微信刷票小记" aria-label="PREVIOUS: 使用Fiddle+Postman实现微信刷票小记">
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2017/05/23/旧手机短信转发的解决方案（二）Android端/" data-tooltip="旧手机短信转发的解决方案（二）Android端" aria-label="PREVIOUS: 旧手机短信转发的解决方案（二）Android端">
                 
                     <i class="fa fa-angle-left" aria-hidden="true"></i>
                     <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
@@ -274,7 +286,7 @@
             <li class="post-action">
                 
                     
-                    <a class="post-action-btn btn btn--default tooltip--top" href="/2017/05/22/旧手机短信转发的解决方案（二）/" data-tooltip="旧手机短信转发的解决方案（二）" aria-label="NEXT: 旧手机短信转发的解决方案（二）">
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2017/05/01/总结排序算法/" data-tooltip="总结排序算法" aria-label="NEXT: 总结排序算法">
                 
                     <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
                     <i class="fa fa-angle-right" aria-hidden="true"></i>
@@ -292,7 +304,7 @@
             
             
             <li class="post-action hide-xs">
-                <a class="post-action-btn btn btn--default" target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://xiaoo.ml/2017/05/22/旧手机短信转发的解决方案（三）/" title="Share on Facebook">
+                <a class="post-action-btn btn btn--default" target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://xiaoo.ml/2017/05/22/旧手机短信转发的解决方案（一）概述/" title="Share on Facebook">
                     <i class="fab fa-facebook" aria-hidden="true"></i>
                 </a>
             </li>
@@ -300,7 +312,7 @@
             
             
             <li class="post-action hide-xs">
-                <a class="post-action-btn btn btn--default" target="new" href="https://twitter.com/intent/tweet?text=https://xiaoo.ml/2017/05/22/旧手机短信转发的解决方案（三）/" title="Share on Twitter">
+                <a class="post-action-btn btn btn--default" target="new" href="https://twitter.com/intent/tweet?text=https://xiaoo.ml/2017/05/22/旧手机短信转发的解决方案（一）概述/" title="Share on Twitter">
                     <i class="fab fa-twitter" aria-hidden="true"></i>
                 </a>
             </li>
@@ -308,7 +320,7 @@
             
             
             <li class="post-action hide-xs">
-                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://xiaoo.ml/2017/05/22/旧手机短信转发的解决方案（三）/" title="Share on Weibo">
+                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://xiaoo.ml/2017/05/22/旧手机短信转发的解决方案（一）概述/" title="Share on Weibo">
                     <i class="fab fa-weibo" aria-hidden="true"></i>
                 </a>
             </li>
@@ -316,7 +328,7 @@
             
             
             <li class="post-action hide-xs">
-                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://xiaoo.ml/2017/05/22/旧手机短信转发的解决方案（三）/&amp;title=旧手机短信转发的解决方案（三）" title="Share on QQ">
+                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://xiaoo.ml/2017/05/22/旧手机短信转发的解决方案（一）概述/&amp;title=旧手机短信转发的解决方案（一）概述" title="Share on QQ">
                     <i class="fab fa-qq" aria-hidden="true"></i>
                 </a>
             </li>
@@ -366,7 +378,7 @@
             <li class="post-action">
                 
                     
-                    <a class="post-action-btn btn btn--default tooltip--top" href="/2017/06/11/使用Fiddle+Postman实现微信刷票小记/" data-tooltip="使用Fiddle+Postman实现微信刷票小记" aria-label="PREVIOUS: 使用Fiddle+Postman实现微信刷票小记">
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2017/05/23/旧手机短信转发的解决方案（二）Android端/" data-tooltip="旧手机短信转发的解决方案（二）Android端" aria-label="PREVIOUS: 旧手机短信转发的解决方案（二）Android端">
                 
                     <i class="fa fa-angle-left" aria-hidden="true"></i>
                     <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
@@ -375,7 +387,7 @@
             <li class="post-action">
                 
                     
-                    <a class="post-action-btn btn btn--default tooltip--top" href="/2017/05/22/旧手机短信转发的解决方案（二）/" data-tooltip="旧手机短信转发的解决方案（二）" aria-label="NEXT: 旧手机短信转发的解决方案（二）">
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2017/05/01/总结排序算法/" data-tooltip="总结排序算法" aria-label="NEXT: 总结排序算法">
                 
                     <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
                     <i class="fa fa-angle-right" aria-hidden="true"></i>
@@ -393,7 +405,7 @@
             
             
             <li class="post-action hide-xs">
-                <a class="post-action-btn btn btn--default" target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://xiaoo.ml/2017/05/22/旧手机短信转发的解决方案（三）/" title="Share on Facebook">
+                <a class="post-action-btn btn btn--default" target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://xiaoo.ml/2017/05/22/旧手机短信转发的解决方案（一）概述/" title="Share on Facebook">
                     <i class="fab fa-facebook" aria-hidden="true"></i>
                 </a>
             </li>
@@ -401,7 +413,7 @@
             
             
             <li class="post-action hide-xs">
-                <a class="post-action-btn btn btn--default" target="new" href="https://twitter.com/intent/tweet?text=https://xiaoo.ml/2017/05/22/旧手机短信转发的解决方案（三）/" title="Share on Twitter">
+                <a class="post-action-btn btn btn--default" target="new" href="https://twitter.com/intent/tweet?text=https://xiaoo.ml/2017/05/22/旧手机短信转发的解决方案（一）概述/" title="Share on Twitter">
                     <i class="fab fa-twitter" aria-hidden="true"></i>
                 </a>
             </li>
@@ -409,7 +421,7 @@
             
             
             <li class="post-action hide-xs">
-                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://xiaoo.ml/2017/05/22/旧手机短信转发的解决方案（三）/" title="Share on Weibo">
+                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://xiaoo.ml/2017/05/22/旧手机短信转发的解决方案（一）概述/" title="Share on Weibo">
                     <i class="fab fa-weibo" aria-hidden="true"></i>
                 </a>
             </li>
@@ -417,7 +429,7 @@
             
             
             <li class="post-action hide-xs">
-                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://xiaoo.ml/2017/05/22/旧手机短信转发的解决方案（三）/&amp;title=旧手机短信转发的解决方案（三）" title="Share on QQ">
+                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://xiaoo.ml/2017/05/22/旧手机短信转发的解决方案（一）概述/&amp;title=旧手机短信转发的解决方案（一）概述" title="Share on QQ">
                     <i class="fab fa-qq" aria-hidden="true"></i>
                 </a>
             </li>
@@ -445,7 +457,7 @@
                 
                 
                 <li class="share-option">
-                    <a class="share-option-btn" target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://xiaoo.ml/2017/05/22/旧手机短信转发的解决方案（三）/">
+                    <a class="share-option-btn" target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://xiaoo.ml/2017/05/22/旧手机短信转发的解决方案（一）概述/">
                         <i class="fab fa-facebook" aria-hidden="true"></i><span>Share on Facebook</span>
                     </a>
                 </li>
@@ -453,7 +465,7 @@
                 
                 
                 <li class="share-option">
-                    <a class="share-option-btn" target="new" href="https://twitter.com/intent/tweet?text=https://xiaoo.ml/2017/05/22/旧手机短信转发的解决方案（三）/">
+                    <a class="share-option-btn" target="new" href="https://twitter.com/intent/tweet?text=https://xiaoo.ml/2017/05/22/旧手机短信转发的解决方案（一）概述/">
                         <i class="fab fa-twitter" aria-hidden="true"></i><span>Share on Twitter</span>
                     </a>
                 </li>
@@ -461,7 +473,7 @@
                 
                 
                 <li class="share-option">
-                    <a class="share-option-btn" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://xiaoo.ml/2017/05/22/旧手机短信转发的解决方案（三）/">
+                    <a class="share-option-btn" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://xiaoo.ml/2017/05/22/旧手机短信转发的解决方案（一）概述/">
                         <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
                     </a>
                 </li>
@@ -469,7 +481,7 @@
                 
                 
                 <li class="share-option">
-                    <a class="share-option-btn" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://xiaoo.ml/2017/05/22/旧手机短信转发的解决方案（三）/&amp;title=旧手机短信转发的解决方案（三）">
+                    <a class="share-option-btn" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://xiaoo.ml/2017/05/22/旧手机短信转发的解决方案（一）概述/&amp;title=旧手机短信转发的解决方案（一）概述">
                         <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
                     </a>
                 </li>
@@ -730,7 +742,7 @@
         </div>
         <div class="modal-footer">
             <p class="results-count text-medium" data-message-zero="no post found" data-message-one="1 post found" data-message-other="{n} posts found">
-                78 posts found
+                80 posts found
             </p>
         </div>
     </div>

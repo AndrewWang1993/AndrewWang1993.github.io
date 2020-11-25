@@ -1,0 +1,767 @@
+
+<!DOCTYPE html>
+<html lang="en">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="AndrewWang&#39;s Blog">
+    <title>旧手机短信转发的解决方案（三）服务器端 - AndrewWang&#39;s Blog</title>
+    <meta name="author" content="AndrewWang">
+    
+        <meta name="keywords" content="hexo,javascript,android,java,JS,Python,">
+    
+    
+        <link rel="icon" href="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/favicon(8).png">
+    
+    
+        <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+    
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"AndrewWang","sameAs":["https://github.com/AndrewWang1993","https://stackoverflow.com/users/4209302/andrewwang","mailto:fernando_caudill@outlook.com"],"image":"https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png"},"articleBody":"中转短消息的Python服务器端\n代码结构\n\n\nconfig.py（使用邮件SMTP推送作为备份）123456789101112131415161718# -*- coding: utf-8 -*-class MailConfig:    MAIL_SERVER = 'smtp.163.com'  # 邮件服务器    MAIL_PORT = 465    MAIL_USE_SSL = True  # 是否使用ssl安全连接    MAIL_FROM_USERNAME = 'xxx@163.com'  # 邮箱    MAIL_TO_USERNAME = 'xxx@139.com'  # 邮箱    MAIL_PASSWORD = 'xxxxxx'  # 邮箱密码    MAIL_SUBJECT_QUERY_BATTERY_INFO = '查询手机状态信息'  # 邮件主题    MAIL_SUBJECT_SWITCH_NETWORK1 = '设置网络4G'  # 邮件主题    MAIL_SUBJECT_SWITCH_NETWORK2 = '设置网络WIFI'  # 邮件主题    MAIL_SUBJECT_SWITCH_NETWORK0 = '设置网络关闭'  # 邮件主题class ServerConfig:    DebugMode = False\nDBUtil.py（数据库操作工具）123456789101112131415161718192021222324252627282930313233343536373839404142434445464748495051525354555657585960616263646566676869707172737475767778798081828384858687888990919293949596979899100101102103104105106107108109110111112113114115116117118119120121122123124125126127128129130131132133134135136137138139140141142143144145146147148149150151152153154155156157158159160161162163164165166167168169170171172173174175176177178179180181182183184185186187188189190191192193194195196197198199200#!/usr/bin/env python# -*- coding: utf-8 -*-import datetimefrom sqlobject import *from sqlobject.sqlbuilder import *from Utils import *db_filename = get_current_path() + '/xxx.db'connection_string = 'sqlite:' + db_filenameconnection = connectionForURI(connection_string)sqlhub.processConnection = connectionD = 'DEBUG'I = 'INFO'E = 'ERROR'class SMSTable(SQLObject):    # 时间戳    date_time = DateTimeCol(default=None)    # 记录类型    tag = UnicodeCol(default=None)    # 是否微信在线    online = BoolCol(default=None)    # 号码    num = StringCol(default=None)    # 短信    msg = UnicodeCol(default=None)    # 验证码    code = UnicodeCol(default=None)    # 验证码发送商    vendor = UnicodeCol(default=None)    # 转发平台 wechat feige serverjiang    transfer = UnicodeCol(default=None)class JunkFilterTable(SQLObject):    # 时间戳    date_time = DateTimeCol(default=None)    # 作者    author = UnicodeCol(default=None)    # 关键词    key_word = UnicodeCol(default=None)def init_db():    SMSTable.createTable(ifNotExists=True)    JunkFilterTable.createTable(ifNotExists=True)def insert_data(tag=D, online=True, num=None, msg=None, code=None, vendor=None, transfer=None):    SMSTable(date_time=datetime.datetime.now(), tag=tag, online=online, num=num, msg=msg, code=code,             vendor=vendor, transfer=transfer)def query_data(tag=None, rev=True, limit=100):    sms = SMSTable.select(SMSTable.q.tag == tag, orderBy=SMSTable.q.date_time, reversed=rev,                          limit=limit)    log = ''    for s in sms:        log += str(s.date_time) + ' --- ' + str(s.tag) + ' --- ' + str(s.online) \\               + ' --- ' + check_none(s.num) + ' --- ' + check_none(s.msg) \\               + ' --- ' + check_none(str(s.code)) + ' --- ' + check_none(s.vendor) \\               + ' --- ' + check_none(s.transfer) + '&lt;/br&gt;&lt;hr&gt;'    return logdef query_sms_content(limit=50, key_word=None, date_str=None):    if date_str:        time_start_str = str(date_str) + \" 00:00:00\"        time_end_str = str(date_str) + \" 23:59:59\"        time_stamp_start = time.mktime(datetime.datetime.strptime(time_start_str, \"%Y-%m-%d %H:%M:%S\").timetuple())        time_stamp_end = time.mktime(datetime.datetime.strptime(time_end_str, \"%Y-%m-%d %H:%M:%S\").timetuple())        day_start = datetime.datetime.fromtimestamp(int(time_stamp_start))        day_end = datetime.datetime.fromtimestamp(int(time_stamp_end))    if key_word and date_str:        clause = AND(SMSTable.q.tag == I,                     LIKE(SMSTable.q.msg, \"%\" + key_word + \"%\"),                     SMSTable.q.date_time &gt; day_start,                     SMSTable.q.date_time &lt; day_end)    elif not key_word and date_str:        clause = AND(SMSTable.q.tag == I,                     SMSTable.q.date_time &gt; day_start,                     SMSTable.q.date_time &lt; day_end)    elif key_word and not date_str:        clause = AND(SMSTable.q.tag == I,                     LIKE(SMSTable.q.msg, \"%\" + key_word + \"%\"))    else:        clause = AND(SMSTable.q.tag == I)    sms = SMSTable.select(clause, orderBy=SMSTable.q.date_time, reversed=True, limit=limit)    l = []    for s in sms:        l.append(&#123;'date_time': str(s.date_time)[:-7],                  'content': check_none(str(s.msg)).replace('\\n', ' ----&gt;  '),                  'id': s.id                  &#125;)    return ldef query_sms(date=None, time_stamp=None, direction='down', limit=20):    \"\"\"    APP 上拉和下拉刷新接口    :param limit:    :param time_stamp:    :param date:    :param direction: 下拉方向    :return:    \"\"\"    global clause    if date is None:        if time_stamp is None:            raise ValueError('date and timestapm missing !!!')        else:            date = datetime.datetime.fromtimestamp(int(time_stamp))    if direction == 'down':        clause = AND(SMSTable.q.tag == I, SMSTable.q.date_time &gt; date)    elif direction == 'up':        clause = AND(SMSTable.q.tag == I, SMSTable.q.date_time &lt; date)    else:        raise ValueError('direction value error!!!')    sms = SMSTable.select(clause, orderBy=SMSTable.q.date_time, reversed=True, limit=limit)    l = []    for s in sms:        dt = int(s.date_time.timestamp())        content = check_none(str(s.msg))        try:            split_index = content.index('\\n')            phone_num = content[0:split_index]            content = content[split_index + 1:]        except ValueError:            phone_num = \"\"        code = get_message_code(content, s='')        vendor = get_message_vendor(content, s='')        l.append(&#123;'date_time': dt,                  'phone_num': phone_num,                  'content': content,                  'vendor': vendor,                  'code': code                  &#125;)    if len(l) &gt; 0:        l_json_str = json.dumps(l, ensure_ascii=False)        e_l_json_str = aes_cbc_256_encrypt_hex(l_json_str)    else:        e_l_json_str = ''    return json.dumps(&#123;'msg': e_l_json_str&#125;, ensure_ascii=False)def insert_filter_data(key_word, author):    JunkFilterTable(date_time=datetime.datetime.now(), key_word=key_word, author=author)def query_filter_content(limit=1000):    key_words = JunkFilterTable.select(orderBy=JunkFilterTable.q.date_time, reversed=True,                                       limit=limit)    l = []    for s in key_words:        l.append(&#123;'date_time': str(s.date_time)[:-7],                  'author': str(s.author),                  'key_word': str(s.key_word)                  &#125;)    return ldef delete_filter_data(key_word):    if key_word is None:        update = Delete('junk_filter_table', where=None)    else:        update = Delete('junk_filter_table', where='key_word=\\'' + key_word + '\\'')    query = connection.sqlrepr(update)    connection.query(query)def generate_db():    SMSTable.createTable(ifNotExists=True)    SMSTable.createTable(ifNotExists=True)    SMSTable._connection.debug = False    SMSTable._connection.debug = False    # insert_data(tag=D, num='323232', msg='4234234&lt;/br&gt;dfsdfdf', vendor='sadfafaf')    # insert_data(tag=E, num='455657', msg='4234234&lt;/br&gt;dfsdfdf', vendor='sadfafaf')    # insert_data(tag=I, num='dfdsgdg', msg='4234234&lt;/br&gt;dfsdfdf', vendor='sadfafaf')    # insert_data(tag=D, num='yukhukh', msg='4234234&lt;/br&gt;dfsdfdf', vendor='sadfafaf')    # insert_data(tag=I, num='nnnnnn', msg='4234234&lt;/br&gt;dfsdfdf', vendor='sadfafaf')    # s = query_data(tag=I)    # print(s)    sms = query_sms(time_stamp=1499291363, direction='up')    print(sms)# generate_db()\nMessageServer.py（主程序）123456789101112131415161718192021222324252627282930313233343536373839404142434445464748495051525354555657585960616263646566676869707172737475767778798081828384858687888990919293949596979899100101102103104105106107108109110111112113114115116117118119120121122123124125126127128129130131132133134135136137138139140141142143144145146147148149150151152153154155156157158159160161162163164165166167168169170171172173174175176177178179180181182183184185186187188189190191192193194195196197198199200201202203204205206207208209210211212213214215216217218219220221222223224225226227228229230231232233234235236237238239240241242243244245246247248249250251252253254255256257258259260261262263264265266267268269270271272273274275276277278279280281282283284285286287288289290291292293294295296297298299300301302303304305306307308309310311312313314#!/usr/bin/env python# -*- coding: utf-8 -*-import sysfrom flask import Flaskfrom flask import render_template, request, url_for, redirect, flashfrom flask_bootstrap import Bootstrapfrom flask_login import LoginManagerfrom flask_login import UserMixinfrom flask_login import login_user, login_required, logout_user, current_userfrom flask_sqlalchemy import SQLAlchemyfrom flask_wtf import FlaskFormfrom werkzeug.security import generate_password_hash, check_password_hashfrom wtforms import *from wtforms.validators import *from DBUtil import *from Utils import *WIN = sys.platform.startswith('win')if WIN:    db_prefix = 'sqlite:///'else:    db_prefix = 'sqlite:////'app = Flask(__name__)app.config['SECRET_KEY'] = '44hzcUEKXUaBa!YY'app.config['BOOTSTRAP_SERVE_LOCAL'] = Truebootstrap = Bootstrap(app)app.config['SECRET_KEY'] = 'dev'app.config['SQLALCHEMY_DATABASE_URI'] = db_prefix + os.path.join(app.root_path, 'data.db')app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = Falseprefix = '/645atU3453463duWNu455469fJGZ'db = SQLAlchemy(app)login_manager = LoginManager(app)class User(db.Model, UserMixin):    id = db.Column(db.Integer, primary_key=True)    name = db.Column(db.String(20))    username = db.Column(db.String(20))    password_hash = db.Column(db.String(128))    def set_password(self, password):        self.password_hash = generate_password_hash(password)    def validate_password(self, password):        return check_password_hash(self.password_hash, password)class BlackListForm(FlaskForm):    key_word = StringField('请输入关键词', validators=[DataRequired(u'请输入一个有效的关键字！'),                                                 Length(2, 20, u'请输入长度2~20以内的字符！')])    add = SubmitField('添加')    delete = SubmitField('删除')    delete_all = SubmitField('删除全部')class JunkFilterForm(FlaskForm):    filter_off = SubmitField('关闭垃圾短信过滤')    filter_on = SubmitField('开启垃圾短信过滤')    filter_by_black_list_off = SubmitField('关闭根据关键词过滤')    filter_by_black_list_on = SubmitField('开启根据关键词过滤')# @app.route('/')# def index():#     return 'Hello World!'# @app.route(prefix)# def index_prefix():#     return 'Hello Prefix!'# # WEB端控制网络类型# @app.route(prefix + '/api/set_network', methods=['GET'])# def set_network():#     network_info = int(request.args.get('network', default=2))#     if network_info == 1:#         config = MailConfig.MAIL_SUBJECT_SWITCH_NETWORK1#     elif network_info == 2:#         config = MailConfig.MAIL_SUBJECT_SWITCH_NETWORK2#     else:#         config = MailConfig.MAIL_SUBJECT_SWITCH_NETWORK2#     return send_mail(config, 's*Yfb3SdXy9ruUBK8R!gZX')# 查询电量@app.route(prefix + '/api/get_battery_level', methods=['GET'])def get_battery_level():    return send_mail(MailConfig.MAIL_SUBJECT_QUERY_BATTERY_INFO, '%YG8Cf^17R*GqzVfxXHP2e')# 推送消息(已加密)@app.route(prefix + '/api/push_sms', methods=['POST'])def push_msg():    if len(request.form) == 0:  # 浏览器表单提交，使用postman模拟，由于valuse格式问题需要使用表单提交        obscure_base64_data = request.json['msg']    else:        obscure_base64_data = request.form['msg']    j = push_notify(obscure_base64_data)    return j# APP端获取短信列表(已加密)@app.route(prefix + '/api/get_sms', methods=['POST'])def get_sms():    json_dict = request.get_json(silent=True)    if 'timestamp' in json_dict:        timestamp = json_dict['timestamp']    else:        timestamp = 1278120641  # 2000 年    if 'direction' in json_dict:        direction = json_dict['direction']    else:        direction = 'down'  # 默认刷新    if 'limit' in json_dict:        limit = request.json['limit']    else:        limit = 20    j = query_sms(time_stamp=timestamp, direction=direction, limit=limit)    return j@login_manager.user_loaderdef load_user(user_id):    user = User.query.get(int(user_id))    return userlogin_manager.login_view = 'login'@app.context_processordef inject_user():    user = User.query.first()    return dict(user=user)@app.route(prefix, methods=['GET', 'POST'])def index():    if request.method == 'POST':        if not current_user.is_authenticated:            return redirect(url_for('index'))        date = request.form['date']        key_word = request.form['key_word']        maxnum = request.form['maxnum']        l_date = len(date)        if l_date &gt; 0 and l_date != 10:            flash('日期格式需要例如 2019-01-05')            return redirect(url_for('index'))        if not maxnum:            maxnum = 50        else:            maxnum = int(maxnum)        sms = query_sms_content(date_str=date, limit=maxnum, key_word=key_word)        return render_template('index.html', sms=sms, date=date, key_word=key_word, maxnum=maxnum)    sms = query_sms_content()    return render_template('index.html', sms=sms)@app.route(prefix + '/settings', methods=['GET', 'POST'])@login_requireddef settings():    global msg, tag    filter_on = get_ini_value('JUNK_MSG', 'filter_on') == 'True'    filter_by_black_list = get_ini_value('JUNK_MSG', 'filter_by_black_list') == 'True'    contents = query_filter_content()    black_list_form = BlackListForm()    junk_filter_form = JunkFilterForm()    if junk_filter_form.validate_on_submit():        if junk_filter_form.filter_off.data:            set_ini_value('JUNK_MSG', 'filter_on', 'False')            msg = '已关闭垃圾短信过滤'            tag = 'info'            flash(msg, tag)            return redirect(url_for('settings'))        elif junk_filter_form.filter_on.data:            set_ini_value('JUNK_MSG', 'filter_on', 'True')            msg = '已开启垃圾短信过滤（默认过滤TD和退订字段）'            tag = 'success'            flash(msg, tag)            return redirect(url_for('settings'))        elif junk_filter_form.filter_by_black_list_off.data:            set_ini_value('JUNK_MSG', 'filter_by_black_list', 'False')            msg = '已关闭垃圾短信字段过滤'            tag = 'info'            flash(msg, tag)            return redirect(url_for('settings'))        elif junk_filter_form.filter_by_black_list_on.data:            set_ini_value('JUNK_MSG', 'filter_by_black_list', 'True')            msg = '已开启垃圾短信字段过滤'            tag = 'success'            flash(msg, tag)            return redirect(url_for('settings'))    if black_list_form.validate_on_submit():        word = black_list_form.key_word.data        if black_list_form.add.data:            insert_filter_data(word, 'Admin')            msg = '已添加 ' + word + ' 关键词'            tag = 'info'        elif black_list_form.delete.data:            delete_filter_data(word)            msg = '已删除 ' + word + ' 关键词'            tag = 'warning'        elif black_list_form.delete_all.data:            delete_filter_data(None)            msg = '已删除全部关键词'            tag = 'danger'        flash(msg, tag)        return redirect(url_for('settings'))    return render_template('settings.html', black_list_form=black_list_form,                           junk_filter_form=junk_filter_form,                           filter_on=filter_on,                           filter_by_black_list=filter_by_black_list, contents=contents)def set_admin(username, password):    '''    产生登陆密码    :param username:    :param password:    :return:    '''    db.create_all()    user = User.query.first()    if user is not None:        # print('更新密码...')        user.username = username        user.set_password(password)    else:        # print('创建用户...')        user = User(username=username, name='Admin')        user.set_password(password)        db.session.add(user)    db.session.commit()    print('User Name:' + username + '\\nPassword:' + password)@app.route(prefix + '/login', methods=['GET', 'POST'])def login():    if request.method == 'POST':        username = request.form['username']        password = request.form['password']        if not username or not password:            flash('账号密码错误！')            return redirect(url_for('login'))        user = User.query.first()        if username == user.username and user.validate_password(password):            login_user(user)            flash('登陆成功')            return redirect(url_for('index'))        flash('账号密码错误！')        return redirect(url_for('login'))    return render_template('login.html')@app.route(prefix + '/logout')@login_requireddef logout():    logout_user()    flash('Goodbye.')    return redirect(url_for('index'))@app.errorhandler(400)def bad_request(e):    return render_template('errors/400.html'), 400@app.errorhandler(404)def page_not_found(e):    return render_template('errors/404.html'), 404@app.errorhandler(500)def internal_server_error(e):    return render_template('errors/500.html'), 500def init_app():    init_db()    log_show(\"Init database ...\")    set_admin('xxxxx', 'dg*gxxxxh9c%XJ')init_app()if __name__ == '__main__':    # 如果使用gunicorn + nginx部署，这里端口设为5858,nginx反向代理设为58585    # gunicorn -c gun_conf.py MessageServer:app    # gunicorn -w 4 -b :5858  MessageServer:app    log_show(\"Start HTTP Server http://0.0.0.0:58585\")    app.run(debug=ServerConfig.DebugMode, host='0.0.0.0', port=58585)\nDecrypt.py(解密)123456789101112131415161718192021222324252627282930313233343536373839404142434445464748495051525354555657585960616263646566676869707172737475767778798081828384858687888990919293949596979899100101102103104105106107108109110111112113114115116117118119120121122123124125126127128129130131132133134135136137138139140141142143144145146147148149150151152153154155156157158159160161162163164165166167168169170171172173174175176177178179180181182183184185186187188189190191192193194#!/usr/bin/env python# -*- coding: utf-8 -*-import base64import datetimeimport jsonimport binasciiimport osfrom base64 import b64encodefrom Crypto.Cipher import AESfrom Crypto.Util.Padding import padfrom Crypto.Util.Padding import unpad'''加密过程：   原文--&gt; Json -&gt; Base64--&gt; AES(CBC) --&gt; 一轮字符替换 --&gt; 二轮字符替换  --&gt; 指定位置添加冗余信息 --&gt; 三轮字符替换  --&gt; 密文'''# Base64使用的字符集合obscure_key = ('0', '1', '2', '3', '4', '5', '6', '7', '8', '9',               'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M',               'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',               'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',               'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',               '+', '=')# AES CBC 256位 加密秘钥和偏移量__aes_key = b'0@NSfpy#L9@ec%NZyZ546465mD@xI$B#2r'__aes_cbc_iv = b'6aStDl7YrB4CM3gq'obscure_value_row1 = (    'a', 'Z', '=', 'I', 'j', 'w', '9', 'B', 'v', '+', 'f', 'g', '1', '6', 'y', 'N', 'C', '4', 'k',    't', 'O', 'm', 'e',    'l',    'q', '3', 'R', 'u', '8', '7', 'S', '2', 'Q', '0', 'P', 'c', '5', 'H', 'r', 'G', 'E', 'b', 'J',    'W', 'o', 'M', 'K',    'i',    'U', 'x', 'L', 'V', 'z', 'F', 'Y', 'n', 'X', 'A', 'p', 'T', 's', 'D', 'd', 'h')obscure_value_row2 = (    'i', 'z', '+', '1', 'M', 'y', 't', 'Z', 'e', 'C', '3', '6', 'w', 'D', '5', 'O', 'o', 'L', 'v',    'u', '0', 'P', 'j',    'Q',    'Y', 's', 'U', 'G', 'B', 'A', 'x', 'm', 'h', 'F', 'T', 'q', 'p', 'W', '8', 'I', 'd', 'n', 'H',    '4', 'f', 'a', 'c',    'V',    '=', 'E', 'b', '9', 'S', '2', 'l', 'r', 'k', 'N', 'K', 'X', 'J', '7', 'R', 'g')obscure_value_row3 = (    'A', '3', 'F', '=', 'Z', 'c', 'T', 'p', 's', 'L', 'i', '+', '5', '7', 'j', 'R', 'l', 'd', 'q',    'I', 'm', 'D', 'h',    'M',    'P', 'U', 'x', 'z', 'W', '8', 'K', 'S', 'E', '0', 'Q', 'X', 'r', 'e', '2', 'k', '6', 'g', '1',    '9', 'O', 'J', 'V',    'f',    't', 'N', 'Y', 'o', 'H', 'v', 'w', 'n', 'G', '4', 'u', 'B', 'C', 'a', 'y', 'b')__obscure_map1 = dict(list(zip(obscure_value_row1, obscure_key)))__obscure_map2 = dict(list(zip(obscure_value_row2, obscure_key)))__obscure_map3 = dict(list(zip(obscure_value_row3, obscure_key)))# 随机位置和后面冗余信息的长度random_insert_position = (0, 5, 7, 9, 22, 30, 31, 35, 39, 42)random_insert_msg_len = (7, 12, 10, 6, 9, 6, 10, 8, 9, 4)random_insert_position_reverse = list(reversed(random_insert_position))random_insert_map = dict(list(zip(random_insert_position, random_insert_msg_len)))def remove_redunance_msg(obscure_data):    \"\"\"    删除指定位置的冗余信息    :param obscure_data:    :return:    \"\"\"    for i in random_insert_position_reverse:        obscure_data = obscure_data[0:i] + obscure_data[i + random_insert_map[i]:len(obscure_data)]    return obscure_datadef get_unreplaced_string(obscureBase64Data, obscure_map):    \"\"\"    混淆的Base64内容转为标准内容    \"\"\"    plain_content = \"\"    for c in obscureBase64Data:        if c in obscure_map:            plain_content += obscure_map[c]        else:            plain_content += c    return plain_contentdef aes_cbc_256_encrypt_base64(plain_data):    \"\"\"    AES加密数据    :param plain_data: 待加密数据    :return: Base64格式加密数据    \"\"\"    __aes_cipher_e = AES.new(__aes_key, AES.MODE_CBC, iv=__aes_cbc_iv)    ct_bytes = __aes_cipher_e.encrypt(pad(plain_data.encode('utf-8'), AES.block_size))    return base64.b64encode(ct_bytes).decode(\"utf-8\")def aes_cbc_256_decrypt_base64(base64_string):    \"\"\"    AES解密数据    :param base64_string: Base64格式加密数据    :return: 原始数据    \"\"\"    encrypted_bytes = base64.b64decode(base64_string)    # cipher必须每次解密必须初始化也就是说只能用一次，并且不能又加密又解密。    __aes_cipher_d = AES.new(__aes_key, AES.MODE_CBC, iv=__aes_cbc_iv)    pt = unpad(__aes_cipher_d.decrypt(encrypted_bytes), AES.block_size)    return pt.decode(\"utf-8\")def aes_cbc_256_encrypt_hex(plain_data):    \"\"\"    AES加密数据    :param plain_data: plain_data: 待加密数据    :return: 十六进制格式加密数据    \"\"\"    __aes_cipher_e = AES.new(__aes_key, AES.MODE_CBC, iv=__aes_cbc_iv)    ct_bytes = __aes_cipher_e.encrypt(pad(plain_data.encode('utf-8'), AES.block_size))    return ct_bytes.hex().upper()def aes_cbc_256_decrypt_hex(hex_string):    \"\"\"    AES解密数据    :param hex_string: 十六进制加密数据    :return: 原始数据    \"\"\"    encrypted_bytes = binascii.unhexlify(hex_string)    # cipher必须每次解密必须初始化也就是说只能用一次，并且不能又加密又解密。    __aes_cipher_d = AES.new(__aes_key, AES.MODE_CBC, iv=__aes_cbc_iv)    pt = unpad(__aes_cipher_d.decrypt(encrypted_bytes), AES.block_size)    return pt.decode(\"utf-8\")def convert_base64_to_string(base64Str):    \"\"\"    Base64编码内容解密    :param base64Str: Base64密文    :return: 解密明文    \"\"\"    return base64.b64decode(base64Str).decode('utf-8')def get_body(s):    \"\"\"    json字符串提取信息详情    :param s:    :return:    \"\"\"    j = json.loads(s)    return j['BODY']def get_from(s):    \"\"\"    json字符串提取对方号码    :param s:    :return:    \"\"\"    j = json.loads(s)    return j['FROM']def get_json_content(s):    \"\"\"    json字符串转为实际内容    :param s:    :return:    \"\"\"    return get_from(s) + '\\n' + get_body(s)def get_decrypted_json_str(obscure_data):    \"\"\"    转换加密的内容到Json字符串    :param obscure_data:    :return:    \"\"\"    # 第一轮替换    obscure_data = get_unreplaced_string(obscure_data, __obscure_map3)    # 删除冗余数据    obscure_data = remove_redunance_msg(obscure_data)    # 第二轮替换    obscure_data = get_unreplaced_string(obscure_data, __obscure_map2)    # 第三轮替换    encrypt_base64_data = get_unreplaced_string(obscure_data, __obscure_map1)    # AES解密base64    base64_data = aes_cbc_256_decrypt_hex(encrypt_base64_data)    # 转换base64到Json字符串    json_str = convert_base64_to_string(base64_data)    return json_str\n","dateCreated":"2017-05-24T16:20:00+08:00","dateModified":"2020-11-25T08:18:20+08:00","datePublished":"2017-05-24T16:20:00+08:00","description":"中转短消息的Python服务器端","headline":"旧手机短信转发的解决方案（三）服务器端","image":["https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/python_logo.png"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://xiaoo.ml/2017/05/24/旧手机短信转发的解决方案（三）服务器端/"},"publisher":{"@type":"Organization","name":"AndrewWang","sameAs":["https://github.com/AndrewWang1993","https://stackoverflow.com/users/4209302/andrewwang","mailto:fernando_caudill@outlook.com"],"image":"https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png","logo":{"@type":"ImageObject","url":"https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png"}},"url":"https://xiaoo.ml/2017/05/24/旧手机短信转发的解决方案（三）服务器端/","keywords":"开发","thumbnailUrl":"https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/python_logo.png"}</script>
+    <meta name="description" content="中转短消息的Python服务器端">
+<meta name="keywords" content="开发">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="旧手机短信转发的解决方案（三）服务器端">
+<meta property="og:url" content="https://xiaoo.ml/2017/05/24/旧手机短信转发的解决方案（三）服务器端/index.html">
+<meta property="og:site_name" content="AndrewWang&#39;s Blog">
+<meta property="og:description" content="中转短消息的Python服务器端">
+<meta property="og:locale" content="en">
+<meta property="og:image" content="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/sms_python.png">
+<meta property="og:updated_time" content="2020-11-25T00:18:20.008Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="旧手机短信转发的解决方案（三）服务器端">
+<meta name="twitter:description" content="中转短消息的Python服务器端">
+<meta name="twitter:image" content="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/sms_python.png">
+<meta name="twitter:creator" content="@https:&#x2F;&#x2F;twitter.com&#x2F;JamesMcMurr">
+    
+    
+        
+    
+    
+        <meta property="og:image" content="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png"/>
+    
+    
+        <meta property="og:image" content="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/python_logo.png"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/python_logo.png" />
+    
+    
+    
+    <!--STYLES-->
+    <link rel="stylesheet" href="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/css/style-c4ozcsklz4kht2pebhp44xorvyverh23toayhn7i6ubrpyedak24hv1v0hyd.min.css">
+    <!--STYLES END-->
+    
+
+    
+</head>
+
+    <body>
+        <div id="blog">
+            <!-- Define author's picture -->
+
+
+    
+        
+            
+        
+    
+
+<header id="header" data-behavior="2">
+    <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
+    <div class="header-title">
+        <a class="header-title-link" href="/ ">AndrewWang&#39;s Blog</a>
+    </div>
+    
+        
+            <a class="header-right-picture " href="#about">
+        
+        
+            <img class="header-picture" src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png" alt="Author&#39;s picture">
+        
+        </a>
+    
+</header>
+
+            <!-- Define author's picture -->
+
+
+
+        
+    
+
+<nav id="sidebar" data-behavior="2">
+    <div class="sidebar-container">
+        
+            <div class="sidebar-profile">
+                <a href="/#about">
+                    <img class="sidebar-profile-picture" src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png" alt="Author&#39;s picture">
+                </a>
+                <h4 class="sidebar-profile-name">AndrewWang</h4>
+                
+                    <h5 class="sidebar-profile-bio"><p>凡是过去，皆为序章<br>须知参差百态，乃是幸福本源<br>邮箱：<a href="mailto:fernando_caudill@outlook.com" target="_blank">fernando_caudill@outlook.com</a></p>
+</h5>
+                
+            </div>
+        
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/ " title="Home">
+                    
+                        <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Home</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/all-categories" title="Categories">
+                    
+                        <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Categories</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/all-tags" title="Tags">
+                    
+                        <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Tags</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/all-archives" title="Archives">
+                    
+                        <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Archives</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link open-algolia-search" href="#search" title="Search">
+                    
+                        <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Search</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="#about" title="About">
+                    
+                        <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">About</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="https://github.com/AndrewWang1993" target="_blank" rel="noopener" title="GitHub">
+                    
+                        <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">GitHub</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="https://stackoverflow.com/users/4209302/andrewwang" target="_blank" rel="noopener" title="Stack Overflow">
+                    
+                        <i class="sidebar-button-icon fab fa-stack-overflow" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Stack Overflow</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="mailto:fernando_caudill@outlook.com" target="_blank" rel="noopener" title="Mail">
+                    
+                        <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Mail</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/atom.xml" title="RSS">
+                    
+                        <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">RSS</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+    </div>
+</nav>
+
+            
+            <div id="main" data-behavior="2"
+                 class="
+                        hasCoverMetaIn
+                        ">
+                
+<article class="post">
+    
+    
+        <div class="post-header main-content-wrap text-left">
+    
+        <h1 class="post-title">
+            旧手机短信转发的解决方案（三）服务器端
+        </h1>
+    
+    
+        <div class="post-meta">
+    <time datetime="2017-05-24T16:20:00+08:00">
+	
+		    May 24, 2017
+    	
+    </time>
+    
+        <span>in </span>
+        
+    <a class="category-link" href="/categories/Python/">Python</a>, <a class="category-link" href="/categories/Python/服务器/">服务器</a>
+
+
+    
+</div>
+
+    
+</div>
+
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
+            <p>中转短消息的Python服务器端<br><a id="more"></a></p>
+<center><br><img src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/sms_python.png"><br>代码结构<br></center>
+
+
+<h5 id="config-py（使用邮件SMTP推送作为备份）"><a href="#config-py（使用邮件SMTP推送作为备份）" class="headerlink" title="config.py（使用邮件SMTP推送作为备份）"></a>config.py（使用邮件SMTP推送作为备份）</h5><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># -*- coding: utf-8 -*-</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">MailConfig</span>:</span></span><br><span class="line">    MAIL_SERVER = <span class="string">'smtp.163.com'</span>  <span class="comment"># 邮件服务器</span></span><br><span class="line">    MAIL_PORT = <span class="number">465</span></span><br><span class="line">    MAIL_USE_SSL = <span class="keyword">True</span>  <span class="comment"># 是否使用ssl安全连接</span></span><br><span class="line">    MAIL_FROM_USERNAME = <span class="string">'xxx@163.com'</span>  <span class="comment"># 邮箱</span></span><br><span class="line">    MAIL_TO_USERNAME = <span class="string">'xxx@139.com'</span>  <span class="comment"># 邮箱</span></span><br><span class="line">    MAIL_PASSWORD = <span class="string">'xxxxxx'</span>  <span class="comment"># 邮箱密码</span></span><br><span class="line">    MAIL_SUBJECT_QUERY_BATTERY_INFO = <span class="string">'查询手机状态信息'</span>  <span class="comment"># 邮件主题</span></span><br><span class="line">    MAIL_SUBJECT_SWITCH_NETWORK1 = <span class="string">'设置网络4G'</span>  <span class="comment"># 邮件主题</span></span><br><span class="line">    MAIL_SUBJECT_SWITCH_NETWORK2 = <span class="string">'设置网络WIFI'</span>  <span class="comment"># 邮件主题</span></span><br><span class="line">    MAIL_SUBJECT_SWITCH_NETWORK0 = <span class="string">'设置网络关闭'</span>  <span class="comment"># 邮件主题</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">ServerConfig</span>:</span></span><br><span class="line">    DebugMode = <span class="keyword">False</span></span><br></pre></td></tr></table></figure>
+<h5 id="DBUtil-py（数据库操作工具）"><a href="#DBUtil-py（数据库操作工具）" class="headerlink" title="DBUtil.py（数据库操作工具）"></a>DBUtil.py（数据库操作工具）</h5><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br><span class="line">146</span><br><span class="line">147</span><br><span class="line">148</span><br><span class="line">149</span><br><span class="line">150</span><br><span class="line">151</span><br><span class="line">152</span><br><span class="line">153</span><br><span class="line">154</span><br><span class="line">155</span><br><span class="line">156</span><br><span class="line">157</span><br><span class="line">158</span><br><span class="line">159</span><br><span class="line">160</span><br><span class="line">161</span><br><span class="line">162</span><br><span class="line">163</span><br><span class="line">164</span><br><span class="line">165</span><br><span class="line">166</span><br><span class="line">167</span><br><span class="line">168</span><br><span class="line">169</span><br><span class="line">170</span><br><span class="line">171</span><br><span class="line">172</span><br><span class="line">173</span><br><span class="line">174</span><br><span class="line">175</span><br><span class="line">176</span><br><span class="line">177</span><br><span class="line">178</span><br><span class="line">179</span><br><span class="line">180</span><br><span class="line">181</span><br><span class="line">182</span><br><span class="line">183</span><br><span class="line">184</span><br><span class="line">185</span><br><span class="line">186</span><br><span class="line">187</span><br><span class="line">188</span><br><span class="line">189</span><br><span class="line">190</span><br><span class="line">191</span><br><span class="line">192</span><br><span class="line">193</span><br><span class="line">194</span><br><span class="line">195</span><br><span class="line">196</span><br><span class="line">197</span><br><span class="line">198</span><br><span class="line">199</span><br><span class="line">200</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#!/usr/bin/env python</span></span><br><span class="line"><span class="comment"># -*- coding: utf-8 -*-</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> datetime</span><br><span class="line"></span><br><span class="line"><span class="keyword">from</span> sqlobject <span class="keyword">import</span> *</span><br><span class="line"><span class="keyword">from</span> sqlobject.sqlbuilder <span class="keyword">import</span> *</span><br><span class="line"></span><br><span class="line"><span class="keyword">from</span> Utils <span class="keyword">import</span> *</span><br><span class="line"></span><br><span class="line">db_filename = get_current_path() + <span class="string">'/xxx.db'</span></span><br><span class="line">connection_string = <span class="string">'sqlite:'</span> + db_filename</span><br><span class="line">connection = connectionForURI(connection_string)</span><br><span class="line">sqlhub.processConnection = connection</span><br><span class="line"></span><br><span class="line">D = <span class="string">'DEBUG'</span></span><br><span class="line">I = <span class="string">'INFO'</span></span><br><span class="line">E = <span class="string">'ERROR'</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">SMSTable</span><span class="params">(SQLObject)</span>:</span></span><br><span class="line">    <span class="comment"># 时间戳</span></span><br><span class="line">    date_time = DateTimeCol(default=<span class="keyword">None</span>)</span><br><span class="line">    <span class="comment"># 记录类型</span></span><br><span class="line">    tag = UnicodeCol(default=<span class="keyword">None</span>)</span><br><span class="line">    <span class="comment"># 是否微信在线</span></span><br><span class="line">    online = BoolCol(default=<span class="keyword">None</span>)</span><br><span class="line">    <span class="comment"># 号码</span></span><br><span class="line">    num = StringCol(default=<span class="keyword">None</span>)</span><br><span class="line">    <span class="comment"># 短信</span></span><br><span class="line">    msg = UnicodeCol(default=<span class="keyword">None</span>)</span><br><span class="line">    <span class="comment"># 验证码</span></span><br><span class="line">    code = UnicodeCol(default=<span class="keyword">None</span>)</span><br><span class="line">    <span class="comment"># 验证码发送商</span></span><br><span class="line">    vendor = UnicodeCol(default=<span class="keyword">None</span>)</span><br><span class="line">    <span class="comment"># 转发平台 wechat feige serverjiang</span></span><br><span class="line">    transfer = UnicodeCol(default=<span class="keyword">None</span>)</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">JunkFilterTable</span><span class="params">(SQLObject)</span>:</span></span><br><span class="line">    <span class="comment"># 时间戳</span></span><br><span class="line">    date_time = DateTimeCol(default=<span class="keyword">None</span>)</span><br><span class="line">    <span class="comment"># 作者</span></span><br><span class="line">    author = UnicodeCol(default=<span class="keyword">None</span>)</span><br><span class="line">    <span class="comment"># 关键词</span></span><br><span class="line">    key_word = UnicodeCol(default=<span class="keyword">None</span>)</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">init_db</span><span class="params">()</span>:</span></span><br><span class="line">    SMSTable.createTable(ifNotExists=<span class="keyword">True</span>)</span><br><span class="line">    JunkFilterTable.createTable(ifNotExists=<span class="keyword">True</span>)</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">insert_data</span><span class="params">(tag=D, online=True, num=None, msg=None, code=None, vendor=None, transfer=None)</span>:</span></span><br><span class="line">    SMSTable(date_time=datetime.datetime.now(), tag=tag, online=online, num=num, msg=msg, code=code,</span><br><span class="line">             vendor=vendor, transfer=transfer)</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">query_data</span><span class="params">(tag=None, rev=True, limit=<span class="number">100</span>)</span>:</span></span><br><span class="line">    sms = SMSTable.select(SMSTable.q.tag == tag, orderBy=SMSTable.q.date_time, reversed=rev,</span><br><span class="line">                          limit=limit)</span><br><span class="line">    log = <span class="string">''</span></span><br><span class="line">    <span class="keyword">for</span> s <span class="keyword">in</span> sms:</span><br><span class="line">        log += str(s.date_time) + <span class="string">' --- '</span> + str(s.tag) + <span class="string">' --- '</span> + str(s.online) \</span><br><span class="line">               + <span class="string">' --- '</span> + check_none(s.num) + <span class="string">' --- '</span> + check_none(s.msg) \</span><br><span class="line">               + <span class="string">' --- '</span> + check_none(str(s.code)) + <span class="string">' --- '</span> + check_none(s.vendor) \</span><br><span class="line">               + <span class="string">' --- '</span> + check_none(s.transfer) + <span class="string">'&lt;/br&gt;&lt;hr&gt;'</span></span><br><span class="line">    <span class="keyword">return</span> log</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">query_sms_content</span><span class="params">(limit=<span class="number">50</span>, key_word=None, date_str=None)</span>:</span></span><br><span class="line">    <span class="keyword">if</span> date_str:</span><br><span class="line">        time_start_str = str(date_str) + <span class="string">" 00:00:00"</span></span><br><span class="line">        time_end_str = str(date_str) + <span class="string">" 23:59:59"</span></span><br><span class="line">        time_stamp_start = time.mktime(datetime.datetime.strptime(time_start_str, <span class="string">"%Y-%m-%d %H:%M:%S"</span>).timetuple())</span><br><span class="line">        time_stamp_end = time.mktime(datetime.datetime.strptime(time_end_str, <span class="string">"%Y-%m-%d %H:%M:%S"</span>).timetuple())</span><br><span class="line">        day_start = datetime.datetime.fromtimestamp(int(time_stamp_start))</span><br><span class="line">        day_end = datetime.datetime.fromtimestamp(int(time_stamp_end))</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> key_word <span class="keyword">and</span> date_str:</span><br><span class="line">        clause = AND(SMSTable.q.tag == I,</span><br><span class="line">                     LIKE(SMSTable.q.msg, <span class="string">"%"</span> + key_word + <span class="string">"%"</span>),</span><br><span class="line">                     SMSTable.q.date_time &gt; day_start,</span><br><span class="line">                     SMSTable.q.date_time &lt; day_end)</span><br><span class="line"></span><br><span class="line">    <span class="keyword">elif</span> <span class="keyword">not</span> key_word <span class="keyword">and</span> date_str:</span><br><span class="line">        clause = AND(SMSTable.q.tag == I,</span><br><span class="line">                     SMSTable.q.date_time &gt; day_start,</span><br><span class="line">                     SMSTable.q.date_time &lt; day_end)</span><br><span class="line"></span><br><span class="line">    <span class="keyword">elif</span> key_word <span class="keyword">and</span> <span class="keyword">not</span> date_str:</span><br><span class="line">        clause = AND(SMSTable.q.tag == I,</span><br><span class="line">                     LIKE(SMSTable.q.msg, <span class="string">"%"</span> + key_word + <span class="string">"%"</span>))</span><br><span class="line"></span><br><span class="line">    <span class="keyword">else</span>:</span><br><span class="line">        clause = AND(SMSTable.q.tag == I)</span><br><span class="line"></span><br><span class="line">    sms = SMSTable.select(clause, orderBy=SMSTable.q.date_time, reversed=<span class="keyword">True</span>, limit=limit)</span><br><span class="line"></span><br><span class="line">    l = []</span><br><span class="line">    <span class="keyword">for</span> s <span class="keyword">in</span> sms:</span><br><span class="line">        l.append(&#123;<span class="string">'date_time'</span>: str(s.date_time)[:<span class="number">-7</span>],</span><br><span class="line">                  <span class="string">'content'</span>: check_none(str(s.msg)).replace(<span class="string">'\n'</span>, <span class="string">' ----&gt;  '</span>),</span><br><span class="line">                  <span class="string">'id'</span>: s.id</span><br><span class="line">                  &#125;)</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> l</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">query_sms</span><span class="params">(date=None, time_stamp=None, direction=<span class="string">'down'</span>, limit=<span class="number">20</span>)</span>:</span></span><br><span class="line">    <span class="string">"""</span></span><br><span class="line"><span class="string">    APP 上拉和下拉刷新接口</span></span><br><span class="line"><span class="string">    :param limit:</span></span><br><span class="line"><span class="string">    :param time_stamp:</span></span><br><span class="line"><span class="string">    :param date:</span></span><br><span class="line"><span class="string">    :param direction: 下拉方向</span></span><br><span class="line"><span class="string">    :return:</span></span><br><span class="line"><span class="string">    """</span></span><br><span class="line">    <span class="keyword">global</span> clause</span><br><span class="line">    <span class="keyword">if</span> date <span class="keyword">is</span> <span class="keyword">None</span>:</span><br><span class="line">        <span class="keyword">if</span> time_stamp <span class="keyword">is</span> <span class="keyword">None</span>:</span><br><span class="line">            <span class="keyword">raise</span> ValueError(<span class="string">'date and timestapm missing !!!'</span>)</span><br><span class="line">        <span class="keyword">else</span>:</span><br><span class="line">            date = datetime.datetime.fromtimestamp(int(time_stamp))</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> direction == <span class="string">'down'</span>:</span><br><span class="line">        clause = AND(SMSTable.q.tag == I, SMSTable.q.date_time &gt; date)</span><br><span class="line">    <span class="keyword">elif</span> direction == <span class="string">'up'</span>:</span><br><span class="line">        clause = AND(SMSTable.q.tag == I, SMSTable.q.date_time &lt; date)</span><br><span class="line">    <span class="keyword">else</span>:</span><br><span class="line">        <span class="keyword">raise</span> ValueError(<span class="string">'direction value error!!!'</span>)</span><br><span class="line">    sms = SMSTable.select(clause, orderBy=SMSTable.q.date_time, reversed=<span class="keyword">True</span>, limit=limit)</span><br><span class="line">    l = []</span><br><span class="line">    <span class="keyword">for</span> s <span class="keyword">in</span> sms:</span><br><span class="line">        dt = int(s.date_time.timestamp())</span><br><span class="line">        content = check_none(str(s.msg))</span><br><span class="line">        <span class="keyword">try</span>:</span><br><span class="line">            split_index = content.index(<span class="string">'\n'</span>)</span><br><span class="line">            phone_num = content[<span class="number">0</span>:split_index]</span><br><span class="line">            content = content[split_index + <span class="number">1</span>:]</span><br><span class="line">        <span class="keyword">except</span> ValueError:</span><br><span class="line">            phone_num = <span class="string">""</span></span><br><span class="line">        code = get_message_code(content, s=<span class="string">''</span>)</span><br><span class="line">        vendor = get_message_vendor(content, s=<span class="string">''</span>)</span><br><span class="line">        l.append(&#123;<span class="string">'date_time'</span>: dt,</span><br><span class="line">                  <span class="string">'phone_num'</span>: phone_num,</span><br><span class="line">                  <span class="string">'content'</span>: content,</span><br><span class="line">                  <span class="string">'vendor'</span>: vendor,</span><br><span class="line">                  <span class="string">'code'</span>: code</span><br><span class="line">                  &#125;)</span><br><span class="line">    <span class="keyword">if</span> len(l) &gt; <span class="number">0</span>:</span><br><span class="line">        l_json_str = json.dumps(l, ensure_ascii=<span class="keyword">False</span>)</span><br><span class="line">        e_l_json_str = aes_cbc_256_encrypt_hex(l_json_str)</span><br><span class="line">    <span class="keyword">else</span>:</span><br><span class="line">        e_l_json_str = <span class="string">''</span></span><br><span class="line">    <span class="keyword">return</span> json.dumps(&#123;<span class="string">'msg'</span>: e_l_json_str&#125;, ensure_ascii=<span class="keyword">False</span>)</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">insert_filter_data</span><span class="params">(key_word, author)</span>:</span></span><br><span class="line">    JunkFilterTable(date_time=datetime.datetime.now(), key_word=key_word, author=author)</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">query_filter_content</span><span class="params">(limit=<span class="number">1000</span>)</span>:</span></span><br><span class="line">    key_words = JunkFilterTable.select(orderBy=JunkFilterTable.q.date_time, reversed=<span class="keyword">True</span>,</span><br><span class="line">                                       limit=limit)</span><br><span class="line">    l = []</span><br><span class="line">    <span class="keyword">for</span> s <span class="keyword">in</span> key_words:</span><br><span class="line">        l.append(&#123;<span class="string">'date_time'</span>: str(s.date_time)[:<span class="number">-7</span>],</span><br><span class="line">                  <span class="string">'author'</span>: str(s.author),</span><br><span class="line">                  <span class="string">'key_word'</span>: str(s.key_word)</span><br><span class="line">                  &#125;)</span><br><span class="line">    <span class="keyword">return</span> l</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">delete_filter_data</span><span class="params">(key_word)</span>:</span></span><br><span class="line">    <span class="keyword">if</span> key_word <span class="keyword">is</span> <span class="keyword">None</span>:</span><br><span class="line">        update = Delete(<span class="string">'junk_filter_table'</span>, where=<span class="keyword">None</span>)</span><br><span class="line">    <span class="keyword">else</span>:</span><br><span class="line">        update = Delete(<span class="string">'junk_filter_table'</span>, where=<span class="string">'key_word=\''</span> + key_word + <span class="string">'\''</span>)</span><br><span class="line">    query = connection.sqlrepr(update)</span><br><span class="line">    connection.query(query)</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">generate_db</span><span class="params">()</span>:</span></span><br><span class="line">    SMSTable.createTable(ifNotExists=<span class="keyword">True</span>)</span><br><span class="line">    SMSTable.createTable(ifNotExists=<span class="keyword">True</span>)</span><br><span class="line">    SMSTable._connection.debug = <span class="keyword">False</span></span><br><span class="line">    SMSTable._connection.debug = <span class="keyword">False</span></span><br><span class="line">    <span class="comment"># insert_data(tag=D, num='323232', msg='4234234&lt;/br&gt;dfsdfdf', vendor='sadfafaf')</span></span><br><span class="line">    <span class="comment"># insert_data(tag=E, num='455657', msg='4234234&lt;/br&gt;dfsdfdf', vendor='sadfafaf')</span></span><br><span class="line">    <span class="comment"># insert_data(tag=I, num='dfdsgdg', msg='4234234&lt;/br&gt;dfsdfdf', vendor='sadfafaf')</span></span><br><span class="line">    <span class="comment"># insert_data(tag=D, num='yukhukh', msg='4234234&lt;/br&gt;dfsdfdf', vendor='sadfafaf')</span></span><br><span class="line">    <span class="comment"># insert_data(tag=I, num='nnnnnn', msg='4234234&lt;/br&gt;dfsdfdf', vendor='sadfafaf')</span></span><br><span class="line">    <span class="comment"># s = query_data(tag=I)</span></span><br><span class="line">    <span class="comment"># print(s)</span></span><br><span class="line"></span><br><span class="line">    sms = query_sms(time_stamp=<span class="number">1499291363</span>, direction=<span class="string">'up'</span>)</span><br><span class="line">    print(sms)</span><br><span class="line"></span><br><span class="line"><span class="comment"># generate_db()</span></span><br></pre></td></tr></table></figure>
+<h5 id="MessageServer-py（主程序）"><a href="#MessageServer-py（主程序）" class="headerlink" title="MessageServer.py（主程序）"></a>MessageServer.py（主程序）</h5><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br><span class="line">146</span><br><span class="line">147</span><br><span class="line">148</span><br><span class="line">149</span><br><span class="line">150</span><br><span class="line">151</span><br><span class="line">152</span><br><span class="line">153</span><br><span class="line">154</span><br><span class="line">155</span><br><span class="line">156</span><br><span class="line">157</span><br><span class="line">158</span><br><span class="line">159</span><br><span class="line">160</span><br><span class="line">161</span><br><span class="line">162</span><br><span class="line">163</span><br><span class="line">164</span><br><span class="line">165</span><br><span class="line">166</span><br><span class="line">167</span><br><span class="line">168</span><br><span class="line">169</span><br><span class="line">170</span><br><span class="line">171</span><br><span class="line">172</span><br><span class="line">173</span><br><span class="line">174</span><br><span class="line">175</span><br><span class="line">176</span><br><span class="line">177</span><br><span class="line">178</span><br><span class="line">179</span><br><span class="line">180</span><br><span class="line">181</span><br><span class="line">182</span><br><span class="line">183</span><br><span class="line">184</span><br><span class="line">185</span><br><span class="line">186</span><br><span class="line">187</span><br><span class="line">188</span><br><span class="line">189</span><br><span class="line">190</span><br><span class="line">191</span><br><span class="line">192</span><br><span class="line">193</span><br><span class="line">194</span><br><span class="line">195</span><br><span class="line">196</span><br><span class="line">197</span><br><span class="line">198</span><br><span class="line">199</span><br><span class="line">200</span><br><span class="line">201</span><br><span class="line">202</span><br><span class="line">203</span><br><span class="line">204</span><br><span class="line">205</span><br><span class="line">206</span><br><span class="line">207</span><br><span class="line">208</span><br><span class="line">209</span><br><span class="line">210</span><br><span class="line">211</span><br><span class="line">212</span><br><span class="line">213</span><br><span class="line">214</span><br><span class="line">215</span><br><span class="line">216</span><br><span class="line">217</span><br><span class="line">218</span><br><span class="line">219</span><br><span class="line">220</span><br><span class="line">221</span><br><span class="line">222</span><br><span class="line">223</span><br><span class="line">224</span><br><span class="line">225</span><br><span class="line">226</span><br><span class="line">227</span><br><span class="line">228</span><br><span class="line">229</span><br><span class="line">230</span><br><span class="line">231</span><br><span class="line">232</span><br><span class="line">233</span><br><span class="line">234</span><br><span class="line">235</span><br><span class="line">236</span><br><span class="line">237</span><br><span class="line">238</span><br><span class="line">239</span><br><span class="line">240</span><br><span class="line">241</span><br><span class="line">242</span><br><span class="line">243</span><br><span class="line">244</span><br><span class="line">245</span><br><span class="line">246</span><br><span class="line">247</span><br><span class="line">248</span><br><span class="line">249</span><br><span class="line">250</span><br><span class="line">251</span><br><span class="line">252</span><br><span class="line">253</span><br><span class="line">254</span><br><span class="line">255</span><br><span class="line">256</span><br><span class="line">257</span><br><span class="line">258</span><br><span class="line">259</span><br><span class="line">260</span><br><span class="line">261</span><br><span class="line">262</span><br><span class="line">263</span><br><span class="line">264</span><br><span class="line">265</span><br><span class="line">266</span><br><span class="line">267</span><br><span class="line">268</span><br><span class="line">269</span><br><span class="line">270</span><br><span class="line">271</span><br><span class="line">272</span><br><span class="line">273</span><br><span class="line">274</span><br><span class="line">275</span><br><span class="line">276</span><br><span class="line">277</span><br><span class="line">278</span><br><span class="line">279</span><br><span class="line">280</span><br><span class="line">281</span><br><span class="line">282</span><br><span class="line">283</span><br><span class="line">284</span><br><span class="line">285</span><br><span class="line">286</span><br><span class="line">287</span><br><span class="line">288</span><br><span class="line">289</span><br><span class="line">290</span><br><span class="line">291</span><br><span class="line">292</span><br><span class="line">293</span><br><span class="line">294</span><br><span class="line">295</span><br><span class="line">296</span><br><span class="line">297</span><br><span class="line">298</span><br><span class="line">299</span><br><span class="line">300</span><br><span class="line">301</span><br><span class="line">302</span><br><span class="line">303</span><br><span class="line">304</span><br><span class="line">305</span><br><span class="line">306</span><br><span class="line">307</span><br><span class="line">308</span><br><span class="line">309</span><br><span class="line">310</span><br><span class="line">311</span><br><span class="line">312</span><br><span class="line">313</span><br><span class="line">314</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#!/usr/bin/env python</span></span><br><span class="line"><span class="comment"># -*- coding: utf-8 -*-</span></span><br><span class="line"><span class="keyword">import</span> sys</span><br><span class="line"></span><br><span class="line"><span class="keyword">from</span> flask <span class="keyword">import</span> Flask</span><br><span class="line"><span class="keyword">from</span> flask <span class="keyword">import</span> render_template, request, url_for, redirect, flash</span><br><span class="line"><span class="keyword">from</span> flask_bootstrap <span class="keyword">import</span> Bootstrap</span><br><span class="line"><span class="keyword">from</span> flask_login <span class="keyword">import</span> LoginManager</span><br><span class="line"><span class="keyword">from</span> flask_login <span class="keyword">import</span> UserMixin</span><br><span class="line"><span class="keyword">from</span> flask_login <span class="keyword">import</span> login_user, login_required, logout_user, current_user</span><br><span class="line"><span class="keyword">from</span> flask_sqlalchemy <span class="keyword">import</span> SQLAlchemy</span><br><span class="line"><span class="keyword">from</span> flask_wtf <span class="keyword">import</span> FlaskForm</span><br><span class="line"><span class="keyword">from</span> werkzeug.security <span class="keyword">import</span> generate_password_hash, check_password_hash</span><br><span class="line"><span class="keyword">from</span> wtforms <span class="keyword">import</span> *</span><br><span class="line"><span class="keyword">from</span> wtforms.validators <span class="keyword">import</span> *</span><br><span class="line"></span><br><span class="line"><span class="keyword">from</span> DBUtil <span class="keyword">import</span> *</span><br><span class="line"><span class="keyword">from</span> Utils <span class="keyword">import</span> *</span><br><span class="line"></span><br><span class="line">WIN = sys.platform.startswith(<span class="string">'win'</span>)</span><br><span class="line"><span class="keyword">if</span> WIN:</span><br><span class="line">    db_prefix = <span class="string">'sqlite:///'</span></span><br><span class="line"><span class="keyword">else</span>:</span><br><span class="line">    db_prefix = <span class="string">'sqlite:////'</span></span><br><span class="line"></span><br><span class="line">app = Flask(__name__)</span><br><span class="line">app.config[<span class="string">'SECRET_KEY'</span>] = <span class="string">'44hzcUEKXUaBa!YY'</span></span><br><span class="line">app.config[<span class="string">'BOOTSTRAP_SERVE_LOCAL'</span>] = <span class="keyword">True</span></span><br><span class="line">bootstrap = Bootstrap(app)</span><br><span class="line">app.config[<span class="string">'SECRET_KEY'</span>] = <span class="string">'dev'</span></span><br><span class="line">app.config[<span class="string">'SQLALCHEMY_DATABASE_URI'</span>] = db_prefix + os.path.join(app.root_path, <span class="string">'data.db'</span>)</span><br><span class="line">app.config[<span class="string">'SQLALCHEMY_TRACK_MODIFICATIONS'</span>] = <span class="keyword">False</span></span><br><span class="line"></span><br><span class="line">prefix = <span class="string">'/645atU3453463duWNu455469fJGZ'</span></span><br><span class="line"></span><br><span class="line">db = SQLAlchemy(app)</span><br><span class="line">login_manager = LoginManager(app)</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">User</span><span class="params">(db.Model, UserMixin)</span>:</span></span><br><span class="line">    id = db.Column(db.Integer, primary_key=<span class="keyword">True</span>)</span><br><span class="line">    name = db.Column(db.String(<span class="number">20</span>))</span><br><span class="line">    username = db.Column(db.String(<span class="number">20</span>))</span><br><span class="line">    password_hash = db.Column(db.String(<span class="number">128</span>))</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">set_password</span><span class="params">(self, password)</span>:</span></span><br><span class="line">        self.password_hash = generate_password_hash(password)</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">validate_password</span><span class="params">(self, password)</span>:</span></span><br><span class="line">        <span class="keyword">return</span> check_password_hash(self.password_hash, password)</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">BlackListForm</span><span class="params">(FlaskForm)</span>:</span></span><br><span class="line">    key_word = StringField(<span class="string">'请输入关键词'</span>, validators=[DataRequired(<span class="string">u'请输入一个有效的关键字！'</span>),</span><br><span class="line">                                                 Length(<span class="number">2</span>, <span class="number">20</span>, <span class="string">u'请输入长度2~20以内的字符！'</span>)])</span><br><span class="line">    add = SubmitField(<span class="string">'添加'</span>)</span><br><span class="line">    delete = SubmitField(<span class="string">'删除'</span>)</span><br><span class="line">    delete_all = SubmitField(<span class="string">'删除全部'</span>)</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">JunkFilterForm</span><span class="params">(FlaskForm)</span>:</span></span><br><span class="line">    filter_off = SubmitField(<span class="string">'关闭垃圾短信过滤'</span>)</span><br><span class="line">    filter_on = SubmitField(<span class="string">'开启垃圾短信过滤'</span>)</span><br><span class="line">    filter_by_black_list_off = SubmitField(<span class="string">'关闭根据关键词过滤'</span>)</span><br><span class="line">    filter_by_black_list_on = SubmitField(<span class="string">'开启根据关键词过滤'</span>)</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="comment"># @app.route('/')</span></span><br><span class="line"><span class="comment"># def index():</span></span><br><span class="line"><span class="comment">#     return 'Hello World!'</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="comment"># @app.route(prefix)</span></span><br><span class="line"><span class="comment"># def index_prefix():</span></span><br><span class="line"><span class="comment">#     return 'Hello Prefix!'</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="comment"># # WEB端控制网络类型</span></span><br><span class="line"><span class="comment"># @app.route(prefix + '/api/set_network', methods=['GET'])</span></span><br><span class="line"><span class="comment"># def set_network():</span></span><br><span class="line"><span class="comment">#     network_info = int(request.args.get('network', default=2))</span></span><br><span class="line"><span class="comment">#     if network_info == 1:</span></span><br><span class="line"><span class="comment">#         config = MailConfig.MAIL_SUBJECT_SWITCH_NETWORK1</span></span><br><span class="line"><span class="comment">#     elif network_info == 2:</span></span><br><span class="line"><span class="comment">#         config = MailConfig.MAIL_SUBJECT_SWITCH_NETWORK2</span></span><br><span class="line"><span class="comment">#     else:</span></span><br><span class="line"><span class="comment">#         config = MailConfig.MAIL_SUBJECT_SWITCH_NETWORK2</span></span><br><span class="line"><span class="comment">#     return send_mail(config, 's*Yfb3SdXy9ruUBK8R!gZX')</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="comment"># 查询电量</span></span><br><span class="line"><span class="meta">@app.route(prefix + '/api/get_battery_level', methods=['GET'])</span></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">get_battery_level</span><span class="params">()</span>:</span></span><br><span class="line">    <span class="keyword">return</span> send_mail(MailConfig.MAIL_SUBJECT_QUERY_BATTERY_INFO, <span class="string">'%YG8Cf^17R*GqzVfxXHP2e'</span>)</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="comment"># 推送消息(已加密)</span></span><br><span class="line"><span class="meta">@app.route(prefix + '/api/push_sms', methods=['POST'])</span></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">push_msg</span><span class="params">()</span>:</span></span><br><span class="line">    <span class="keyword">if</span> len(request.form) == <span class="number">0</span>:  <span class="comment"># 浏览器表单提交，使用postman模拟，由于valuse格式问题需要使用表单提交</span></span><br><span class="line">        obscure_base64_data = request.json[<span class="string">'msg'</span>]</span><br><span class="line">    <span class="keyword">else</span>:</span><br><span class="line">        obscure_base64_data = request.form[<span class="string">'msg'</span>]</span><br><span class="line">    j = push_notify(obscure_base64_data)</span><br><span class="line">    <span class="keyword">return</span> j</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="comment"># APP端获取短信列表(已加密)</span></span><br><span class="line"><span class="meta">@app.route(prefix + '/api/get_sms', methods=['POST'])</span></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">get_sms</span><span class="params">()</span>:</span></span><br><span class="line">    json_dict = request.get_json(silent=<span class="keyword">True</span>)</span><br><span class="line">    <span class="keyword">if</span> <span class="string">'timestamp'</span> <span class="keyword">in</span> json_dict:</span><br><span class="line">        timestamp = json_dict[<span class="string">'timestamp'</span>]</span><br><span class="line">    <span class="keyword">else</span>:</span><br><span class="line">        timestamp = <span class="number">1278120641</span>  <span class="comment"># 2000 年</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> <span class="string">'direction'</span> <span class="keyword">in</span> json_dict:</span><br><span class="line">        direction = json_dict[<span class="string">'direction'</span>]</span><br><span class="line">    <span class="keyword">else</span>:</span><br><span class="line">        direction = <span class="string">'down'</span>  <span class="comment"># 默认刷新</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> <span class="string">'limit'</span> <span class="keyword">in</span> json_dict:</span><br><span class="line">        limit = request.json[<span class="string">'limit'</span>]</span><br><span class="line">    <span class="keyword">else</span>:</span><br><span class="line">        limit = <span class="number">20</span></span><br><span class="line"></span><br><span class="line">    j = query_sms(time_stamp=timestamp, direction=direction, limit=limit)</span><br><span class="line">    <span class="keyword">return</span> j</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="meta">@login_manager.user_loader</span></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">load_user</span><span class="params">(user_id)</span>:</span></span><br><span class="line">    user = User.query.get(int(user_id))</span><br><span class="line">    <span class="keyword">return</span> user</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">login_manager.login_view = <span class="string">'login'</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="meta">@app.context_processor</span></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">inject_user</span><span class="params">()</span>:</span></span><br><span class="line">    user = User.query.first()</span><br><span class="line">    <span class="keyword">return</span> dict(user=user)</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="meta">@app.route(prefix, methods=['GET', 'POST'])</span></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">index</span><span class="params">()</span>:</span></span><br><span class="line">    <span class="keyword">if</span> request.method == <span class="string">'POST'</span>:</span><br><span class="line">        <span class="keyword">if</span> <span class="keyword">not</span> current_user.is_authenticated:</span><br><span class="line">            <span class="keyword">return</span> redirect(url_for(<span class="string">'index'</span>))</span><br><span class="line"></span><br><span class="line">        date = request.form[<span class="string">'date'</span>]</span><br><span class="line">        key_word = request.form[<span class="string">'key_word'</span>]</span><br><span class="line">        maxnum = request.form[<span class="string">'maxnum'</span>]</span><br><span class="line"></span><br><span class="line">        l_date = len(date)</span><br><span class="line">        <span class="keyword">if</span> l_date &gt; <span class="number">0</span> <span class="keyword">and</span> l_date != <span class="number">10</span>:</span><br><span class="line">            flash(<span class="string">'日期格式需要例如 2019-01-05'</span>)</span><br><span class="line">            <span class="keyword">return</span> redirect(url_for(<span class="string">'index'</span>))</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> <span class="keyword">not</span> maxnum:</span><br><span class="line">            maxnum = <span class="number">50</span></span><br><span class="line">        <span class="keyword">else</span>:</span><br><span class="line">            maxnum = int(maxnum)</span><br><span class="line">        sms = query_sms_content(date_str=date, limit=maxnum, key_word=key_word)</span><br><span class="line">        <span class="keyword">return</span> render_template(<span class="string">'index.html'</span>, sms=sms, date=date, key_word=key_word, maxnum=maxnum)</span><br><span class="line"></span><br><span class="line">    sms = query_sms_content()</span><br><span class="line">    <span class="keyword">return</span> render_template(<span class="string">'index.html'</span>, sms=sms)</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="meta">@app.route(prefix + '/settings', methods=['GET', 'POST'])</span></span><br><span class="line"><span class="meta">@login_required</span></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">settings</span><span class="params">()</span>:</span></span><br><span class="line">    <span class="keyword">global</span> msg, tag</span><br><span class="line">    filter_on = get_ini_value(<span class="string">'JUNK_MSG'</span>, <span class="string">'filter_on'</span>) == <span class="string">'True'</span></span><br><span class="line">    filter_by_black_list = get_ini_value(<span class="string">'JUNK_MSG'</span>, <span class="string">'filter_by_black_list'</span>) == <span class="string">'True'</span></span><br><span class="line">    contents = query_filter_content()</span><br><span class="line"></span><br><span class="line">    black_list_form = BlackListForm()</span><br><span class="line">    junk_filter_form = JunkFilterForm()</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> junk_filter_form.validate_on_submit():</span><br><span class="line">        <span class="keyword">if</span> junk_filter_form.filter_off.data:</span><br><span class="line">            set_ini_value(<span class="string">'JUNK_MSG'</span>, <span class="string">'filter_on'</span>, <span class="string">'False'</span>)</span><br><span class="line">            msg = <span class="string">'已关闭垃圾短信过滤'</span></span><br><span class="line">            tag = <span class="string">'info'</span></span><br><span class="line">            flash(msg, tag)</span><br><span class="line">            <span class="keyword">return</span> redirect(url_for(<span class="string">'settings'</span>))</span><br><span class="line">        <span class="keyword">elif</span> junk_filter_form.filter_on.data:</span><br><span class="line">            set_ini_value(<span class="string">'JUNK_MSG'</span>, <span class="string">'filter_on'</span>, <span class="string">'True'</span>)</span><br><span class="line">            msg = <span class="string">'已开启垃圾短信过滤（默认过滤TD和退订字段）'</span></span><br><span class="line">            tag = <span class="string">'success'</span></span><br><span class="line">            flash(msg, tag)</span><br><span class="line">            <span class="keyword">return</span> redirect(url_for(<span class="string">'settings'</span>))</span><br><span class="line">        <span class="keyword">elif</span> junk_filter_form.filter_by_black_list_off.data:</span><br><span class="line">            set_ini_value(<span class="string">'JUNK_MSG'</span>, <span class="string">'filter_by_black_list'</span>, <span class="string">'False'</span>)</span><br><span class="line">            msg = <span class="string">'已关闭垃圾短信字段过滤'</span></span><br><span class="line">            tag = <span class="string">'info'</span></span><br><span class="line">            flash(msg, tag)</span><br><span class="line">            <span class="keyword">return</span> redirect(url_for(<span class="string">'settings'</span>))</span><br><span class="line">        <span class="keyword">elif</span> junk_filter_form.filter_by_black_list_on.data:</span><br><span class="line">            set_ini_value(<span class="string">'JUNK_MSG'</span>, <span class="string">'filter_by_black_list'</span>, <span class="string">'True'</span>)</span><br><span class="line">            msg = <span class="string">'已开启垃圾短信字段过滤'</span></span><br><span class="line">            tag = <span class="string">'success'</span></span><br><span class="line">            flash(msg, tag)</span><br><span class="line">            <span class="keyword">return</span> redirect(url_for(<span class="string">'settings'</span>))</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> black_list_form.validate_on_submit():</span><br><span class="line">        word = black_list_form.key_word.data</span><br><span class="line">        <span class="keyword">if</span> black_list_form.add.data:</span><br><span class="line">            insert_filter_data(word, <span class="string">'Admin'</span>)</span><br><span class="line">            msg = <span class="string">'已添加 '</span> + word + <span class="string">' 关键词'</span></span><br><span class="line">            tag = <span class="string">'info'</span></span><br><span class="line">        <span class="keyword">elif</span> black_list_form.delete.data:</span><br><span class="line">            delete_filter_data(word)</span><br><span class="line">            msg = <span class="string">'已删除 '</span> + word + <span class="string">' 关键词'</span></span><br><span class="line">            tag = <span class="string">'warning'</span></span><br><span class="line">        <span class="keyword">elif</span> black_list_form.delete_all.data:</span><br><span class="line">            delete_filter_data(<span class="keyword">None</span>)</span><br><span class="line">            msg = <span class="string">'已删除全部关键词'</span></span><br><span class="line">            tag = <span class="string">'danger'</span></span><br><span class="line">        flash(msg, tag)</span><br><span class="line">        <span class="keyword">return</span> redirect(url_for(<span class="string">'settings'</span>))</span><br><span class="line">    <span class="keyword">return</span> render_template(<span class="string">'settings.html'</span>, black_list_form=black_list_form,</span><br><span class="line">                           junk_filter_form=junk_filter_form,</span><br><span class="line">                           filter_on=filter_on,</span><br><span class="line">                           filter_by_black_list=filter_by_black_list, contents=contents)</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">set_admin</span><span class="params">(username, password)</span>:</span></span><br><span class="line">    <span class="string">'''</span></span><br><span class="line"><span class="string">    产生登陆密码</span></span><br><span class="line"><span class="string">    :param username:</span></span><br><span class="line"><span class="string">    :param password:</span></span><br><span class="line"><span class="string">    :return:</span></span><br><span class="line"><span class="string">    '''</span></span><br><span class="line">    db.create_all()</span><br><span class="line"></span><br><span class="line">    user = User.query.first()</span><br><span class="line">    <span class="keyword">if</span> user <span class="keyword">is</span> <span class="keyword">not</span> <span class="keyword">None</span>:</span><br><span class="line">        <span class="comment"># print('更新密码...')</span></span><br><span class="line">        user.username = username</span><br><span class="line">        user.set_password(password)</span><br><span class="line">    <span class="keyword">else</span>:</span><br><span class="line">        <span class="comment"># print('创建用户...')</span></span><br><span class="line">        user = User(username=username, name=<span class="string">'Admin'</span>)</span><br><span class="line">        user.set_password(password)</span><br><span class="line">        db.session.add(user)</span><br><span class="line"></span><br><span class="line">    db.session.commit()</span><br><span class="line">    print(<span class="string">'User Name:'</span> + username + <span class="string">'\nPassword:'</span> + password)</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="meta">@app.route(prefix + '/login', methods=['GET', 'POST'])</span></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">login</span><span class="params">()</span>:</span></span><br><span class="line">    <span class="keyword">if</span> request.method == <span class="string">'POST'</span>:</span><br><span class="line">        username = request.form[<span class="string">'username'</span>]</span><br><span class="line">        password = request.form[<span class="string">'password'</span>]</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> <span class="keyword">not</span> username <span class="keyword">or</span> <span class="keyword">not</span> password:</span><br><span class="line">            flash(<span class="string">'账号密码错误！'</span>)</span><br><span class="line">            <span class="keyword">return</span> redirect(url_for(<span class="string">'login'</span>))</span><br><span class="line"></span><br><span class="line">        user = User.query.first()</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> username == user.username <span class="keyword">and</span> user.validate_password(password):</span><br><span class="line">            login_user(user)</span><br><span class="line">            flash(<span class="string">'登陆成功'</span>)</span><br><span class="line">            <span class="keyword">return</span> redirect(url_for(<span class="string">'index'</span>))</span><br><span class="line"></span><br><span class="line">        flash(<span class="string">'账号密码错误！'</span>)</span><br><span class="line">        <span class="keyword">return</span> redirect(url_for(<span class="string">'login'</span>))</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> render_template(<span class="string">'login.html'</span>)</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="meta">@app.route(prefix + '/logout')</span></span><br><span class="line"><span class="meta">@login_required</span></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">logout</span><span class="params">()</span>:</span></span><br><span class="line">    logout_user()</span><br><span class="line">    flash(<span class="string">'Goodbye.'</span>)</span><br><span class="line">    <span class="keyword">return</span> redirect(url_for(<span class="string">'index'</span>))</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="meta">@app.errorhandler(400)</span></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">bad_request</span><span class="params">(e)</span>:</span></span><br><span class="line">    <span class="keyword">return</span> render_template(<span class="string">'errors/400.html'</span>), <span class="number">400</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="meta">@app.errorhandler(404)</span></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">page_not_found</span><span class="params">(e)</span>:</span></span><br><span class="line">    <span class="keyword">return</span> render_template(<span class="string">'errors/404.html'</span>), <span class="number">404</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="meta">@app.errorhandler(500)</span></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">internal_server_error</span><span class="params">(e)</span>:</span></span><br><span class="line">    <span class="keyword">return</span> render_template(<span class="string">'errors/500.html'</span>), <span class="number">500</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">init_app</span><span class="params">()</span>:</span></span><br><span class="line">    init_db()</span><br><span class="line">    log_show(<span class="string">"Init database ..."</span>)</span><br><span class="line">    set_admin(<span class="string">'xxxxx'</span>, <span class="string">'dg*gxxxxh9c%XJ'</span>)</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">init_app()</span><br><span class="line"></span><br><span class="line"><span class="keyword">if</span> __name__ == <span class="string">'__main__'</span>:</span><br><span class="line">    <span class="comment"># 如果使用gunicorn + nginx部署，这里端口设为5858,nginx反向代理设为58585</span></span><br><span class="line">    <span class="comment"># gunicorn -c gun_conf.py MessageServer:app</span></span><br><span class="line">    <span class="comment"># gunicorn -w 4 -b :5858  MessageServer:app</span></span><br><span class="line">    log_show(<span class="string">"Start HTTP Server http://0.0.0.0:58585"</span>)</span><br><span class="line">    app.run(debug=ServerConfig.DebugMode, host=<span class="string">'0.0.0.0'</span>, port=<span class="number">58585</span>)</span><br></pre></td></tr></table></figure>
+<h5 id="Decrypt-py-解密"><a href="#Decrypt-py-解密" class="headerlink" title="Decrypt.py(解密)"></a>Decrypt.py(解密)</h5><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br><span class="line">146</span><br><span class="line">147</span><br><span class="line">148</span><br><span class="line">149</span><br><span class="line">150</span><br><span class="line">151</span><br><span class="line">152</span><br><span class="line">153</span><br><span class="line">154</span><br><span class="line">155</span><br><span class="line">156</span><br><span class="line">157</span><br><span class="line">158</span><br><span class="line">159</span><br><span class="line">160</span><br><span class="line">161</span><br><span class="line">162</span><br><span class="line">163</span><br><span class="line">164</span><br><span class="line">165</span><br><span class="line">166</span><br><span class="line">167</span><br><span class="line">168</span><br><span class="line">169</span><br><span class="line">170</span><br><span class="line">171</span><br><span class="line">172</span><br><span class="line">173</span><br><span class="line">174</span><br><span class="line">175</span><br><span class="line">176</span><br><span class="line">177</span><br><span class="line">178</span><br><span class="line">179</span><br><span class="line">180</span><br><span class="line">181</span><br><span class="line">182</span><br><span class="line">183</span><br><span class="line">184</span><br><span class="line">185</span><br><span class="line">186</span><br><span class="line">187</span><br><span class="line">188</span><br><span class="line">189</span><br><span class="line">190</span><br><span class="line">191</span><br><span class="line">192</span><br><span class="line">193</span><br><span class="line">194</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#!/usr/bin/env python</span></span><br><span class="line"><span class="comment"># -*- coding: utf-8 -*-</span></span><br><span class="line"><span class="keyword">import</span> base64</span><br><span class="line"><span class="keyword">import</span> datetime</span><br><span class="line"><span class="keyword">import</span> json</span><br><span class="line"><span class="keyword">import</span> binascii</span><br><span class="line"><span class="keyword">import</span> os</span><br><span class="line"><span class="keyword">from</span> base64 <span class="keyword">import</span> b64encode</span><br><span class="line"><span class="keyword">from</span> Crypto.Cipher <span class="keyword">import</span> AES</span><br><span class="line"><span class="keyword">from</span> Crypto.Util.Padding <span class="keyword">import</span> pad</span><br><span class="line"><span class="keyword">from</span> Crypto.Util.Padding <span class="keyword">import</span> unpad</span><br><span class="line"></span><br><span class="line"><span class="string">'''</span></span><br><span class="line"><span class="string">加密过程：</span></span><br><span class="line"><span class="string">   原文--&gt; Json -&gt; Base64--&gt; AES(CBC) --&gt; 一轮字符替换 --&gt; 二轮字符替换  --&gt; 指定位置添加冗余信息 --&gt; 三轮字符替换  --&gt; 密文</span></span><br><span class="line"><span class="string">'''</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># Base64使用的字符集合</span></span><br><span class="line">obscure_key = (<span class="string">'0'</span>, <span class="string">'1'</span>, <span class="string">'2'</span>, <span class="string">'3'</span>, <span class="string">'4'</span>, <span class="string">'5'</span>, <span class="string">'6'</span>, <span class="string">'7'</span>, <span class="string">'8'</span>, <span class="string">'9'</span>,</span><br><span class="line">               <span class="string">'A'</span>, <span class="string">'B'</span>, <span class="string">'C'</span>, <span class="string">'D'</span>, <span class="string">'E'</span>, <span class="string">'F'</span>, <span class="string">'G'</span>, <span class="string">'H'</span>, <span class="string">'I'</span>, <span class="string">'J'</span>, <span class="string">'K'</span>, <span class="string">'L'</span>, <span class="string">'M'</span>,</span><br><span class="line">               <span class="string">'N'</span>, <span class="string">'O'</span>, <span class="string">'P'</span>, <span class="string">'Q'</span>, <span class="string">'R'</span>, <span class="string">'S'</span>, <span class="string">'T'</span>, <span class="string">'U'</span>, <span class="string">'V'</span>, <span class="string">'W'</span>, <span class="string">'X'</span>, <span class="string">'Y'</span>, <span class="string">'Z'</span>,</span><br><span class="line">               <span class="string">'a'</span>, <span class="string">'b'</span>, <span class="string">'c'</span>, <span class="string">'d'</span>, <span class="string">'e'</span>, <span class="string">'f'</span>, <span class="string">'g'</span>, <span class="string">'h'</span>, <span class="string">'i'</span>, <span class="string">'j'</span>, <span class="string">'k'</span>, <span class="string">'l'</span>, <span class="string">'m'</span>,</span><br><span class="line">               <span class="string">'n'</span>, <span class="string">'o'</span>, <span class="string">'p'</span>, <span class="string">'q'</span>, <span class="string">'r'</span>, <span class="string">'s'</span>, <span class="string">'t'</span>, <span class="string">'u'</span>, <span class="string">'v'</span>, <span class="string">'w'</span>, <span class="string">'x'</span>, <span class="string">'y'</span>, <span class="string">'z'</span>,</span><br><span class="line">               <span class="string">'+'</span>, <span class="string">'='</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment"># AES CBC 256位 加密秘钥和偏移量</span></span><br><span class="line">__aes_key = <span class="string">b'0@NSfpy#L9@ec%NZyZ546465mD@xI$B#2r'</span></span><br><span class="line">__aes_cbc_iv = <span class="string">b'6aStDl7YrB4CM3gq'</span></span><br><span class="line"></span><br><span class="line">obscure_value_row1 = (</span><br><span class="line">    <span class="string">'a'</span>, <span class="string">'Z'</span>, <span class="string">'='</span>, <span class="string">'I'</span>, <span class="string">'j'</span>, <span class="string">'w'</span>, <span class="string">'9'</span>, <span class="string">'B'</span>, <span class="string">'v'</span>, <span class="string">'+'</span>, <span class="string">'f'</span>, <span class="string">'g'</span>, <span class="string">'1'</span>, <span class="string">'6'</span>, <span class="string">'y'</span>, <span class="string">'N'</span>, <span class="string">'C'</span>, <span class="string">'4'</span>, <span class="string">'k'</span>,</span><br><span class="line">    <span class="string">'t'</span>, <span class="string">'O'</span>, <span class="string">'m'</span>, <span class="string">'e'</span>,</span><br><span class="line">    <span class="string">'l'</span>,</span><br><span class="line">    <span class="string">'q'</span>, <span class="string">'3'</span>, <span class="string">'R'</span>, <span class="string">'u'</span>, <span class="string">'8'</span>, <span class="string">'7'</span>, <span class="string">'S'</span>, <span class="string">'2'</span>, <span class="string">'Q'</span>, <span class="string">'0'</span>, <span class="string">'P'</span>, <span class="string">'c'</span>, <span class="string">'5'</span>, <span class="string">'H'</span>, <span class="string">'r'</span>, <span class="string">'G'</span>, <span class="string">'E'</span>, <span class="string">'b'</span>, <span class="string">'J'</span>,</span><br><span class="line">    <span class="string">'W'</span>, <span class="string">'o'</span>, <span class="string">'M'</span>, <span class="string">'K'</span>,</span><br><span class="line">    <span class="string">'i'</span>,</span><br><span class="line">    <span class="string">'U'</span>, <span class="string">'x'</span>, <span class="string">'L'</span>, <span class="string">'V'</span>, <span class="string">'z'</span>, <span class="string">'F'</span>, <span class="string">'Y'</span>, <span class="string">'n'</span>, <span class="string">'X'</span>, <span class="string">'A'</span>, <span class="string">'p'</span>, <span class="string">'T'</span>, <span class="string">'s'</span>, <span class="string">'D'</span>, <span class="string">'d'</span>, <span class="string">'h'</span>)</span><br><span class="line">obscure_value_row2 = (</span><br><span class="line">    <span class="string">'i'</span>, <span class="string">'z'</span>, <span class="string">'+'</span>, <span class="string">'1'</span>, <span class="string">'M'</span>, <span class="string">'y'</span>, <span class="string">'t'</span>, <span class="string">'Z'</span>, <span class="string">'e'</span>, <span class="string">'C'</span>, <span class="string">'3'</span>, <span class="string">'6'</span>, <span class="string">'w'</span>, <span class="string">'D'</span>, <span class="string">'5'</span>, <span class="string">'O'</span>, <span class="string">'o'</span>, <span class="string">'L'</span>, <span class="string">'v'</span>,</span><br><span class="line">    <span class="string">'u'</span>, <span class="string">'0'</span>, <span class="string">'P'</span>, <span class="string">'j'</span>,</span><br><span class="line">    <span class="string">'Q'</span>,</span><br><span class="line">    <span class="string">'Y'</span>, <span class="string">'s'</span>, <span class="string">'U'</span>, <span class="string">'G'</span>, <span class="string">'B'</span>, <span class="string">'A'</span>, <span class="string">'x'</span>, <span class="string">'m'</span>, <span class="string">'h'</span>, <span class="string">'F'</span>, <span class="string">'T'</span>, <span class="string">'q'</span>, <span class="string">'p'</span>, <span class="string">'W'</span>, <span class="string">'8'</span>, <span class="string">'I'</span>, <span class="string">'d'</span>, <span class="string">'n'</span>, <span class="string">'H'</span>,</span><br><span class="line">    <span class="string">'4'</span>, <span class="string">'f'</span>, <span class="string">'a'</span>, <span class="string">'c'</span>,</span><br><span class="line">    <span class="string">'V'</span>,</span><br><span class="line">    <span class="string">'='</span>, <span class="string">'E'</span>, <span class="string">'b'</span>, <span class="string">'9'</span>, <span class="string">'S'</span>, <span class="string">'2'</span>, <span class="string">'l'</span>, <span class="string">'r'</span>, <span class="string">'k'</span>, <span class="string">'N'</span>, <span class="string">'K'</span>, <span class="string">'X'</span>, <span class="string">'J'</span>, <span class="string">'7'</span>, <span class="string">'R'</span>, <span class="string">'g'</span>)</span><br><span class="line">obscure_value_row3 = (</span><br><span class="line">    <span class="string">'A'</span>, <span class="string">'3'</span>, <span class="string">'F'</span>, <span class="string">'='</span>, <span class="string">'Z'</span>, <span class="string">'c'</span>, <span class="string">'T'</span>, <span class="string">'p'</span>, <span class="string">'s'</span>, <span class="string">'L'</span>, <span class="string">'i'</span>, <span class="string">'+'</span>, <span class="string">'5'</span>, <span class="string">'7'</span>, <span class="string">'j'</span>, <span class="string">'R'</span>, <span class="string">'l'</span>, <span class="string">'d'</span>, <span class="string">'q'</span>,</span><br><span class="line">    <span class="string">'I'</span>, <span class="string">'m'</span>, <span class="string">'D'</span>, <span class="string">'h'</span>,</span><br><span class="line">    <span class="string">'M'</span>,</span><br><span class="line">    <span class="string">'P'</span>, <span class="string">'U'</span>, <span class="string">'x'</span>, <span class="string">'z'</span>, <span class="string">'W'</span>, <span class="string">'8'</span>, <span class="string">'K'</span>, <span class="string">'S'</span>, <span class="string">'E'</span>, <span class="string">'0'</span>, <span class="string">'Q'</span>, <span class="string">'X'</span>, <span class="string">'r'</span>, <span class="string">'e'</span>, <span class="string">'2'</span>, <span class="string">'k'</span>, <span class="string">'6'</span>, <span class="string">'g'</span>, <span class="string">'1'</span>,</span><br><span class="line">    <span class="string">'9'</span>, <span class="string">'O'</span>, <span class="string">'J'</span>, <span class="string">'V'</span>,</span><br><span class="line">    <span class="string">'f'</span>,</span><br><span class="line">    <span class="string">'t'</span>, <span class="string">'N'</span>, <span class="string">'Y'</span>, <span class="string">'o'</span>, <span class="string">'H'</span>, <span class="string">'v'</span>, <span class="string">'w'</span>, <span class="string">'n'</span>, <span class="string">'G'</span>, <span class="string">'4'</span>, <span class="string">'u'</span>, <span class="string">'B'</span>, <span class="string">'C'</span>, <span class="string">'a'</span>, <span class="string">'y'</span>, <span class="string">'b'</span>)</span><br><span class="line"></span><br><span class="line">__obscure_map1 = dict(list(zip(obscure_value_row1, obscure_key)))</span><br><span class="line">__obscure_map2 = dict(list(zip(obscure_value_row2, obscure_key)))</span><br><span class="line">__obscure_map3 = dict(list(zip(obscure_value_row3, obscure_key)))</span><br><span class="line"></span><br><span class="line"><span class="comment"># 随机位置和后面冗余信息的长度</span></span><br><span class="line">random_insert_position = (<span class="number">0</span>, <span class="number">5</span>, <span class="number">7</span>, <span class="number">9</span>, <span class="number">22</span>, <span class="number">30</span>, <span class="number">31</span>, <span class="number">35</span>, <span class="number">39</span>, <span class="number">42</span>)</span><br><span class="line">random_insert_msg_len = (<span class="number">7</span>, <span class="number">12</span>, <span class="number">10</span>, <span class="number">6</span>, <span class="number">9</span>, <span class="number">6</span>, <span class="number">10</span>, <span class="number">8</span>, <span class="number">9</span>, <span class="number">4</span>)</span><br><span class="line">random_insert_position_reverse = list(reversed(random_insert_position))</span><br><span class="line">random_insert_map = dict(list(zip(random_insert_position, random_insert_msg_len)))</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">remove_redunance_msg</span><span class="params">(obscure_data)</span>:</span></span><br><span class="line">    <span class="string">"""</span></span><br><span class="line"><span class="string">    删除指定位置的冗余信息</span></span><br><span class="line"><span class="string">    :param obscure_data:</span></span><br><span class="line"><span class="string">    :return:</span></span><br><span class="line"><span class="string">    """</span></span><br><span class="line">    <span class="keyword">for</span> i <span class="keyword">in</span> random_insert_position_reverse:</span><br><span class="line">        obscure_data = obscure_data[<span class="number">0</span>:i] + obscure_data[i + random_insert_map[i]:len(obscure_data)]</span><br><span class="line">    <span class="keyword">return</span> obscure_data</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">get_unreplaced_string</span><span class="params">(obscureBase64Data, obscure_map)</span>:</span></span><br><span class="line">    <span class="string">"""</span></span><br><span class="line"><span class="string">    混淆的Base64内容转为标准内容</span></span><br><span class="line"><span class="string">    """</span></span><br><span class="line">    plain_content = <span class="string">""</span></span><br><span class="line">    <span class="keyword">for</span> c <span class="keyword">in</span> obscureBase64Data:</span><br><span class="line">        <span class="keyword">if</span> c <span class="keyword">in</span> obscure_map:</span><br><span class="line">            plain_content += obscure_map[c]</span><br><span class="line">        <span class="keyword">else</span>:</span><br><span class="line">            plain_content += c</span><br><span class="line">    <span class="keyword">return</span> plain_content</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">aes_cbc_256_encrypt_base64</span><span class="params">(plain_data)</span>:</span></span><br><span class="line">    <span class="string">"""</span></span><br><span class="line"><span class="string">    AES加密数据</span></span><br><span class="line"><span class="string">    :param plain_data: 待加密数据</span></span><br><span class="line"><span class="string">    :return: Base64格式加密数据</span></span><br><span class="line"><span class="string">    """</span></span><br><span class="line">    __aes_cipher_e = AES.new(__aes_key, AES.MODE_CBC, iv=__aes_cbc_iv)</span><br><span class="line">    ct_bytes = __aes_cipher_e.encrypt(pad(plain_data.encode(<span class="string">'utf-8'</span>), AES.block_size))</span><br><span class="line">    <span class="keyword">return</span> base64.b64encode(ct_bytes).decode(<span class="string">"utf-8"</span>)</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">aes_cbc_256_decrypt_base64</span><span class="params">(base64_string)</span>:</span></span><br><span class="line">    <span class="string">"""</span></span><br><span class="line"><span class="string">    AES解密数据</span></span><br><span class="line"><span class="string">    :param base64_string: Base64格式加密数据</span></span><br><span class="line"><span class="string">    :return: 原始数据</span></span><br><span class="line"><span class="string">    """</span></span><br><span class="line">    encrypted_bytes = base64.b64decode(base64_string)</span><br><span class="line">    <span class="comment"># cipher必须每次解密必须初始化也就是说只能用一次，并且不能又加密又解密。</span></span><br><span class="line">    __aes_cipher_d = AES.new(__aes_key, AES.MODE_CBC, iv=__aes_cbc_iv)</span><br><span class="line">    pt = unpad(__aes_cipher_d.decrypt(encrypted_bytes), AES.block_size)</span><br><span class="line">    <span class="keyword">return</span> pt.decode(<span class="string">"utf-8"</span>)</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">aes_cbc_256_encrypt_hex</span><span class="params">(plain_data)</span>:</span></span><br><span class="line">    <span class="string">"""</span></span><br><span class="line"><span class="string">    AES加密数据</span></span><br><span class="line"><span class="string">    :param plain_data: plain_data: 待加密数据</span></span><br><span class="line"><span class="string">    :return: 十六进制格式加密数据</span></span><br><span class="line"><span class="string">    """</span></span><br><span class="line">    __aes_cipher_e = AES.new(__aes_key, AES.MODE_CBC, iv=__aes_cbc_iv)</span><br><span class="line">    ct_bytes = __aes_cipher_e.encrypt(pad(plain_data.encode(<span class="string">'utf-8'</span>), AES.block_size))</span><br><span class="line">    <span class="keyword">return</span> ct_bytes.hex().upper()</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">aes_cbc_256_decrypt_hex</span><span class="params">(hex_string)</span>:</span></span><br><span class="line">    <span class="string">"""</span></span><br><span class="line"><span class="string">    AES解密数据</span></span><br><span class="line"><span class="string">    :param hex_string: 十六进制加密数据</span></span><br><span class="line"><span class="string">    :return: 原始数据</span></span><br><span class="line"><span class="string">    """</span></span><br><span class="line">    encrypted_bytes = binascii.unhexlify(hex_string)</span><br><span class="line">    <span class="comment"># cipher必须每次解密必须初始化也就是说只能用一次，并且不能又加密又解密。</span></span><br><span class="line">    __aes_cipher_d = AES.new(__aes_key, AES.MODE_CBC, iv=__aes_cbc_iv)</span><br><span class="line">    pt = unpad(__aes_cipher_d.decrypt(encrypted_bytes), AES.block_size)</span><br><span class="line">    <span class="keyword">return</span> pt.decode(<span class="string">"utf-8"</span>)</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">convert_base64_to_string</span><span class="params">(base64Str)</span>:</span></span><br><span class="line">    <span class="string">"""</span></span><br><span class="line"><span class="string">    Base64编码内容解密</span></span><br><span class="line"><span class="string">    :param base64Str: Base64密文</span></span><br><span class="line"><span class="string">    :return: 解密明文</span></span><br><span class="line"><span class="string">    """</span></span><br><span class="line">    <span class="keyword">return</span> base64.b64decode(base64Str).decode(<span class="string">'utf-8'</span>)</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">get_body</span><span class="params">(s)</span>:</span></span><br><span class="line">    <span class="string">"""</span></span><br><span class="line"><span class="string">    json字符串提取信息详情</span></span><br><span class="line"><span class="string">    :param s:</span></span><br><span class="line"><span class="string">    :return:</span></span><br><span class="line"><span class="string">    """</span></span><br><span class="line">    j = json.loads(s)</span><br><span class="line">    <span class="keyword">return</span> j[<span class="string">'BODY'</span>]</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">get_from</span><span class="params">(s)</span>:</span></span><br><span class="line">    <span class="string">"""</span></span><br><span class="line"><span class="string">    json字符串提取对方号码</span></span><br><span class="line"><span class="string">    :param s:</span></span><br><span class="line"><span class="string">    :return:</span></span><br><span class="line"><span class="string">    """</span></span><br><span class="line">    j = json.loads(s)</span><br><span class="line">    <span class="keyword">return</span> j[<span class="string">'FROM'</span>]</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">get_json_content</span><span class="params">(s)</span>:</span></span><br><span class="line">    <span class="string">"""</span></span><br><span class="line"><span class="string">    json字符串转为实际内容</span></span><br><span class="line"><span class="string">    :param s:</span></span><br><span class="line"><span class="string">    :return:</span></span><br><span class="line"><span class="string">    """</span></span><br><span class="line">    <span class="keyword">return</span> get_from(s) + <span class="string">'\n'</span> + get_body(s)</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">get_decrypted_json_str</span><span class="params">(obscure_data)</span>:</span></span><br><span class="line">    <span class="string">"""</span></span><br><span class="line"><span class="string">    转换加密的内容到Json字符串</span></span><br><span class="line"><span class="string">    :param obscure_data:</span></span><br><span class="line"><span class="string">    :return:</span></span><br><span class="line"><span class="string">    """</span></span><br><span class="line">    <span class="comment"># 第一轮替换</span></span><br><span class="line">    obscure_data = get_unreplaced_string(obscure_data, __obscure_map3)</span><br><span class="line">    <span class="comment"># 删除冗余数据</span></span><br><span class="line">    obscure_data = remove_redunance_msg(obscure_data)</span><br><span class="line">    <span class="comment"># 第二轮替换</span></span><br><span class="line">    obscure_data = get_unreplaced_string(obscure_data, __obscure_map2)</span><br><span class="line">    <span class="comment"># 第三轮替换</span></span><br><span class="line">    encrypt_base64_data = get_unreplaced_string(obscure_data, __obscure_map1)</span><br><span class="line">    <span class="comment"># AES解密base64</span></span><br><span class="line">    base64_data = aes_cbc_256_decrypt_hex(encrypt_base64_data)</span><br><span class="line">    <span class="comment"># 转换base64到Json字符串</span></span><br><span class="line">    json_str = convert_base64_to_string(base64_data)</span><br><span class="line">    <span class="keyword">return</span> json_str</span><br></pre></td></tr></table></figure>
+
+            
+
+        </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
+        
+            <div class="post-footer-tags">
+                <span class="text-color-light text-small">TAGGED IN</span><br>
+                
+    <a class="tag tag--primary tag--small t-link" href="/tags/开发/">开发</a>
+
+            </div>
+        
+        
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2017/05/27/旧手机短信转发的解决方案（四）iOS端/" data-tooltip="旧手机短信转发的解决方案（四）iOS端" aria-label="PREVIOUS: 旧手机短信转发的解决方案（四）iOS端">
+                
+                    <i class="fa fa-angle-left" aria-hidden="true"></i>
+                    <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2017/05/23/旧手机短信转发的解决方案（二）Android端/" data-tooltip="旧手机短信转发的解决方案（二）Android端" aria-label="NEXT: 旧手机短信转发的解决方案（二）Android端">
+                
+                    <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                    <i class="fa fa-angle-right" aria-hidden="true"></i>
+                </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a class="post-action-btn btn btn--default btn-open-shareoptions" href="#btn-open-shareoptions" aria-label="Share this post">
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://xiaoo.ml/2017/05/24/旧手机短信转发的解决方案（三）服务器端/" title="Share on Facebook">
+                    <i class="fab fa-facebook" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://twitter.com/intent/tweet?text=https://xiaoo.ml/2017/05/24/旧手机短信转发的解决方案（三）服务器端/" title="Share on Twitter">
+                    <i class="fab fa-twitter" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://xiaoo.ml/2017/05/24/旧手机短信转发的解决方案（三）服务器端/" title="Share on Weibo">
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://xiaoo.ml/2017/05/24/旧手机短信转发的解决方案（三）服务器端/&amp;title=旧手机短信转发的解决方案（三）服务器端" title="Share on QQ">
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#" aria-label="Back to top">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+        
+        
+            
+        
+    </div>
+</article>
+
+
+
+
+
+                
+
+                
+                <footer id="footer" class="main-content-wrap">
+    <span class="copyrights">
+		Copyrights &copy; 2020 AndrewWang. All Rights Reserved.
+    </span>
+</footer>
+
+                
+
+            </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="2">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2017/05/27/旧手机短信转发的解决方案（四）iOS端/" data-tooltip="旧手机短信转发的解决方案（四）iOS端" aria-label="PREVIOUS: 旧手机短信转发的解决方案（四）iOS端">
+                
+                    <i class="fa fa-angle-left" aria-hidden="true"></i>
+                    <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2017/05/23/旧手机短信转发的解决方案（二）Android端/" data-tooltip="旧手机短信转发的解决方案（二）Android端" aria-label="NEXT: 旧手机短信转发的解决方案（二）Android端">
+                
+                    <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                    <i class="fa fa-angle-right" aria-hidden="true"></i>
+                </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a class="post-action-btn btn btn--default btn-open-shareoptions" href="#btn-open-shareoptions" aria-label="Share this post">
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://xiaoo.ml/2017/05/24/旧手机短信转发的解决方案（三）服务器端/" title="Share on Facebook">
+                    <i class="fab fa-facebook" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="https://twitter.com/intent/tweet?text=https://xiaoo.ml/2017/05/24/旧手机短信转发的解决方案（三）服务器端/" title="Share on Twitter">
+                    <i class="fab fa-twitter" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://xiaoo.ml/2017/05/24/旧手机短信转发的解决方案（三）服务器端/" title="Share on Weibo">
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://xiaoo.ml/2017/05/24/旧手机短信转发的解决方案（三）服务器端/&amp;title=旧手机短信转发的解决方案（三）服务器端" title="Share on QQ">
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#" aria-label="Back to top">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                
+    <div id="share-options-bar" class="share-options-bar" data-behavior="2">
+        <i id="btn-close-shareoptions" class="fa fa-times"></i>
+        <ul class="share-options">
+            
+                
+                
+                <li class="share-option">
+                    <a class="share-option-btn" target="new" href="https://www.facebook.com/sharer/sharer.php?u=https://xiaoo.ml/2017/05/24/旧手机短信转发的解决方案（三）服务器端/">
+                        <i class="fab fa-facebook" aria-hidden="true"></i><span>Share on Facebook</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a class="share-option-btn" target="new" href="https://twitter.com/intent/tweet?text=https://xiaoo.ml/2017/05/24/旧手机短信转发的解决方案（三）服务器端/">
+                        <i class="fab fa-twitter" aria-hidden="true"></i><span>Share on Twitter</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a class="share-option-btn" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://xiaoo.ml/2017/05/24/旧手机短信转发的解决方案（三）服务器端/">
+                        <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a class="share-option-btn" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://xiaoo.ml/2017/05/24/旧手机短信转发的解决方案（三）服务器端/&amp;title=旧手机短信转发的解决方案（三）服务器端">
+                        <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
+                    </a>
+                </li>
+            
+        </ul>
+    </div>
+
+
+            
+        </div>
+        
+
+
+    
+        
+    
+
+<div id="about">
+    <div id="about-card">
+        <div id="about-btn-close">
+            <i class="fa fa-times"></i>
+        </div>
+        
+            <img id="about-card-picture" src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png" alt="Author&#39;s picture">
+        
+            <h4 id="about-card-name">AndrewWang</h4>
+        
+            <div id="about-card-bio"><p>凡是过去，皆为序章<br>须知参差百态，乃是幸福本源<br>邮箱：<a href="mailto:fernando_caudill@outlook.com" target="_blank">fernando_caudill@outlook.com</a></p>
+</div>
+        
+        
+            <div id="about-card-job">
+                <i class="fa fa-briefcase"></i>
+                <br>
+                <p>Android+Python</p>
+
+            </div>
+        
+        
+            <div id="about-card-location">
+                <i class="fa fa-map-marker-alt"></i>
+                <br>
+                Zhangzhou Fujian
+            </div>
+        
+    </div>
+</div>
+
+        
+            <div id="algolia-search-modal" class="modal-container">
+    <div class="modal">
+        <div class="modal-header">
+            <span class="close-button"><i class="fa fa-times"></i></span>
+            <a href="https://algolia.com" target="_blank" rel="noopener" class="searchby-algolia text-color-light link-unstyled">
+                <span class="searchby-algolia-text text-color-light text-small">by</span>
+                <img class="searchby-algolia-logo" src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/others/algolia-light.svg">
+            </a>
+            <i class="search-icon fa fa-search"></i>
+            <form id="algolia-search-form">
+                <input type="text" id="algolia-search-input" name="search" class="form-control input--large search-input" placeholder="Search ">
+            </form>
+        </div>
+        <div class="modal-body">
+            <div class="no-result text-color-light text-center">no post found</div>
+            <div class="results">
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2013/01/22/Cloneable和clone的使用，以及深复制与浅复制的区别/">
+                            <h3 class="media-heading">Cloneable和clone的使用，以及深复制与浅复制的区别</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Jan 22, 2013
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><ni>深浅复制总结下</ni></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2013/02/04/Ubuntu Problem/">
+                            <h3 class="media-heading">Ubuntu Problem</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Feb 4, 2013
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><ni>记录最近几年使用Ubuntu有用的Tips</ni></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2013/08/18/婚后，你一定会遇到更喜欢的人/">
+                            <h3 class="media-heading">婚后，你一定会遇到更喜欢的人</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Aug 18, 2013
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p>结婚后，你一定会遇到更喜欢的人。这件事几乎是肯定的。倒不是说先前结婚的人有多糟糕，也不是说后来出现的人有多美好。而是，你更了解自己了。</p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2013/11/09/ImageLoader must be init with configuration before using 错误解决方法/">
+                            <h3 class="media-heading">ImageLoader must be init with configuration before using 错误解决方法</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Nov 9, 2013
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p>最近开发过程中用到了开源项目Android-Universal-Image-Loader。<br></p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2013/12/14/把WordPress放在根目录而地址显示子目录的方法/">
+                            <h3 class="media-heading">把WordPress放在根目录而地址显示子目录的方法</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Dec 14, 2013
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p> 今天在狗爹（GoDaddy）随便买了个域名，想建个个人博客耍耍。<br></p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2014/02/15/越是聪明人，越容易在这件事上栽跟头/">
+                            <h3 class="media-heading">越是聪明人，越容易在这件事上栽跟头zt</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Feb 15, 2014
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p>一篇名为《李开复：聪明人创业为何容易失败》的商业报道里写道，记者问李开复，如何在短时间内对一个创业者或项目进行判断，有哪些指标或者投资方法论？<br></p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2014/04/02/Java中普通代码块，构造代码块，静态代码块区别及代码示例/">
+                            <h3 class="media-heading">Java中普通代码块，构造代码块，静态代码块区别及代码示例</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Apr 2, 2014
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p>执行顺序：（优先级从高到低）静态代码块&gt;main方法&gt;构造代码块&gt;构造方法。其中静态代码块只执行一次。构造代码块在每次创建对象是都会执行。<br></p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2014/04/14/getApplicationContext()、getBasecontext()、getApplication() 区别/">
+                            <h3 class="media-heading">getApplicationContext()、getBasecontext()、getApplication() 区别</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Apr 14, 2014
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><ni>搞清区别联系很重要，虽然好多情况下能通用的。</ni></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2014/04/24/使用注解来统计算法时间/">
+                            <h3 class="media-heading">使用注解统计算法运行时间</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    Apr 24, 2014
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><p>一直以为注解并没有什么卵用，后来用了butterknift和spring组件后才知道自定义组件可以完成很多任务。<br></p></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+                <div class="media">
+                    
+                    <div class="media-body">
+                        <a class="link-unstyled" href="https://xiaoo.ml/2014/05/22/git merge和rebase的区别/">
+                            <h3 class="media-heading">git merge和rebase的区别</h3>
+                        </a>
+                        <span class="media-meta">
+                            <span class="media-date text-small">
+                                
+                                    May 22, 2014
+                                
+                            </span>
+                        </span>
+                        <div class="media-content hide-xs font-merryweather"><ni>一直以来都以为rebase是合并冲突的一种手段，和merge一样的，用哪个都行。</ni></div>
+                    </div>
+                    <div style="clear:both;"></div>
+                    <hr>
+                </div>
+                
+            </div>
+        </div>
+        <div class="modal-footer">
+            <p class="results-count text-medium" data-message-zero="no post found" data-message-one="1 post found" data-message-other="{n} posts found">
+                80 posts found
+            </p>
+        </div>
+    </div>
+</div>
+
+        
+        
+<div id="cover" style="background-image:url('https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/cover.jpg');"></div>
+        <!--SCRIPTS-->
+<script src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/js/script-dbd16rvloemmuxdzniplmnxxvwoz24eya9wol0b7vvmlokgqsjivmb8dnscy.min.js"></script>
+<!--SCRIPTS END-->
+
+    
+
+
+    <script src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/js/moment-with-locales.min.js"></script>
+    <script src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/js/algoliasearch.min.js"></script>
+    <script>
+        var algoliaClient = algoliasearch('NPCJXUJXHV', '519d0ecd5f05b733ac031d89154c7bbb');
+        var algoliaIndex = algoliaClient.initIndex('my-hexo-blog');
+    </script>
+
+
+    </body>
+</html>

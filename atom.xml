@@ -6,7 +6,7 @@
   <link href="/atom.xml" rel="self"/>
   
   <link href="https://xiaoo.ml/"/>
-  <updated>2020-11-24T07:47:41.025Z</updated>
+  <updated>2020-11-25T03:39:15.109Z</updated>
   <id>https://xiaoo.ml/</id>
   
   <author>
@@ -15,6 +15,28 @@
   </author>
   
   <generator uri="http://hexo.io/">Hexo</generator>
+  
+  <entry>
+    <title>阿里云盘和Teambition内测初体验</title>
+    <link href="https://xiaoo.ml/2020/11/25/%E9%98%BF%E9%87%8C%E4%BA%91%E7%9B%98%E5%92%8CTeambition%20%E5%86%85%E6%B5%8B%E5%88%9D%E4%BD%93%E9%AA%8C/"/>
+    <id>https://xiaoo.ml/2020/11/25/阿里云盘和Teambition 内测初体验/</id>
+    <published>2020-11-25T02:10:00.000Z</published>
+    <updated>2020-11-25T03:39:15.109Z</updated>
+    
+    <content type="html"><![CDATA[<p>早晨手机收到Teambition的内测码短信，打开邮箱发现阿里云盘的内测码也收到了，这下可以对比下这对亲兄弟了<br><a id="more"></a></p><p>天下苦百度网盘久矣，不但免费用户下载限速到15K，就算是付费用户上传的个人文件也是被百度扫描来扫描去，一旦发现Hash值和黑名单数据吻合，轻则视频变8秒钟教育片，重则直接删除封号，下载大点的文件还要被强行投喂客户端才能下载，反正你文件在我这，爱下不下，一副“客户我是你爸爸”的嘴脸。阿里云盘作为一个搅局者，这个时候重新回到网盘竞争赛场，给那些被百度喂屎用户一丝希望。</p><p>上个月曾经用QQ邮箱申请过内测码，三天后收到邮件被婉拒，不死心用学校发的教育邮箱再次申请，果然隔日就收到了内测码，毕业了还能再吃一波学校的红利😊，申请不到内测码的同学可以试着用EDU邮箱试试哈。</p><h5 id="测试环境：500M联通光纤，5G-WIFI连接。"><a href="#测试环境：500M联通光纤，5G-WIFI连接。" class="headerlink" title="测试环境：500M联通光纤，5G WIFI连接。"></a>测试环境：500M联通光纤，5G WIFI连接。</h5><center><br><img src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/aliyun_vs.png"><br></center><table><thead><tr><th></th><th>阿里云盘</th><th>Teambition</th></tr></thead><tbody><tr><td>域名</td><td><a href="https://www.aliyundrive.com" target="_blank" rel="noopener">https://www.aliyundrive.com</a></td><td><a href="https://pan.aliyun.com" target="_blank" rel="noopener">https://pan.aliyun.com</a></td></tr><tr><td>开放注册</td><td>否</td><td>否</td></tr><tr><td>手机端</td><td>有</td><td>有</td></tr><tr><td>上传速度</td><td>8M/s</td><td>5M/s</td></tr><tr><td>下载速度</td><td>38M/s</td><td>10M/s</td></tr><tr><td>分享功能</td><td>无</td><td>组员分享</td></tr><tr><td>产品定位</td><td>个人云盘</td><td>阿里办公组件附属盘</td></tr><tr><td>搜索功能</td><td>无</td><td>有</td></tr><tr><td>秒传功能</td><td>有</td><td>无</td></tr><tr><td>二次验证</td><td>无</td><td>有</td></tr><tr><td>容量</td><td>1T</td><td>2T</td></tr><tr><td>回收站</td><td>无</td><td>有</td></tr><tr><td>文件预览</td><td>支持</td><td>支持</td></tr><tr><td>视频转码时间</td><td>2min</td><td>即时</td></tr><tr><td>Office预览加载速度</td><td>慢</td><td>快</td></tr><tr><td>回收站</td><td>无</td><td>有</td></tr><tr><td>手机端相册备份</td><td>有</td><td>有</td></tr></tbody></table><p>目前阿里云盘beta版本满足了我的一切非工作需求（无分享、不限速、功能精简、文件视频可预览、秒传），但据说缅甸一个传说：有一条恶龙，每年要求村庄献祭一个处女，每年这个村庄都会有一个少年英雄去与恶龙搏斗，但无人生还。又一个英雄出发时，有人悄悄尾随，龙穴铺满金银财宝，英雄用剑刺死恶龙。然后坐在尸身上，看着闪烁的珠宝，慢慢地长出鳞片、尾巴和触角，最终变成恶龙。</p><p>阿里云盘，且用且珍惜。</p><center><br><img src="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/dragon.webp"><br></center>]]></content>
+    
+    <summary type="html">
+    
+      &lt;p&gt;早晨手机收到Teambition的内测码短信，打开邮箱发现阿里云盘的内测码也收到了，这下可以对比下这对亲兄弟了&lt;br&gt;
+    
+    </summary>
+    
+      <category term="云盘" scheme="https://xiaoo.ml/categories/%E4%BA%91%E7%9B%98/"/>
+    
+    
+      <category term="阿里" scheme="https://xiaoo.ml/tags/%E9%98%BF%E9%87%8C/"/>
+    
+  </entry>
   
   <entry>
     <title>2020十大新型科技（译）</title>
@@ -454,28 +476,6 @@
     
     
       <category term="秋" scheme="https://xiaoo.ml/tags/%E7%A7%8B/"/>
-    
-  </entry>
-  
-  <entry>
-    <title>校庆：谁是校友？</title>
-    <link href="https://xiaoo.ml/2018/11/18/%E6%A0%A1%E5%BA%86%EF%BC%9A%E8%B0%81%E6%98%AF%E6%A0%A1%E5%8F%8B/"/>
-    <id>https://xiaoo.ml/2018/11/18/校庆：谁是校友/</id>
-    <published>2018-11-18T02:10:00.000Z</published>
-    <updated>2020-11-20T00:50:05.799Z</updated>
-    
-    <content type="html"><![CDATA[<p>读林中祥老师【校庆，让我如何‘热爱’你】，乱谈谁是校友？林老师是南京大学化学系1985级硕士研究生，前几天南京大学110年校庆没有被邀请，估计有点小纠结。我说：林老师不必纠结，你不是南京大学“校友”！</p><a id="more"></a><p>林老师可能会质问：难道只有本科才算校友，硕士就不算了？您误解了！算不算校友，校庆组委会说了算，那怕本科毕业的也可以不算。所谓校友，与本科、硕士、博士、博士后、教授、进修没有直接关系，你“杰出”了，比如有钱、有权，你在学校是扫厕所的又如何？人家也要给你戴上杰出校友的帽子。</p><p>先插一段关于校友的小八卦，因为种种原因，前CORE在公开场合只承认自己是上交大校友，这让南大很是郁闷，他们收集了大量铁证，进京逼CORE承认他是南大校友，听说CORE很不爽。。。，后来。。。，再后来也就没有后来了。。。</p><p>那么，谁是校友？有一个广为流传的校庆口号：“昨天你以母校为荣，今天母校以你为荣！”。这口号说得够赤裸裸的，是否有资格成为校友？<span style="background-color:#fee6e6">关键看下半句，母校以你为荣吗？</span>而林老师还在强调自己是南京大学化学系1985级硕士研究生，这就相当于“昨天你以母校为荣，今天你还以母校为荣！”，你没有为母校做贡献，或者贡献不够，人家凭什么认你这个校友？</p><p>还有一类校友最牛，“昨天母校以你为荣，今天母校还以你为荣！”，比如姚明、刘翔、邓亚萍。。。这些校友纠结的不是被不被邀请，而是邀请后该怎么办？在我看来，校庆，一般人就不要凑热闹了，添堵！</p>]]></content>
-    
-    <summary type="html">
-    
-      &lt;p&gt;读林中祥老师【校庆，让我如何‘热爱’你】，乱谈谁是校友？林老师是南京大学化学系1985级硕士研究生，前几天南京大学110年校庆没有被邀请，估计有点小纠结。我说：林老师不必纠结，你不是南京大学“校友”！&lt;/p&gt;
-    
-    </summary>
-    
-      <category term="日常" scheme="https://xiaoo.ml/categories/%E6%97%A5%E5%B8%B8/"/>
-    
-    
-      <category term="感悟" scheme="https://xiaoo.ml/tags/%E6%84%9F%E6%82%9F/"/>
     
   </entry>
   
