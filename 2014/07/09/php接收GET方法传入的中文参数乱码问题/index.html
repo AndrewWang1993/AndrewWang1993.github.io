@@ -17,7 +17,7 @@
     
         <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
     
-    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"AndrewWang","sameAs":["https://github.com/AndrewWang1993","https://stackoverflow.com/users/4209302/andrewwang","mailto:fernando_caudill@outlook.com"],"image":"https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png"},"articleBody":"PHP中文编码问题多\n\n\n最近做PHP的webService服务器，发现用Get方法获取参数时获取到的参数时乱码。一番折腾后发现时浏览器本地语言的问题。\n首先先来看下简单的测试代码：12345&lt;?php  header(\"Content-Type:text/html;charset=UTF-8\");  $name = $_GET['name'];  var_dump($name);  ?&gt;\n测试结果如下：\n\n代码中声明了响应内容的编码为utf-8，显示的内容确实乱码。在这里请注意var_dump出变量的长度只有4 ，很显然，两个中文字的长度在utf-8编码下肯定不止4个字节，然后我们再看一下Firefox的访问这个页面url\n\nFireFox会自动将中文url编码，所以我们可以看到测试变成了%B2%E2%CA%D4，很明显，这里一个字是两个字节，是gb2313、gbk等中文编码格式，而不是utf-8编码。如果我们把页面的编码切换为gbk，中文参数就会显示正常，参见下图\n接下来我们做另外一个测试，代码如下：\n12345678910&lt;?php  header(\"Content-Type:text/html;charset=UTF-8\");  $name = $_GET['name'];  var_dump($name);  ?&gt;   &lt;form method=\"GET\"&gt;  &lt;input name=\"name\" /&gt;  &lt;input type=\"submit\" value=\"输入中文提交\" /&gt;  &lt;/form&gt;\n测试结果，正常显示：\n\n那么，是什么导致这个问题的发生呢？答案是浏览器默认编码在作怪，我们都用的是中文系统，浏览器默认的编码自然也会设置为本地化，例如我自己电脑上的IE和FireFox的默认编码都是gb系列的。浏览器在请求用户输入的url 时会默认把url中的中文以默认的编码格式发送而不是以页面的编码格式发送，这就是为什么页面中带有中文的链接正常而我们手动输入的链接会乱码的原因。同理，如果我们把浏览器的默认编码调整为utf-8，那么输入url中的中文则会按照utf-8编码。\n除了上面的之外，还有以下情况会出现这种情况：\n如果gbk编码的页面生成的地址链接到utf-8的页面，gbk页面的中文是按照gbk的格式编码传送给下个页面，那么utf-8编码接收后肯定会出现乱码。IIS的url重写模块，重写后的中文编码也是gbk，如果你的页面是utf-8编码，那么重写参数将会失效。像这些情况，我们就需要使用php内置的转码函数来处理编码问题了：\n方案1：\n1$name = iconv(\"gbk\",\"utf-8\",$name);\n方案2:\n1mb_convert_encoding($name, \"utf-8\", \"gbk\");\nPS：实测IE浏览器默认GET编码方式采用最少空间占用模式，即采用GBK码，php页面添加该转换函数才能正常使用。而Firefox和Chrom默认UTF-8无需该转换函数。","dateCreated":"2014-07-09T16:10:00+08:00","dateModified":"2020-11-20T08:50:05+08:00","datePublished":"2014-07-09T16:10:00+08:00","description":"PHP中文编码问题多","headline":"php接收GET方法传入的中文参数乱码问题","image":[],"mainEntityOfPage":{"@type":"WebPage","@id":"https://xiaoo.ml/2014/07/09/php接收GET方法传入的中文参数乱码问题/"},"publisher":{"@type":"Organization","name":"AndrewWang","sameAs":["https://github.com/AndrewWang1993","https://stackoverflow.com/users/4209302/andrewwang","mailto:fernando_caudill@outlook.com"],"image":"https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png","logo":{"@type":"ImageObject","url":"https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png"}},"url":"https://xiaoo.ml/2014/07/09/php接收GET方法传入的中文参数乱码问题/","keywords":"Tips"}</script>
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"AndrewWang","sameAs":["https://github.com/AndrewWang1993","https://stackoverflow.com/users/4209302/andrewwang","mailto:fernando_caudill@outlook.com"],"image":"https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png"},"articleBody":"PHP中文编码问题多\n\n\n最近做PHP的webService服务器，发现用Get方法获取参数时获取到的参数时乱码。一番折腾后发现时浏览器本地语言的问题。\n首先先来看下简单的测试代码：12345&lt;?php  header(\"Content-Type:text/html;charset=UTF-8\");  $name = $_GET['name'];  var_dump($name);  ?&gt;\n测试结果如下：\n\n代码中声明了响应内容的编码为utf-8，显示的内容确实乱码。在这里请注意var_dump出变量的长度只有4 ，很显然，两个中文字的长度在utf-8编码下肯定不止4个字节，然后我们再看一下Firefox的访问这个页面url\n\nFireFox会自动将中文url编码，所以我们可以看到测试变成了%B2%E2%CA%D4，很明显，这里一个字是两个字节，是gb2313、gbk等中文编码格式，而不是utf-8编码。如果我们把页面的编码切换为gbk，中文参数就会显示正常，参见下图\n接下来我们做另外一个测试，代码如下：\n12345678910&lt;?php  header(\"Content-Type:text/html;charset=UTF-8\");  $name = $_GET['name'];  var_dump($name);  ?&gt;   &lt;form method=\"GET\"&gt;  &lt;input name=\"name\" /&gt;  &lt;input type=\"submit\" value=\"输入中文提交\" /&gt;  &lt;/form&gt;\n测试结果，正常显示：\n\n那么，是什么导致这个问题的发生呢？答案是浏览器默认编码在作怪，我们都用的是中文系统，浏览器默认的编码自然也会设置为本地化，例如我自己电脑上的IE和FireFox的默认编码都是gb系列的。浏览器在请求用户输入的url 时会默认把url中的中文以默认的编码格式发送而不是以页面的编码格式发送，这就是为什么页面中带有中文的链接正常而我们手动输入的链接会乱码的原因。同理，如果我们把浏览器的默认编码调整为utf-8，那么输入url中的中文则会按照utf-8编码。\n除了上面的之外，还有以下情况会出现这种情况：\n如果gbk编码的页面生成的地址链接到utf-8的页面，gbk页面的中文是按照gbk的格式编码传送给下个页面，那么utf-8编码接收后肯定会出现乱码。IIS的url重写模块，重写后的中文编码也是gbk，如果你的页面是utf-8编码，那么重写参数将会失效。像这些情况，我们就需要使用php内置的转码函数来处理编码问题了：\n方案1：\n1$name = iconv(\"gbk\",\"utf-8\",$name);\n方案2:\n1mb_convert_encoding($name, \"utf-8\", \"gbk\");\nPS：实测IE浏览器默认GET编码方式采用最少空间占用模式，即采用GBK码，php页面添加该转换函数才能正常使用。而Firefox和Chrom默认UTF-8无需该转换函数。","dateCreated":"2014-07-09T16:10:00+08:00","dateModified":"2020-12-02T11:38:47+08:00","datePublished":"2014-07-09T16:10:00+08:00","description":"PHP中文编码问题多","headline":"php接收GET方法传入的中文参数乱码问题","image":[],"mainEntityOfPage":{"@type":"WebPage","@id":"https://xiaoo.ml/2014/07/09/php接收GET方法传入的中文参数乱码问题/"},"publisher":{"@type":"Organization","name":"AndrewWang","sameAs":["https://github.com/AndrewWang1993","https://stackoverflow.com/users/4209302/andrewwang","mailto:fernando_caudill@outlook.com"],"image":"https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png","logo":{"@type":"ImageObject","url":"https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png"}},"url":"https://xiaoo.ml/2014/07/09/php接收GET方法传入的中文参数乱码问题/","keywords":"Tips"}</script>
     <meta name="description" content="PHP中文编码问题多">
 <meta name="keywords" content="Tips">
 <meta property="og:type" content="blog">
@@ -30,7 +30,7 @@
 <meta property="og:image" content="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/php2.png">
 <meta property="og:image" content="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/php3.png">
 <meta property="og:image" content="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/php4.png">
-<meta property="og:updated_time" content="2020-11-20T00:50:05.790Z">
+<meta property="og:updated_time" content="2020-12-02T03:38:47.562Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="php接收GET方法传入的中文参数乱码问题">
 <meta name="twitter:description" content="PHP中文编码问题多">
@@ -373,7 +373,7 @@
                 
                 <footer id="footer" class="main-content-wrap">
     <span class="copyrights">
-		Copyrights &copy; 2020 AndrewWang. All Rights Reserved.
+		Copyrights &copy; 2021 AndrewWang. All Rights Reserved.
     </span>
 </footer>
 
@@ -752,7 +752,7 @@
         </div>
         <div class="modal-footer">
             <p class="results-count text-medium" data-message-zero="no post found" data-message-one="1 post found" data-message-other="{n} posts found">
-                80 posts found
+                83 posts found
             </p>
         </div>
     </div>

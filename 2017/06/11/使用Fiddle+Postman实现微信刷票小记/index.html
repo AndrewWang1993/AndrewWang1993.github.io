@@ -17,7 +17,7 @@
     
         <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
     
-    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"AndrewWang","sameAs":["https://github.com/AndrewWang1993","https://stackoverflow.com/users/4209302/andrewwang","mailto:fernando_caudill@outlook.com"],"image":"https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png"},"articleBody":"昨天高中数学老师在微信群给他家娃拉票，貌似票数第一名送一台笔记本，第二名送一台学习机。\n一般这样的微信拉票我都懒得点进去送个人情，尤其又是在群里拉票还不发个红包的。但这名高中数学老师帮我高考提分不少，人是要感恩的嘛，正好工作也不忙，与其划水摸鱼不如送个人情还能在高中群里露露脸。\n总体思路是先配置fiddle手机抓包环境，然后使用微信抓投票动作时产生的HTTP包，尝试变换这个HTTP请求的某个参数再次提交，检查票数是否增加。很幸运发起投票活动幼儿园找的技术提供商没有采取微信OAuth验证，省了大麻烦，后面很顺利的找到一个参数可以欺骗服务器是不同用户点的赞，帮老师家娃成功冲顶拿到笔记本，并赢得高中时女神仰慕的目光\n因为仅仅就帮老师一个人刷刷票，并不值得用Python写个小工具，使用Postman的Runner跑一跑就行了。使用微信OAuth验证的系统刷起票来比较麻烦，有空再写。\n\n登陆微信，连接fiddle 4 抓取微信跳转投票页Cookie\n抓取点赞动作时的HTTP连接和对应Cookie\n使用Cookie和Postman连接模拟点赞动作，尝试不同cookie和参数id，破解只能点赞一次\n找到规律后，使用PostMan的Runner工具+csv自定义参数自动化刷票\n\n\n\nPS：本博文仅供技术参考和学习交流使用，不当使用产生的一起后果和本人无关。\n","dateCreated":"2017-06-11T16:10:00+08:00","dateModified":"2020-11-20T08:50:05+08:00","datePublished":"2017-06-11T16:10:00+08:00","description":"昨天高中数学老师在微信群给他家娃拉票，貌似票数第一名送一台笔记本，第二名送一台学习机。","headline":"使用Fiddle+Postman实现微信刷票小记","image":[],"mainEntityOfPage":{"@type":"WebPage","@id":"https://xiaoo.ml/2017/06/11/使用Fiddle+Postman实现微信刷票小记/"},"publisher":{"@type":"Organization","name":"AndrewWang","sameAs":["https://github.com/AndrewWang1993","https://stackoverflow.com/users/4209302/andrewwang","mailto:fernando_caudill@outlook.com"],"image":"https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png","logo":{"@type":"ImageObject","url":"https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png"}},"url":"https://xiaoo.ml/2017/06/11/使用Fiddle+Postman实现微信刷票小记/","keywords":"抓包, 刷票"}</script>
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"AndrewWang","sameAs":["https://github.com/AndrewWang1993","https://stackoverflow.com/users/4209302/andrewwang","mailto:fernando_caudill@outlook.com"],"image":"https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png"},"articleBody":"昨天高中数学老师在微信群给他家娃拉票，貌似票数第一名送一台笔记本，第二名送一台学习机。\n一般这样的微信拉票我都懒得点进去送个人情，尤其又是在群里拉票还不发个红包的。但这名高中数学老师帮我高考提分不少，人是要感恩的嘛，正好工作也不忙，与其划水摸鱼不如送个人情还能在高中群里露露脸。\n总体思路是先配置fiddle手机抓包环境，然后使用微信抓投票动作时产生的HTTP包，尝试变换这个HTTP请求的某个参数再次提交，检查票数是否增加。很幸运发起投票活动幼儿园找的技术提供商没有采取微信OAuth验证，省了大麻烦，后面很顺利的找到一个参数可以欺骗服务器是不同用户点的赞，帮老师家娃成功冲顶拿到笔记本，并赢得高中时女神仰慕的目光\n因为仅仅就帮老师一个人刷刷票，并不值得用Python写个小工具，使用Postman的Runner跑一跑就行了。使用微信OAuth验证的系统刷起票来比较麻烦，有空再写。\n\n登陆微信，连接fiddle 4 抓取微信跳转投票页Cookie\n抓取点赞动作时的HTTP连接和对应Cookie\n使用Cookie和Postman连接模拟点赞动作，尝试不同cookie和参数id，破解只能点赞一次\n找到规律后，使用PostMan的Runner工具+csv自定义参数自动化刷票\n\n\n\nPS：本博文仅供技术参考和学习交流使用，不当使用产生的一起后果和本人无关。\n","dateCreated":"2017-06-11T16:10:00+08:00","dateModified":"2020-12-02T11:38:47+08:00","datePublished":"2017-06-11T16:10:00+08:00","description":"昨天高中数学老师在微信群给他家娃拉票，貌似票数第一名送一台笔记本，第二名送一台学习机。","headline":"使用Fiddle+Postman实现微信刷票小记","image":[],"mainEntityOfPage":{"@type":"WebPage","@id":"https://xiaoo.ml/2017/06/11/使用Fiddle+Postman实现微信刷票小记/"},"publisher":{"@type":"Organization","name":"AndrewWang","sameAs":["https://github.com/AndrewWang1993","https://stackoverflow.com/users/4209302/andrewwang","mailto:fernando_caudill@outlook.com"],"image":"https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png","logo":{"@type":"ImageObject","url":"https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png"}},"url":"https://xiaoo.ml/2017/06/11/使用Fiddle+Postman实现微信刷票小记/","keywords":"抓包, 刷票"}</script>
     <meta name="description" content="昨天高中数学老师在微信群给他家娃拉票，貌似票数第一名送一台笔记本，第二名送一台学习机。">
 <meta name="keywords" content="抓包,刷票">
 <meta property="og:type" content="blog">
@@ -28,7 +28,7 @@
 <meta property="og:locale" content="en">
 <meta property="og:image" content="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/%E6%9C%AA%E5%91%BD%E5%90%8D%E5%9B%BE%E7%89%871.png">
 <meta property="og:image" content="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/TIM%E6%88%AA%E5%9B%BE20190214103155.png">
-<meta property="og:updated_time" content="2020-11-20T00:50:05.793Z">
+<meta property="og:updated_time" content="2020-12-02T03:38:47.563Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="使用Fiddle+Postman实现微信刷票小记">
 <meta name="twitter:description" content="昨天高中数学老师在微信群给他家娃拉票，貌似票数第一名送一台笔记本，第二名送一台学习机。">
@@ -363,7 +363,7 @@
                 
                 <footer id="footer" class="main-content-wrap">
     <span class="copyrights">
-		Copyrights &copy; 2020 AndrewWang. All Rights Reserved.
+		Copyrights &copy; 2021 AndrewWang. All Rights Reserved.
     </span>
 </footer>
 
@@ -742,7 +742,7 @@
         </div>
         <div class="modal-footer">
             <p class="results-count text-medium" data-message-zero="no post found" data-message-one="1 post found" data-message-other="{n} posts found">
-                80 posts found
+                83 posts found
             </p>
         </div>
     </div>

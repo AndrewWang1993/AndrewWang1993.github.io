@@ -17,7 +17,7 @@
     
         <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
     
-    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"AndrewWang","sameAs":["https://github.com/AndrewWang1993","https://stackoverflow.com/users/4209302/andrewwang","mailto:fernando_caudill@outlook.com"],"image":"https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png"},"articleBody":"最近工作中遇到一个问题那就是——第一次登陆APP的时候，由于会从服务器不断地加载数据到本地，于是数据回调接口会不停的调用刷新列表的方法去刷新数据。那么如果数据量太大，以每秒钟2~5次的速度去刷新势必造成长时间卡顿，这个问题即使RXjava貌似都无解，因为刷新UI必须在主线程嘛。\nRxJava实现不过RXjava提供了一个优良特性那就是背压，实现方式就是使用\n\nsample/throttleLast：          定期发射Observable最近的数据。（适用于缓冲回调数据）\nthrottleWithTimeout/debounce：发射数据时，如果两次数据的发射间隔小于指定时间，就会丢弃前一次的数据,直到指定时间内都没有新数据发射时。（适用于防止连续点击）\nthrottleFirst：                定期发射Observable发射的第一项数据。\n\n没有深入学习Rxjava之前，一直认为这个方法有点鸡肋，因为我认为一般来说数据源都是固定好的，那么也就是说发射顺序也是固定好的，而回调的次数和频率都不确定，也就不能用这个方法了，知道拜读了Rxjava大神写的一本书后才明白，数据本来就是不固定了。也就是说可以直接把回调函数包含到Observeable里面。(后来知道也可以用PublishSubject)\n手动实现sample和throottleFirst实现起来比较方便，直接用若干个变量和延迟时间进行互斥就可以了。但如果用来缓冲刷新可能会导致最后一次刷新不能得到执行，所以还要使用Debounce。而Debounce手动不容易实现。此处不妨换个思路，使用Message模型，也就是首先removeMessage(id),然后再次sendMessageDelay一定的时间。\n其他实现(LoaderManager类)\nLocaderThrottle: 当数据变化时，使用限制来减少内容提供程序的查询次数。\n\n下面使用JavaSE模拟了下使用Rxjava的方式来缓存回调\n新建一个帮助类，用于模拟数据源不停地发射消息 \n\n回调接口 \n\n主程序 \n\n输出结果 \n\n\n这样做有一个问题就是，如果这个代码段在一个Activity里面，那么这个Activity销毁后这个静态对象没有被消除引用，而且Observeable只有onNex()并没有结束，还没有对这个Observeable解绑，同时会造成内存泄露。所以可以在OnDestory里面解绑，并且如果不需要进行监听数据回调的时候可以使用下面的函数来发送一个onComplete()事件。\ntimeout： 如果原始Observable过了指定的一段时长没有发射任何数据，就发射一个异常或者使用备用的Observable。\n","dateCreated":"2015-02-03T12:56:11+08:00","dateModified":"2020-11-20T08:50:05+08:00","datePublished":"2015-02-03T12:56:11+08:00","description":"最近工作中遇到一个问题那就是——第一次登陆APP的时候，由于会从服务器不断地加载数据到本地，于是数据回调接口会不停的调用刷新列表的方法去刷新数据。那么如果数据量太大，以每秒钟2~5次的速度去刷新势必造成长时间卡顿，这个问题即使RXjava貌似都无解，因为刷新UI必须在主线程嘛。","headline":"Rx缓冲回调的探索","image":[],"mainEntityOfPage":{"@type":"WebPage","@id":"https://xiaoo.ml/2015/02/03/Rx缓冲回调的探索/"},"publisher":{"@type":"Organization","name":"AndrewWang","sameAs":["https://github.com/AndrewWang1993","https://stackoverflow.com/users/4209302/andrewwang","mailto:fernando_caudill@outlook.com"],"image":"https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png","logo":{"@type":"ImageObject","url":"https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png"}},"url":"https://xiaoo.ml/2015/02/03/Rx缓冲回调的探索/","keywords":"RxJava"}</script>
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"AndrewWang","sameAs":["https://github.com/AndrewWang1993","https://stackoverflow.com/users/4209302/andrewwang","mailto:fernando_caudill@outlook.com"],"image":"https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png"},"articleBody":"最近工作中遇到一个问题那就是——第一次登陆APP的时候，由于会从服务器不断地加载数据到本地，于是数据回调接口会不停的调用刷新列表的方法去刷新数据。那么如果数据量太大，以每秒钟2~5次的速度去刷新势必造成长时间卡顿，这个问题即使RXjava貌似都无解，因为刷新UI必须在主线程嘛。\nRxJava实现不过RXjava提供了一个优良特性那就是背压，实现方式就是使用\n\nsample/throttleLast：          定期发射Observable最近的数据。（适用于缓冲回调数据）\nthrottleWithTimeout/debounce：发射数据时，如果两次数据的发射间隔小于指定时间，就会丢弃前一次的数据,直到指定时间内都没有新数据发射时。（适用于防止连续点击）\nthrottleFirst：                定期发射Observable发射的第一项数据。\n\n没有深入学习Rxjava之前，一直认为这个方法有点鸡肋，因为我认为一般来说数据源都是固定好的，那么也就是说发射顺序也是固定好的，而回调的次数和频率都不确定，也就不能用这个方法了，知道拜读了Rxjava大神写的一本书后才明白，数据本来就是不固定了。也就是说可以直接把回调函数包含到Observeable里面。(后来知道也可以用PublishSubject)\n手动实现sample和throottleFirst实现起来比较方便，直接用若干个变量和延迟时间进行互斥就可以了。但如果用来缓冲刷新可能会导致最后一次刷新不能得到执行，所以还要使用Debounce。而Debounce手动不容易实现。此处不妨换个思路，使用Message模型，也就是首先removeMessage(id),然后再次sendMessageDelay一定的时间。\n其他实现(LoaderManager类)\nLocaderThrottle: 当数据变化时，使用限制来减少内容提供程序的查询次数。\n\n下面使用JavaSE模拟了下使用Rxjava的方式来缓存回调\n新建一个帮助类，用于模拟数据源不停地发射消息 \n\n回调接口 \n\n主程序 \n\n输出结果 \n\n\n这样做有一个问题就是，如果这个代码段在一个Activity里面，那么这个Activity销毁后这个静态对象没有被消除引用，而且Observeable只有onNex()并没有结束，还没有对这个Observeable解绑，同时会造成内存泄露。所以可以在OnDestory里面解绑，并且如果不需要进行监听数据回调的时候可以使用下面的函数来发送一个onComplete()事件。\ntimeout： 如果原始Observable过了指定的一段时长没有发射任何数据，就发射一个异常或者使用备用的Observable。\n","dateCreated":"2015-02-03T12:56:11+08:00","dateModified":"2020-12-02T11:38:47+08:00","datePublished":"2015-02-03T12:56:11+08:00","description":"最近工作中遇到一个问题那就是——第一次登陆APP的时候，由于会从服务器不断地加载数据到本地，于是数据回调接口会不停的调用刷新列表的方法去刷新数据。那么如果数据量太大，以每秒钟2~5次的速度去刷新势必造成长时间卡顿，这个问题即使RXjava貌似都无解，因为刷新UI必须在主线程嘛。","headline":"Rx缓冲回调的探索","image":[],"mainEntityOfPage":{"@type":"WebPage","@id":"https://xiaoo.ml/2015/02/03/Rx缓冲回调的探索/"},"publisher":{"@type":"Organization","name":"AndrewWang","sameAs":["https://github.com/AndrewWang1993","https://stackoverflow.com/users/4209302/andrewwang","mailto:fernando_caudill@outlook.com"],"image":"https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png","logo":{"@type":"ImageObject","url":"https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png"}},"url":"https://xiaoo.ml/2015/02/03/Rx缓冲回调的探索/","keywords":"RxJava"}</script>
     <meta name="description" content="最近工作中遇到一个问题那就是——第一次登陆APP的时候，由于会从服务器不断地加载数据到本地，于是数据回调接口会不停的调用刷新列表的方法去刷新数据。那么如果数据量太大，以每秒钟2~5次的速度去刷新势必造成长时间卡顿，这个问题即使RXjava貌似都无解，因为刷新UI必须在主线程嘛。">
 <meta name="keywords" content="RxJava">
 <meta property="og:type" content="blog">
@@ -30,7 +30,7 @@
 <meta property="og:image" content="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/RxjavaCallBack3.png">
 <meta property="og:image" content="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/RxjavaCallBack4.png">
 <meta property="og:image" content="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/RxjavaCallBack1.png">
-<meta property="og:updated_time" content="2020-11-20T00:50:05.788Z">
+<meta property="og:updated_time" content="2020-12-02T03:38:47.562Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Rx缓冲回调的探索">
 <meta name="twitter:description" content="最近工作中遇到一个问题那就是——第一次登陆APP的时候，由于会从服务器不断地加载数据到本地，于是数据回调接口会不停的调用刷新列表的方法去刷新数据。那么如果数据量太大，以每秒钟2~5次的速度去刷新势必造成长时间卡顿，这个问题即使RXjava貌似都无解，因为刷新UI必须在主线程嘛。">
@@ -376,7 +376,7 @@
                 
                 <footer id="footer" class="main-content-wrap">
     <span class="copyrights">
-		Copyrights &copy; 2020 AndrewWang. All Rights Reserved.
+		Copyrights &copy; 2021 AndrewWang. All Rights Reserved.
     </span>
 </footer>
 
@@ -755,7 +755,7 @@
         </div>
         <div class="modal-footer">
             <p class="results-count text-medium" data-message-zero="no post found" data-message-one="1 post found" data-message-other="{n} posts found">
-                80 posts found
+                83 posts found
             </p>
         </div>
     </div>

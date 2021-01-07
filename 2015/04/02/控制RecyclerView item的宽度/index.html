@@ -17,7 +17,7 @@
     
         <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
     
-    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"AndrewWang","sameAs":["https://github.com/AndrewWang1993","https://stackoverflow.com/users/4209302/andrewwang","mailto:fernando_caudill@outlook.com"],"image":"https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png"},"articleBody":"自从Android中引入RecyclerView之后，它就逐步的替换掉了ListView和GridView。\n\n\n关于控制RecyclerView item的宽度，说起来还不是那么清晰，上一张图，就明白了。\n\n上面的实际上是一个Grid布局\n前三行每个item均分RecyclerView的宽度\n最后一行的Others占大概三分之一，而Flipboard则占据了三分之二。上面的图和描述就是我们今天想要实现的效果。\n\n方法很简单，主要使用了GridLayoutManager的setSpanSizeLookup方法\n1234567891011mLayoutManager = new GridLayoutManager(this, 3); mLayoutManager.setSpanSizeLookup(new GridLayoutManager.SpanSizeLookup() &#123;     @Override     public int getSpanSize(int position) &#123;         if (position == mAdapter.getItemCount() - 1) &#123;             return 2;         &#125; else &#123;             return 1;         &#125;     &#125; &#125;);\n\nGridLayoutManager构造方法中传入了一个spanCount,这里值为3\ngetSpanSize方法中，最后一个item占据2个span，其他占据一个span\n\n","dateCreated":"2015-04-02T16:10:00+08:00","dateModified":"2020-11-20T08:50:05+08:00","datePublished":"2015-04-02T16:10:00+08:00","description":"自从Android中引入RecyclerView之后，它就逐步的替换掉了ListView和GridView。","headline":"控制RecyclerView item的宽度","image":[],"mainEntityOfPage":{"@type":"WebPage","@id":"https://xiaoo.ml/2015/04/02/控制RecyclerView item的宽度/"},"publisher":{"@type":"Organization","name":"AndrewWang","sameAs":["https://github.com/AndrewWang1993","https://stackoverflow.com/users/4209302/andrewwang","mailto:fernando_caudill@outlook.com"],"image":"https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png","logo":{"@type":"ImageObject","url":"https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png"}},"url":"https://xiaoo.ml/2015/04/02/控制RecyclerView item的宽度/","keywords":"RecycleView"}</script>
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"AndrewWang","sameAs":["https://github.com/AndrewWang1993","https://stackoverflow.com/users/4209302/andrewwang","mailto:fernando_caudill@outlook.com"],"image":"https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png"},"articleBody":"自从Android中引入RecyclerView之后，它就逐步的替换掉了ListView和GridView。\n\n\n关于控制RecyclerView item的宽度，说起来还不是那么清晰，上一张图，就明白了。\n\n上面的实际上是一个Grid布局\n前三行每个item均分RecyclerView的宽度\n最后一行的Others占大概三分之一，而Flipboard则占据了三分之二。上面的图和描述就是我们今天想要实现的效果。\n\n方法很简单，主要使用了GridLayoutManager的setSpanSizeLookup方法\n1234567891011mLayoutManager = new GridLayoutManager(this, 3); mLayoutManager.setSpanSizeLookup(new GridLayoutManager.SpanSizeLookup() &#123;     @Override     public int getSpanSize(int position) &#123;         if (position == mAdapter.getItemCount() - 1) &#123;             return 2;         &#125; else &#123;             return 1;         &#125;     &#125; &#125;);\n\nGridLayoutManager构造方法中传入了一个spanCount,这里值为3\ngetSpanSize方法中，最后一个item占据2个span，其他占据一个span\n\n","dateCreated":"2015-04-02T16:10:00+08:00","dateModified":"2020-12-02T11:38:47+08:00","datePublished":"2015-04-02T16:10:00+08:00","description":"自从Android中引入RecyclerView之后，它就逐步的替换掉了ListView和GridView。","headline":"控制RecyclerView item的宽度","image":[],"mainEntityOfPage":{"@type":"WebPage","@id":"https://xiaoo.ml/2015/04/02/控制RecyclerView item的宽度/"},"publisher":{"@type":"Organization","name":"AndrewWang","sameAs":["https://github.com/AndrewWang1993","https://stackoverflow.com/users/4209302/andrewwang","mailto:fernando_caudill@outlook.com"],"image":"https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png","logo":{"@type":"ImageObject","url":"https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png"}},"url":"https://xiaoo.ml/2015/04/02/控制RecyclerView item的宽度/","keywords":"RecycleView"}</script>
     <meta name="description" content="自从Android中引入RecyclerView之后，它就逐步的替换掉了ListView和GridView。">
 <meta name="keywords" content="RecycleView">
 <meta property="og:type" content="blog">
@@ -27,7 +27,7 @@
 <meta property="og:description" content="自从Android中引入RecyclerView之后，它就逐步的替换掉了ListView和GridView。">
 <meta property="og:locale" content="en">
 <meta property="og:image" content="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/recyclerview_item_width.png">
-<meta property="og:updated_time" content="2020-11-20T00:50:05.797Z">
+<meta property="og:updated_time" content="2020-12-02T03:38:47.565Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="控制RecyclerView item的宽度">
 <meta name="twitter:description" content="自从Android中引入RecyclerView之后，它就逐步的替换掉了ListView和GridView。">
@@ -364,7 +364,7 @@
                 
                 <footer id="footer" class="main-content-wrap">
     <span class="copyrights">
-		Copyrights &copy; 2020 AndrewWang. All Rights Reserved.
+		Copyrights &copy; 2021 AndrewWang. All Rights Reserved.
     </span>
 </footer>
 
@@ -743,7 +743,7 @@
         </div>
         <div class="modal-footer">
             <p class="results-count text-medium" data-message-zero="no post found" data-message-one="1 post found" data-message-other="{n} posts found">
-                80 posts found
+                83 posts found
             </p>
         </div>
     </div>

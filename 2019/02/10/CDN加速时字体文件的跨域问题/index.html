@@ -17,7 +17,7 @@
     
         <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
     
-    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"AndrewWang","sameAs":["https://github.com/AndrewWang1993","https://stackoverflow.com/users/4209302/andrewwang","mailto:fernando_caudill@outlook.com"],"image":"https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png"},"articleBody":"@font-face是CSS3中的一个特性，可以把自己定义的Web字体嵌入到网页中，随着@font-face，越来越多的网页采用字体图标作为网页中的小图形。\n因为字体资源放在Github太慢，所以放在腾讯云对象存储的CDN上吧，但当在配置CDN的时候，duang~~~访问不了，\n我试了又试甚至把字体文件放到自己Apache目录上都不行，后来发现这是字体跨域的问题 \n由于资源文件使用的是另外的域名（这样做是便于浏览器在加载时可以提高加载效率，关于domain hash也就是多域名来加速访问的问题有空再说），这样主域名和资源的域名尤其是字体文件，就形成跨域访问，在主域名的网站无法加载资源域名中的字体。 \n处理这种跨域，只要设置Access-Control-Allow-Origin，在腾讯云对象存储的控制面板允许目标域名访问就可以了，Access-Control-Allow-Origin是HTML5新增的一个特性，在资源类的域名下做如下配置（nginx的配置，apache相似处理）​12Access-Control-Allow-Origin:*accept:*/*\n","dateCreated":"2019-02-10T16:10:00+08:00","dateModified":"2020-11-20T08:50:05+08:00","datePublished":"2019-02-10T16:10:00+08:00","description":"@font-face是CSS3中的一个特性，可以把自己定义的Web字体嵌入到网页中，随着@font-face，越来越多的网页采用字体图标作为网页中的小图形。","headline":"CDN加速时字体文件的跨域问题","image":[],"mainEntityOfPage":{"@type":"WebPage","@id":"https://xiaoo.ml/2019/02/10/CDN加速时字体文件的跨域问题/"},"publisher":{"@type":"Organization","name":"AndrewWang","sameAs":["https://github.com/AndrewWang1993","https://stackoverflow.com/users/4209302/andrewwang","mailto:fernando_caudill@outlook.com"],"image":"https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png","logo":{"@type":"ImageObject","url":"https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png"}},"url":"https://xiaoo.ml/2019/02/10/CDN加速时字体文件的跨域问题/","keywords":"hexo, blog"}</script>
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"AndrewWang","sameAs":["https://github.com/AndrewWang1993","https://stackoverflow.com/users/4209302/andrewwang","mailto:fernando_caudill@outlook.com"],"image":"https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png"},"articleBody":"@font-face是CSS3中的一个特性，可以把自己定义的Web字体嵌入到网页中，随着@font-face，越来越多的网页采用字体图标作为网页中的小图形。\n因为字体资源放在Github太慢，所以放在腾讯云对象存储的CDN上吧，但当在配置CDN的时候，duang~~~访问不了，\n我试了又试甚至把字体文件放到自己Apache目录上都不行，后来发现这是字体跨域的问题 \n由于资源文件使用的是另外的域名（这样做是便于浏览器在加载时可以提高加载效率，关于domain hash也就是多域名来加速访问的问题有空再说），这样主域名和资源的域名尤其是字体文件，就形成跨域访问，在主域名的网站无法加载资源域名中的字体。 \n处理这种跨域，只要设置Access-Control-Allow-Origin，在腾讯云对象存储的控制面板允许目标域名访问就可以了，Access-Control-Allow-Origin是HTML5新增的一个特性，在资源类的域名下做如下配置（nginx的配置，apache相似处理）​12Access-Control-Allow-Origin:*accept:*/*\n","dateCreated":"2019-02-10T16:10:00+08:00","dateModified":"2020-12-02T11:38:47+08:00","datePublished":"2019-02-10T16:10:00+08:00","description":"@font-face是CSS3中的一个特性，可以把自己定义的Web字体嵌入到网页中，随着@font-face，越来越多的网页采用字体图标作为网页中的小图形。","headline":"CDN加速时字体文件的跨域问题","image":[],"mainEntityOfPage":{"@type":"WebPage","@id":"https://xiaoo.ml/2019/02/10/CDN加速时字体文件的跨域问题/"},"publisher":{"@type":"Organization","name":"AndrewWang","sameAs":["https://github.com/AndrewWang1993","https://stackoverflow.com/users/4209302/andrewwang","mailto:fernando_caudill@outlook.com"],"image":"https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png","logo":{"@type":"ImageObject","url":"https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/avatar(7).png"}},"url":"https://xiaoo.ml/2019/02/10/CDN加速时字体文件的跨域问题/","keywords":"hexo, blog"}</script>
     <meta name="description" content="@font-face是CSS3中的一个特性，可以把自己定义的Web字体嵌入到网页中，随着@font-face，越来越多的网页采用字体图标作为网页中的小图形。">
 <meta name="keywords" content="hexo,blog">
 <meta property="og:type" content="blog">
@@ -27,7 +27,7 @@
 <meta property="og:description" content="@font-face是CSS3中的一个特性，可以把自己定义的Web字体嵌入到网页中，随着@font-face，越来越多的网页采用字体图标作为网页中的小图形。">
 <meta property="og:locale" content="en">
 <meta property="og:image" content="https://my-blog-hexo-1253240671.cos.ap-shanghai.myqcloud.com/images/TIM%E6%88%AA%E5%9B%BE20190211172700.png">
-<meta property="og:updated_time" content="2020-11-20T00:50:05.781Z">
+<meta property="og:updated_time" content="2020-12-02T03:38:47.560Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="CDN加速时字体文件的跨域问题">
 <meta name="twitter:description" content="@font-face是CSS3中的一个特性，可以把自己定义的Web字体嵌入到网页中，随着@font-face，越来越多的网页采用字体图标作为网页中的小图形。">
@@ -354,7 +354,7 @@
                 
                 <footer id="footer" class="main-content-wrap">
     <span class="copyrights">
-		Copyrights &copy; 2020 AndrewWang. All Rights Reserved.
+		Copyrights &copy; 2021 AndrewWang. All Rights Reserved.
     </span>
 </footer>
 
@@ -733,7 +733,7 @@
         </div>
         <div class="modal-footer">
             <p class="results-count text-medium" data-message-zero="no post found" data-message-one="1 post found" data-message-other="{n} posts found">
-                80 posts found
+                83 posts found
             </p>
         </div>
     </div>
